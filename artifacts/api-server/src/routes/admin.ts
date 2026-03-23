@@ -100,7 +100,7 @@ router.get("/admin/stats", async (req, res): Promise<void> => {
   }
 
   const stats = EVENT_DATES.map((date) => ({
-    date,
+    date: new Date(date),
     totalCapacity: DAILY_CAPACITY,
     registered: counts[date] || 0,
     remaining: DAILY_CAPACITY - (counts[date] || 0),

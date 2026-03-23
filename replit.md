@@ -16,7 +16,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 - **Frontend**: React + Vite + Tailwind CSS + shadcn/ui
-- **Auth**: Replit Auth (OpenID Connect with PKCE)
+- **Auth**: Custom username/password admin login (session-based)
 
 ## Structure
 
@@ -30,7 +30,7 @@ artifacts-monorepo/
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
 │   ├── db/                 # Drizzle ORM schema + DB connection
-│   └── replit-auth-web/    # Replit Auth browser client (useAuth hook)
+│   └── replit-auth-web/    # Admin auth client (AuthProvider + useAuth hook)
 ├── scripts/                # Utility scripts
 ├── pnpm-workspace.yaml     # pnpm workspace config
 ├── tsconfig.base.json      # Shared TS options
@@ -42,14 +42,16 @@ artifacts-monorepo/
 
 ### Features
 - **Home/Exhibition**: Hero section with event info, exhibition zones visible to all visitors (no login required)
-- **Registration**: Ticket booking with 500/day capacity per date (July 14-16, 2026), no login required
+- **Registration**: Ticket booking with 500/day capacity per date (July 23-26, 2026), no login required
 - **News**: Latest announcements with detail pages
 - **Contestants**: Balloon art competition showcase with scores
 - **Sponsors**: Tiered sponsor display (platinum/gold/silver/bronze) with external links
-- **Admin Dashboard**: Registration monitoring, CSV export, news/contestant CRUD
+- **Admin Dashboard**: Protected by username/password login. Registration monitoring, CSV export, news/contestant CRUD
+- **Admin Auth**: Custom login system (username: 1, password: aa3210). No Replit Auth / OIDC.
 
 ### Database Tables
-- `sessions` / `users` - Auth (Replit Auth)
+- `sessions` - Admin auth sessions
+- `users` - Legacy user table (unused after auth migration)
 - `registrations` - Event registrations (parent_name, phone, ticket_count, event_date)
 - `news` - News articles (title, content, summary)
 - `contestants` - Competition participants (name, description, image_url, score)
@@ -69,7 +71,7 @@ artifacts-monorepo/
 - `GET /api/admin/stats` - Admin: registration stats
 - `POST/PUT/DELETE /api/admin/news/:id` - Admin: news CRUD
 - `POST/PUT/DELETE /api/admin/contestants/:id` - Admin: contestant CRUD
-- Auth endpoints: `/api/login`, `/api/callback`, `/api/logout`, `/api/auth/user`
+- Auth endpoints: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/user`
 
 ## TypeScript & Composite Projects
 
@@ -83,10 +85,10 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 ## Packages
 
 ### `artifacts/api-server` (`@workspace/api-server`)
-Express 5 API server with Replit Auth, registration system, news, contestants, sponsors, exhibitions, and admin routes.
+Express 5 API server with custom admin auth, registration system, news, contestants, sponsors, exhibitions, and admin routes.
 
 ### `artifacts/balloon-carnival` (`@workspace/balloon-carnival`)
-React + Vite frontend for the 2026 Taiwan Balloon Carnival website. Uses Tailwind CSS, shadcn/ui, wouter routing, React Query, and Replit Auth.
+React + Vite frontend for the 2026 Taiwan Balloon Carnival website. Uses Tailwind CSS, shadcn/ui, wouter routing, React Query, and custom admin auth.
 
 ### `lib/db` (`@workspace/db`)
 Drizzle ORM schema + PostgreSQL connection. Tables: sessions, users, registrations, news, contestants, sponsors, exhibitions.
@@ -101,7 +103,7 @@ Generated Zod schemas from OpenAPI spec.
 Generated React Query hooks and fetch client.
 
 ### `lib/replit-auth-web` (`@workspace/replit-auth-web`)
-Replit Auth browser client providing useAuth() hook for login/logout/user state.
+Admin auth client providing AuthProvider context and useAuth() hook for login/logout/session state.
 
 ### `scripts` (`@workspace/scripts`)
 Utility scripts package.

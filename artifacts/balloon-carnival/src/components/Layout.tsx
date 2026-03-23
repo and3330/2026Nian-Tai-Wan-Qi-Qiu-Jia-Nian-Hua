@@ -12,7 +12,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
-  const { user, isAuthenticated, login, logout, isLoading } = useAuth();
+  const { isAuthenticated, logout, isLoading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -82,40 +82,26 @@ export function Layout({ children }: LayoutProps) {
                   <LayoutDashboard size={16} />
                   管理後臺
                 </Link>
-                <div className="flex items-center gap-2 ml-2">
-                  <div className="flex items-center gap-2 bg-white border rounded-full pl-1 pr-4 py-1 shadow-sm">
-                    {user?.profileImageUrl ? (
-                      <img src={user.profileImageUrl} alt="Avatar" className="w-8 h-8 rounded-full" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-secondary/20 text-secondary flex items-center justify-center font-bold">
-                        {user?.firstName?.[0] || 'A'}
-                      </div>
-                    )}
-                    <span className="text-sm font-semibold truncate max-w-[100px]">
-                      {user?.firstName || '管理員'}
-                    </span>
-                  </div>
-                  <button
-                    onClick={logout}
-                    className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors"
-                    title="登出"
-                  >
-                    <LogOut size={18} />
-                  </button>
-                </div>
+                <button
+                  onClick={() => logout()}
+                  className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors ml-1"
+                  title="登出"
+                >
+                  <LogOut size={18} />
+                </button>
               </>
             )}
 
             {!isLoading && !isAuthenticated && (
               <>
                 <div className="w-px h-8 bg-border mx-2"></div>
-                <button
-                  onClick={login}
+                <Link
+                  href="/admin/login"
                   className="ml-1 px-4 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-black/5 rounded-full transition-all flex items-center gap-1.5 font-medium"
                 >
                   <Shield size={14} />
                   管理員登入
-                </button>
+                </Link>
               </>
             )}
           </nav>
@@ -173,20 +159,20 @@ export function Layout({ children }: LayoutProps) {
               {!isLoading && (
                 isAuthenticated ? (
                   <button
-                    onClick={logout}
+                    onClick={() => logout()}
                     className="p-4 rounded-xl font-medium flex items-center justify-center gap-3 text-lg text-destructive bg-destructive/5"
                   >
                     <LogOut size={20} />
                     管理員登出
                   </button>
                 ) : (
-                  <button
-                    onClick={login}
+                  <Link
+                    href="/admin/login"
                     className="p-4 rounded-xl font-medium flex items-center justify-center gap-3 text-sm text-muted-foreground hover:bg-black/5"
                   >
                     <Shield size={16} />
                     管理員登入
-                  </button>
+                  </Link>
                 )
               )}
             </div>

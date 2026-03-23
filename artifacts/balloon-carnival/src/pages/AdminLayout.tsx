@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, Redirect } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { LayoutDashboard, Newspaper, Users, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,15 +11,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (isLoading) return <div className="min-h-screen flex items-center justify-center">載入中...</div>;
 
   if (!isAuthenticated) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
-        <h2 className="text-2xl font-bold mb-4">存取被拒</h2>
-        <p className="text-muted-foreground mb-8">您必須登入才能存取管理後臺。</p>
-        <Link href="/" className="px-6 py-3 bg-primary text-white rounded-full font-bold hover:bg-primary/90">
-          返回首頁
-        </Link>
-      </div>
-    );
+    return <Redirect to="/admin/login" />;
   }
 
   const navs = [
