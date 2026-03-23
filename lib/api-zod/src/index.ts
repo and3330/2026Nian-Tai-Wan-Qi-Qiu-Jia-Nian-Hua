@@ -1,2 +1,24 @@
 export * from "./generated/api";
-export * from "./generated/types";
+export type {
+  AdminExportRegistrationsParams,
+  AdminListRegistrationsParams,
+  AuthorizationSessionHeaderParameter,
+  AuthUser,
+  AuthUserEnvelope,
+  BeginBrowserLoginParams,
+  Contestant,
+  CreateContestantBody,
+  CreateNewsBody,
+  DateAvailability,
+  ErrorEnvelope,
+  Exhibition,
+  HandleBrowserLoginCallbackParams,
+  HealthStatus,
+  LogoutSuccess,
+  MobileTokenExchangeRequest,
+  MobileTokenExchangeSuccess,
+  NewsArticle,
+  Registration,
+  Sponsor,
+  SponsorTier,
+} from "./generated/types";

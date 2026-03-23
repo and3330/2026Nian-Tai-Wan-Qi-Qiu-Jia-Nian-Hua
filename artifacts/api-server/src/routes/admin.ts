@@ -37,10 +37,11 @@ router.get("/admin/registrations", async (req, res): Promise<void> => {
   const query = AdminListRegistrationsQueryParams.safeParse(req.query);
   let rows;
   if (query.success && query.data.date) {
+    const dateStr = typeof query.data.date === "string" ? query.data.date : (query.data.date as Date).toISOString().split("T")[0];
     rows = await db
       .select()
       .from(registrationsTable)
-      .where(eq(registrationsTable.eventDate, query.data.date))
+      .where(eq(registrationsTable.eventDate, dateStr))
       .orderBy(desc(registrationsTable.createdAt));
   } else {
     rows = await db
@@ -57,10 +58,11 @@ router.get("/admin/registrations/export", async (req, res): Promise<void> => {
   const query = AdminExportRegistrationsQueryParams.safeParse(req.query);
   let rows;
   if (query.success && query.data.date) {
+    const dateStr = typeof query.data.date === "string" ? query.data.date : (query.data.date as Date).toISOString().split("T")[0];
     rows = await db
       .select()
       .from(registrationsTable)
-      .where(eq(registrationsTable.eventDate, query.data.date))
+      .where(eq(registrationsTable.eventDate, dateStr))
       .orderBy(desc(registrationsTable.createdAt));
   } else {
     rows = await db

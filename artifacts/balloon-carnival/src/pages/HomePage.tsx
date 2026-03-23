@@ -316,7 +316,7 @@ export default function HomePage() {
                 <Link key={article.id} href={`/news/${article.id}`} className="glass-card rounded-2xl p-6 hover-lift group block">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
                     <Calendar size={12} />
-                    {article.publishedAt ? formatDate(article.publishedAt) : '最新'}
+                    {article.createdAt ? formatDate(String(article.createdAt)) : '最新'}
                   </div>
                   <h3 className="text-lg font-bold mb-3 group-hover:text-primary transition-colors line-clamp-2">
                     {article.title}

@@ -48,7 +48,8 @@ router.post("/registrations", async (req, res): Promise<void> => {
     return;
   }
 
-  const { parentName, phone, ticketCount, eventDate } = parsed.data;
+  const { parentName, phone, ticketCount, eventDate: eventDateRaw } = parsed.data;
+  const eventDate = typeof eventDateRaw === "string" ? eventDateRaw : (eventDateRaw as Date).toISOString().split("T")[0];
 
   if (!EVENT_DATES.includes(eventDate)) {
     res.status(400).json({ error: "Invalid event date" });

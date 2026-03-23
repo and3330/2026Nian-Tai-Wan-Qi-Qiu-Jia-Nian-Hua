@@ -7,9 +7,7 @@ export default function NewsDetailPage() {
   const params = useParams();
   const id = parseInt(params.id || "0");
   
-  const { data: article, isLoading, error } = useGetNewsArticle(id, {
-    query: { enabled: !!id }
-  });
+  const { data: article, isLoading, error } = useGetNewsArticle(id);
 
   if (isLoading) {
     return (
