@@ -1,0 +1,26 @@
+packages:
+  "framer-motion": "For page transitions and smooth UI animations"
+  "recharts": "For admin dashboard statistics charts"
+  "date-fns": "For formatting dates consistently"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility for merging tailwind classes safely"
+  "@workspace/api-client-react": "API client"
+  "@workspace/replit-auth-web": "Replit auth"
+
+images:
+  - path: "artifacts/balloon-carnival/public/images/hero-bg.png"
+    description: "Vibrant, colorful hot air balloons in a bright blue sky with fluffy white clouds, joyful carnival atmosphere, highly detailed"
+    aspect_ratio: "16:9"
+  - path: "artifacts/balloon-carnival/public/images/exhibition-1.png"
+    description: "Giant creative balloon art installation of a colorful dragon, indoor brightly lit exhibition hall, festive"
+    aspect_ratio: "4:3"
+  - path: "artifacts/balloon-carnival/public/images/exhibition-2.png"
+    description: "Beautiful balloon archway tunnel with fairy lights, magical carnival setting"
+    aspect_ratio: "4:3"
+  - path: "artifacts/balloon-carnival/public/images/carnival-pattern.png"
+    description: "Abstract geometric seamless pattern with carnival themes, confetti, tents, and balloons, soft warm colors"
+    aspect_ratio: "1:1"
+
+notes:
+  - Using generated React Query hooks from @workspace/api-client-react
+  - Using Replit Auth from @workspace/replit-auth-web

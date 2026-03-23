@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: 2026 Taiwan Balloon Carnival API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: Auth
+    description: Browser and mobile authentication endpoints.
+  - name: registrations
+    description: Event registration and ticketing
+  - name: news
+    description: Latest news and announcements
+  - name: contestants
+    description: Contestant showcase
+  - name: sponsors
+    description: Sponsor information
+  - name: admin
+    description: Admin management endpoints
+  - name: exhibitions
+    description: Exhibition zones
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +37,501 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/user:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAuthUser
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '200':
+          description: Auth status resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+  /login:
+    get:
+      tags: [Auth]
+      operationId: beginBrowserLogin
+      summary: Start the browser OIDC login flow
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the OIDC authorization endpoint.
+  /callback:
+    get:
+      tags: [Auth]
+      operationId: handleBrowserLoginCallback
+      summary: Complete the browser OIDC login flow
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: iss
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uri
+      responses:
+        '302':
+          description: Redirect to returnTo path on success.
+  /logout:
+    get:
+      tags: [Auth]
+      operationId: logoutBrowserSession
+      summary: Clear the session and begin OIDC logout
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '302':
+          description: Redirect to the OIDC provider logout URL.
+  /mobile-auth/token-exchange:
+    post:
+      tags: [Auth]
+      operationId: exchangeMobileAuthorizationCode
+      summary: Exchange a mobile OIDC code for a session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileTokenExchangeRequest'
+      responses:
+        '200':
+          description: Session created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileTokenExchangeSuccess'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Token did not contain usable claims.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Token exchange failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /mobile-auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutMobileSession
+      summary: Delete a mobile session token
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+      responses:
+        '200':
+          description: Logout processed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutSuccess'
+
+  /exhibitions:
+    get:
+      operationId: listExhibitions
+      tags: [exhibitions]
+      summary: List all exhibition zones
+      responses:
+        "200":
+          description: List of exhibitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Exhibition"
+
+  /registrations:
+    post:
+      operationId: createRegistration
+      tags: [registrations]
+      summary: Create a new registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRegistrationBody"
+      responses:
+        "201":
+          description: Registration created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+        "400":
+          description: Validation error or date full
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /registrations/availability:
+    get:
+      operationId: getRegistrationAvailability
+      tags: [registrations]
+      summary: Get remaining tickets for each event date
+      responses:
+        "200":
+          description: Availability per date
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DateAvailability"
+
+  /news:
+    get:
+      operationId: listNews
+      tags: [news]
+      summary: List news articles
+      responses:
+        "200":
+          description: List of news
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NewsArticle"
+  /news/{id}:
+    get:
+      operationId: getNewsArticle
+      tags: [news]
+      summary: Get a single news article
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: News article
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsArticle"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /contestants:
+    get:
+      operationId: listContestants
+      tags: [contestants]
+      summary: List all contestants
+      responses:
+        "200":
+          description: List of contestants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Contestant"
+
+  /sponsors:
+    get:
+      operationId: listSponsors
+      tags: [sponsors]
+      summary: List all sponsors
+      responses:
+        "200":
+          description: List of sponsors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sponsor"
+
+  /admin/registrations:
+    get:
+      operationId: adminListRegistrations
+      tags: [admin]
+      summary: List all registrations (admin)
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Registration list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Registration"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/registrations/export:
+    get:
+      operationId: adminExportRegistrations
+      tags: [admin]
+      summary: Export registrations as CSV
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/news:
+    post:
+      operationId: adminCreateNews
+      tags: [admin]
+      summary: Create a news article (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNewsBody"
+      responses:
+        "201":
+          description: News article created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsArticle"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/news/{id}:
+    put:
+      operationId: adminUpdateNews
+      tags: [admin]
+      summary: Update a news article (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNewsBody"
+      responses:
+        "200":
+          description: News article updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsArticle"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: adminDeleteNews
+      tags: [admin]
+      summary: Delete a news article (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/contestants:
+    post:
+      operationId: adminCreateContestant
+      tags: [admin]
+      summary: Create a contestant (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContestantBody"
+      responses:
+        "201":
+          description: Contestant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contestant"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/contestants/{id}:
+    put:
+      operationId: adminUpdateContestant
+      tags: [admin]
+      summary: Update a contestant (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContestantBody"
+      responses:
+        "200":
+          description: Contestant updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contestant"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: adminDeleteContestant
+      tags: [admin]
+      summary: Delete a contestant (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/stats:
+    get:
+      operationId: adminGetStats
+      tags: [admin]
+      summary: Get registration stats per date (admin)
+      responses:
+        "200":
+          description: Stats per date
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DateAvailability"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: Opaque session token
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      description: Browser session cookie.
+      schema:
+        type: string
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +541,216 @@ components:
       required:
         - status
 
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, 'null']
+          format: email
+        firstName:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        profileImageUrl:
+          type: [string, 'null']
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUser'
+            - type: 'null'
+    MobileTokenExchangeRequest:
+      type: object
+      required: [code, code_verifier, redirect_uri, state]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          minLength: 1
+          format: uri
+        state:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+    MobileTokenExchangeSuccess:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          const: true
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    Exhibition:
+      type: object
+      required: [id, name, description, location, openTime, closeTime, imageUrl]
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        description:
+          type: string
+        location:
+          type: string
+        openTime:
+          type: string
+        closeTime:
+          type: string
+        imageUrl:
+          type: [string, 'null']
+
+    CreateRegistrationBody:
+      type: object
+      required: [parentName, phone, ticketCount, eventDate]
+      properties:
+        parentName:
+          type: string
+          minLength: 1
+        phone:
+          type: string
+          minLength: 1
+        ticketCount:
+          type: number
+          minimum: 1
+          maximum: 10
+        eventDate:
+          type: string
+          format: date
+
+    Registration:
+      type: object
+      required: [id, parentName, phone, ticketCount, eventDate, createdAt]
+      properties:
+        id:
+          type: number
+        parentName:
+          type: string
+        phone:
+          type: string
+        ticketCount:
+          type: number
+        eventDate:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+
+    DateAvailability:
+      type: object
+      required: [date, totalCapacity, registered, remaining]
+      properties:
+        date:
+          type: string
+          format: date
+        totalCapacity:
+          type: number
+        registered:
+          type: number
+        remaining:
+          type: number
+
+    CreateNewsBody:
+      type: object
+      required: [title, content]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        content:
+          type: string
+          minLength: 1
+        summary:
+          type: string
+
+    NewsArticle:
+      type: object
+      required: [id, title, content, createdAt, updatedAt]
+      properties:
+        id:
+          type: number
+        title:
+          type: string
+        content:
+          type: string
+        summary:
+          type: [string, 'null']
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateContestantBody:
+      type: object
+      required: [name, description]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        imageUrl:
+          type: string
+        score:
+          type: number
+
+    Contestant:
+      type: object
+      required: [id, name, description, createdAt]
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: [string, 'null']
+        score:
+          type: [number, 'null']
+        createdAt:
+          type: string
+          format: date-time
+
+    Sponsor:
+      type: object
+      required: [id, name, logoUrl, websiteUrl, tier]
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        logoUrl:
+          type: string
+        websiteUrl:
+          type: string
+        tier:
+          type: string
+          enum: [platinum, gold, silver, bronze]

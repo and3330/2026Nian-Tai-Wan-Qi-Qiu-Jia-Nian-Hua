@@ -1,0 +1,77 @@
+import { Switch, Route, Router as WouterRouter } from "wouter";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import NotFound from "@/pages/not-found";
+import { Layout } from "@/components/Layout";
+
+// Pages
+import HomePage from "@/pages/HomePage";
+import RegistrationPage from "@/pages/RegistrationPage";
+import NewsPage from "@/pages/NewsPage";
+import NewsDetailPage from "@/pages/NewsDetailPage";
+import ContestantsPage from "@/pages/ContestantsPage";
+import SponsorsPage from "@/pages/SponsorsPage";
+
+// Admin Pages
+import AdminLayout from "@/pages/AdminLayout";
+import AdminDashboard from "@/pages/Admin/Dashboard";
+import AdminNewsManage from "@/pages/Admin/NewsManage";
+import AdminContestantsManage from "@/pages/Admin/ContestantsManage";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function AdminRoutes() {
+  return (
+    <AdminLayout>
+      <Switch>
+        <Route path="/admin" component={AdminDashboard} />
+        <Route path="/admin/news" component={AdminNewsManage} />
+        <Route path="/admin/contestants" component={AdminContestantsManage} />
+        <Route component={NotFound} />
+      </Switch>
+    </AdminLayout>
+  );
+}
+
+function Router() {
+  return (
+    <Layout>
+      <Switch>
+        <Route path="/" component={HomePage} />
+        <Route path="/registration" component={RegistrationPage} />
+        <Route path="/news" component={NewsPage} />
+        <Route path="/news/:id" component={NewsDetailPage} />
+        <Route path="/contestants" component={ContestantsPage} />
+        <Route path="/sponsors" component={SponsorsPage} />
+        
+        {/* Nested Admin Routes */}
+        <Route path="/admin*" component={AdminRoutes} />
+        
+        <Route component={NotFound} />
+      </Switch>
+    </Layout>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <Router />
+        </WouterRouter>
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;

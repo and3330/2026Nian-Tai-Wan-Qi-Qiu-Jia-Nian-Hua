@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "2026 臺灣氣球嘉年華"
+version = "1.0.0"
+id = "artifacts/balloon-carnival"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23451
+
+[services.development]
+run = "pnpm --filter @workspace/balloon-carnival run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/balloon-carnival", "run", "build" ]
+publicDir = "artifacts/balloon-carnival/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23451"
+BASE_PATH = "/"
