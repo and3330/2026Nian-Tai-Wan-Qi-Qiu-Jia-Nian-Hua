@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
 import { useGetRegistrationAvailability, useCreateRegistration } from "@workspace/api-client-react";
 import { Ticket, Users, Phone, Calendar, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -7,7 +6,6 @@ import { getGetRegistrationAvailabilityQueryKey } from "@workspace/api-client-re
 import { cn } from "@/lib/utils";
 
 export default function RegistrationPage() {
-  const { isAuthenticated, login } = useAuth();
   const queryClient = useQueryClient();
   
   const { data: availability, isLoading: isAvailabilityLoading } = useGetRegistrationAvailability();
@@ -23,7 +21,6 @@ export default function RegistrationPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAuthenticated) return login();
     
     if (!formData.eventDate) {
       alert("請選擇活動日期");
@@ -38,7 +35,7 @@ export default function RegistrationPage() {
         queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
-      onError: (err) => {
+      onError: (err: any) => {
         alert(err.error?.error || "報名失敗，請重試或聯絡客服");
       }
     });
@@ -55,7 +52,7 @@ export default function RegistrationPage() {
         </div>
         <h1 className="font-display text-4xl md:text-5xl mb-4">報名與訂票系統</h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          每日限量 500 名入場名額，請盡早預約以免向隅。
+          每日限量 500 名入場名額，請盡早預約以免向隅。免註冊，直接填寫資料即可完成預約！
         </p>
       </div>
 
@@ -87,7 +84,6 @@ export default function RegistrationPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 max-w-5xl mx-auto">
-          {/* Availability Sidebar */}
           <div className="lg:col-span-2 space-y-6">
             <h3 className="font-bold text-xl flex items-center gap-2">
               <Calendar className="text-primary" /> 日期與名額狀況
@@ -158,7 +154,6 @@ export default function RegistrationPage() {
             </div>
           </div>
 
-          {/* Form */}
           <div className="lg:col-span-3">
             <div className="glass-card rounded-3xl p-8 md:p-10 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 rounded-bl-full -z-10"></div>
@@ -210,26 +205,16 @@ export default function RegistrationPage() {
                 </div>
 
                 <div className="pt-6">
-                  {!isAuthenticated ? (
-                    <button
-                      type="button"
-                      onClick={login}
-                      className="w-full py-5 rounded-xl font-bold text-lg bg-foreground text-background shadow-lg hover:shadow-xl transition-all"
-                    >
-                      請先登入以完成報名
-                    </button>
-                  ) : (
-                    <button
-                      type="submit"
-                      disabled={createMutation.isPending || isSelectedDateFull || !formData.eventDate}
-                      className="w-full py-5 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-primary to-primary/90 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2"
-                    >
-                      {createMutation.isPending ? "處理中..." : 
-                       !formData.eventDate ? "請選擇入場日期" : 
-                       isSelectedDateFull ? "選定日期已額滿" : 
-                       "確認送出報名"}
-                    </button>
-                  )}
+                  <button
+                    type="submit"
+                    disabled={createMutation.isPending || isSelectedDateFull || !formData.eventDate}
+                    className="w-full py-5 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-primary to-primary/90 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2"
+                  >
+                    {createMutation.isPending ? "處理中..." : 
+                     !formData.eventDate ? "請選擇入場日期" : 
+                     isSelectedDateFull ? "選定日期已額滿" : 
+                     "確認送出報名"}
+                  </button>
                 </div>
               </form>
             </div>

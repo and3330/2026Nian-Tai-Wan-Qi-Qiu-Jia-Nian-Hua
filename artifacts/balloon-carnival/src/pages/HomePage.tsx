@@ -1,19 +1,12 @@
-import { useAuth } from "@workspace/replit-auth-web";
 import { useListExhibitions } from "@workspace/api-client-react";
-import { Calendar, MapPin, Clock, ArrowRight, Lock } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowRight, Tent } from "lucide-react";
 import { Link } from "wouter";
 
 export default function HomePage() {
-  const { isAuthenticated, login } = useAuth();
-  
-  // Only fetch exhibitions if authenticated
-  const { data: exhibitions, isLoading } = useListExhibitions({
-    query: { enabled: isAuthenticated }
-  });
+  const { data: exhibitions, isLoading } = useListExhibitions();
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Hero Section */}
       <section className="relative w-full py-20 lg:py-32 flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img 
@@ -53,21 +46,12 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            {isAuthenticated ? (
-              <Link 
-                href="/registration" 
-                className="px-8 py-4 rounded-full font-bold text-lg bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-1 transition-all flex items-center gap-2"
-              >
-                立即報名訂票 <ArrowRight size={20} />
-              </Link>
-            ) : (
-              <button 
-                onClick={login}
-                className="px-8 py-4 rounded-full font-bold text-lg bg-foreground text-background shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2"
-              >
-                <Lock size={20} /> 登入以探索主題展區
-              </button>
-            )}
+            <Link 
+              href="/registration" 
+              className="px-8 py-4 rounded-full font-bold text-lg bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-1 transition-all flex items-center gap-2"
+            >
+              立即報名訂票 <ArrowRight size={20} />
+            </Link>
             <Link 
               href="/news" 
               className="px-8 py-4 rounded-full font-bold text-lg bg-white text-foreground border-2 border-transparent hover:border-border shadow-sm hover:shadow-md transition-all"
@@ -78,32 +62,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Exhibitions Section */}
       <section className="py-20 px-4 max-w-7xl mx-auto w-full relative">
         <div className="text-center mb-16">
           <h2 className="font-display text-4xl mb-4">主題展區導覽</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            登入後即可探索我們為您準備的五大奇幻展區，每個展區都有獨特的氣球藝術主題。
+            五大奇幻展區，每個展區都有獨特的氣球藝術主題，等你來探索！
           </p>
         </div>
 
-        {!isAuthenticated ? (
-          <div className="glass-card rounded-3xl p-12 text-center max-w-2xl mx-auto border-dashed border-2">
-            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
-              <Lock className="w-10 h-10 text-muted-foreground" />
-            </div>
-            <h3 className="text-2xl font-bold mb-4">內容已鎖定</h3>
-            <p className="text-muted-foreground mb-8">
-              為了提供更好的導覽體驗，主題展區的詳細資訊、地圖位置及開放時間僅限已登入的使用者查看。
-            </p>
-            <button 
-              onClick={login}
-              className="px-8 py-3 rounded-full font-bold bg-primary text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all"
-            >
-              會員登入
-            </button>
-          </div>
-        ) : isLoading ? (
+        {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[1, 2, 3, 4].map(i => (
               <div key={i} className="bg-card rounded-3xl p-6 border shadow-sm animate-pulse h-80"></div>

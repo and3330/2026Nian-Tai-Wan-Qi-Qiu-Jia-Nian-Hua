@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ticket, Tent, MapPin, Info, Users, Crown, LogOut, LayoutDashboard, Menu, X } from "lucide-react";
+import { Ticket, Tent, MapPin, Info, Users, Crown, LogOut, LayoutDashboard, Menu, X, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +15,6 @@ export function Layout({ children }: LayoutProps) {
   const { user, isAuthenticated, login, logout, isLoading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location]);
@@ -28,13 +27,8 @@ export function Layout({ children }: LayoutProps) {
     { href: "/sponsors", label: "贊助廠商", icon: Crown },
   ];
 
-  if (isAuthenticated) {
-    navItems.push({ href: "/admin", label: "管理後臺", icon: LayoutDashboard });
-  }
-
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
-      {/* Decorative top border */}
       <div className="h-2 w-full carnival-gradient absolute top-0 left-0 z-50"></div>
 
       <header className="sticky top-0 z-40 w-full glass-card border-b border-white/50 px-4 sm:px-6 lg:px-8 mt-2">
@@ -53,7 +47,6 @@ export function Layout({ children }: LayoutProps) {
             </div>
           </Link>
 
-          {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
               const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
@@ -74,43 +67,59 @@ export function Layout({ children }: LayoutProps) {
               );
             })}
 
-            <div className="w-px h-8 bg-border mx-2"></div>
-
-            {isLoading ? (
-              <div className="w-24 h-10 bg-black/5 animate-pulse rounded-full"></div>
-            ) : isAuthenticated ? (
-              <div className="flex items-center gap-3 ml-2">
-                <div className="flex items-center gap-2 bg-white border rounded-full pl-1 pr-4 py-1 shadow-sm">
-                  {user?.profileImageUrl ? (
-                    <img src={user.profileImageUrl} alt="Avatar" className="w-8 h-8 rounded-full" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-secondary/20 text-secondary flex items-center justify-center font-bold">
-                      {user?.firstName?.[0] || 'U'}
-                    </div>
+            {isAuthenticated && (
+              <>
+                <div className="w-px h-8 bg-border mx-2"></div>
+                <Link
+                  href="/admin"
+                  className={cn(
+                    "px-4 py-2.5 rounded-full font-medium text-sm flex items-center gap-2 transition-all",
+                    location.startsWith("/admin")
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-black/5 hover:text-foreground"
                   )}
-                  <span className="text-sm font-semibold truncate max-w-[100px]">
-                    {user?.firstName || '使用者'}
-                  </span>
-                </div>
-                <button
-                  onClick={logout}
-                  className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors"
-                  title="登出"
                 >
-                  <LogOut size={18} />
+                  <LayoutDashboard size={16} />
+                  管理後臺
+                </Link>
+                <div className="flex items-center gap-2 ml-2">
+                  <div className="flex items-center gap-2 bg-white border rounded-full pl-1 pr-4 py-1 shadow-sm">
+                    {user?.profileImageUrl ? (
+                      <img src={user.profileImageUrl} alt="Avatar" className="w-8 h-8 rounded-full" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-secondary/20 text-secondary flex items-center justify-center font-bold">
+                        {user?.firstName?.[0] || 'A'}
+                      </div>
+                    )}
+                    <span className="text-sm font-semibold truncate max-w-[100px]">
+                      {user?.firstName || '管理員'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={logout}
+                    className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors"
+                    title="登出"
+                  >
+                    <LogOut size={18} />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {!isLoading && !isAuthenticated && (
+              <>
+                <div className="w-px h-8 bg-border mx-2"></div>
+                <button
+                  onClick={login}
+                  className="ml-1 px-4 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-black/5 rounded-full transition-all flex items-center gap-1.5 font-medium"
+                >
+                  <Shield size={14} />
+                  管理員登入
                 </button>
-              </div>
-            ) : (
-              <button
-                onClick={login}
-                className="ml-2 px-6 py-2.5 bg-foreground text-background font-semibold rounded-full hover:bg-primary hover:text-white transition-all shadow-md hover:shadow-primary/25 hover:-translate-y-0.5"
-              >
-                登入系統
-              </button>
+              </>
             )}
           </nav>
 
-          {/* Mobile Menu Toggle */}
           <button 
             className="lg:hidden p-2 text-foreground"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -120,7 +129,6 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
-      {/* Mobile Nav */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
@@ -147,6 +155,19 @@ export function Layout({ children }: LayoutProps) {
                 );
               })}
               
+              {isAuthenticated && (
+                <Link
+                  href="/admin"
+                  className={cn(
+                    "p-4 rounded-xl font-medium flex items-center gap-3 text-lg",
+                    location.startsWith("/admin") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-black/5"
+                  )}
+                >
+                  <LayoutDashboard size={20} />
+                  管理後臺
+                </Link>
+              )}
+              
               <div className="h-px bg-border my-2"></div>
               
               {!isLoading && (
@@ -156,14 +177,15 @@ export function Layout({ children }: LayoutProps) {
                     className="p-4 rounded-xl font-medium flex items-center justify-center gap-3 text-lg text-destructive bg-destructive/5"
                   >
                     <LogOut size={20} />
-                    登出系統
+                    管理員登出
                   </button>
                 ) : (
                   <button
                     onClick={login}
-                    className="p-4 rounded-xl font-medium flex items-center justify-center gap-3 text-lg bg-foreground text-background"
+                    className="p-4 rounded-xl font-medium flex items-center justify-center gap-3 text-sm text-muted-foreground hover:bg-black/5"
                   >
-                    登入系統
+                    <Shield size={16} />
+                    管理員登入
                   </button>
                 )
               )}
@@ -188,7 +210,6 @@ export function Layout({ children }: LayoutProps) {
       </main>
 
       <footer className="bg-foreground text-white/70 py-12 mt-20 relative overflow-hidden">
-        {/* Decorative pattern bottom */}
         <div 
           className="absolute inset-0 opacity-5 pointer-events-none" 
           style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/carnival-pattern.png)`, backgroundSize: '200px' }}

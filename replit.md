@@ -41,8 +41,8 @@ artifacts-monorepo/
 ## Project: 2026 臺灣氣球嘉年華
 
 ### Features
-- **Home/Exhibition**: Hero section with event info, exhibition zones display (requires login)
-- **Registration**: Ticket booking with 500/day capacity per date (July 14-16, 2026)
+- **Home/Exhibition**: Hero section with event info, exhibition zones visible to all visitors (no login required)
+- **Registration**: Ticket booking with 500/day capacity per date (July 14-16, 2026), no login required
 - **News**: Latest announcements with detail pages
 - **Contestants**: Balloon art competition showcase with scores
 - **Sponsors**: Tiered sponsor display (platinum/gold/silver/bronze) with external links

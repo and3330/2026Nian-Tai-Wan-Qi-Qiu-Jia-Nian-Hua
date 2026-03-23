@@ -32,7 +32,7 @@ router.get("/registrations/availability", async (req, res): Promise<void> => {
   const availability = EVENT_DATES.map((date) => {
     const registered = counts[date] || 0;
     return {
-      date,
+      date: new Date(date),
       totalCapacity: DAILY_CAPACITY,
       registered,
       remaining: DAILY_CAPACITY - registered,
