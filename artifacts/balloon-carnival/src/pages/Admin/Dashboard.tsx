@@ -15,7 +15,7 @@ export default function AdminDashboard() {
     setIsExporting(true);
     try {
       // Create a manual fetch to bypass JSON parsing for CSV text
-      const res = await fetch('/api/admin/registrations/export');
+      const res = await fetch('/api/admin/registrations/export', { credentials: 'include' });
       const text = await res.text();
       
       const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });

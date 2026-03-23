@@ -30,19 +30,6 @@ const queryClient = new QueryClient({
   },
 });
 
-function AdminRoutes() {
-  return (
-    <AdminLayout>
-      <Switch>
-        <Route path="/admin" component={AdminDashboard} />
-        <Route path="/admin/news" component={AdminNewsManage} />
-        <Route path="/admin/contestants" component={AdminContestantsManage} />
-        <Route component={NotFound} />
-      </Switch>
-    </AdminLayout>
-  );
-}
-
 function Router() {
   return (
     <Layout>
@@ -53,13 +40,18 @@ function Router() {
         <Route path="/news/:id" component={NewsDetailPage} />
         <Route path="/contestants" component={ContestantsPage} />
         <Route path="/sponsors" component={SponsorsPage} />
-        
-        {/* Admin Login */}
+
         <Route path="/admin/login" component={AdminLoginPage} />
-        
-        {/* Nested Admin Routes */}
-        <Route path="/admin*" component={AdminRoutes} />
-        
+        <Route path="/admin">
+          {() => <AdminLayout><AdminDashboard /></AdminLayout>}
+        </Route>
+        <Route path="/admin/news">
+          {() => <AdminLayout><AdminNewsManage /></AdminLayout>}
+        </Route>
+        <Route path="/admin/contestants">
+          {() => <AdminLayout><AdminContestantsManage /></AdminLayout>}
+        </Route>
+
         <Route component={NotFound} />
       </Switch>
     </Layout>
