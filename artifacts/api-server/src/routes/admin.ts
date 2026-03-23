@@ -20,7 +20,7 @@ import {
 
 const router: IRouter = Router();
 
-const EVENT_DATES = ["2026-07-14", "2026-07-15", "2026-07-16"];
+const EVENT_DATES = ["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"];
 const DAILY_CAPACITY = 500;
 
 function requireAuth(req: any, res: any): boolean {

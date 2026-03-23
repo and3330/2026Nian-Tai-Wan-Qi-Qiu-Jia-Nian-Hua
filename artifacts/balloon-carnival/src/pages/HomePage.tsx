@@ -62,7 +62,7 @@ export default function HomePage() {
               <Calendar className="text-primary w-6 h-6" />
               <div className="text-left">
                 <div className="text-xs text-muted-foreground font-bold">活動日期</div>
-                <div className="font-bold text-foreground">7/14 (一) - 7/16 (三)</div>
+                <div className="font-bold text-foreground">7/23 (四) - 7/26 (日)</div>
               </div>
             </div>
             <div className="flex items-center gap-3 bg-white/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white shadow-sm">
@@ -133,7 +133,7 @@ export default function HomePage() {
           </div>
           <h2 className="font-display text-4xl mb-4">精彩活動一次看</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            三天兩夜的氣球嘉年華，準備了超多精彩活動等你來體驗
+            四天的氣球嘉年華，準備了超多精彩活動等你來體驗
           </p>
         </div>
 
@@ -444,7 +444,7 @@ export default function HomePage() {
           <div className="relative z-10">
             <h2 className="font-display text-3xl md:text-4xl mb-4">準備好了嗎？</h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-              三天限定的氣球奇幻旅程，現在就預約你的入場名額，和家人朋友一起創造美好回憶！
+              四天限定的氣球奇幻旅程，現在就預約你的入場名額，和家人朋友一起創造美好回憶！
             </p>
             <Link
               href="/registration"

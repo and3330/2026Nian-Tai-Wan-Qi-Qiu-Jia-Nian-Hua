@@ -217,7 +217,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
           <div>
             <h2 className="font-display text-2xl text-white mb-4">2026 臺灣氣球嘉年華</h2>
-            <p className="mb-2 flex items-center gap-2"><Ticket size={16} className="text-primary" /> 2026 年 7 月 14 日 - 7 月 16 日</p>
+            <p className="mb-2 flex items-center gap-2"><Ticket size={16} className="text-primary" /> 2026 年 7 月 23 日 - 7 月 26 日</p>
             <p className="flex items-center gap-2"><MapPin size={16} className="text-secondary" /> 臺北瓶蓋工廠 (台北市南港區)</p>
           </div>
           <div>
