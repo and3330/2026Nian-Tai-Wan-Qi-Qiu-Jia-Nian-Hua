@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, sql } from "drizzle-orm";
-import { db, registrationsTable, newsTable, contestantsTable } from "@workspace/db";
+import { db, registrationsTable, newsTable, contestantsTable, sponsorsTable } from "@workspace/db";
 import {
   AdminListRegistrationsQueryParams,
   AdminListRegistrationsResponse,
@@ -231,6 +231,100 @@ router.delete("/admin/contestants/:id", async (req, res): Promise<void> => {
 
   if (!deleted) {
     res.status(404).json({ error: "Contestant not found" });
+    return;
+  }
+
+  res.sendStatus(204);
+});
+
+router.get("/admin/sponsors", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res)) return;
+
+  const sponsors = await db
+    .select()
+    .from(sponsorsTable)
+    .orderBy(desc(sponsorsTable.createdAt));
+
+  res.json(sponsors);
+});
+
+router.post("/admin/sponsors", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res)) return;
+
+  const { name, logoUrl, websiteUrl, tier } = req.body || {};
+  if (!name || !logoUrl || !websiteUrl || !tier) {
+    res.status(400).json({ error: "缺少必要欄位" });
+    return;
+  }
+
+  const validTiers = ["platinum", "gold", "silver", "bronze"];
+  if (!validTiers.includes(tier)) {
+    res.status(400).json({ error: "無效的贊助等級" });
+    return;
+  }
+
+  const [sponsor] = await db.insert(sponsorsTable).values({ name, logoUrl, websiteUrl, tier }).returning();
+  res.status(201).json(sponsor);
+});
+
+router.put("/admin/sponsors/:id", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res)) return;
+
+  const id = Number(req.params.id);
+  if (!id || isNaN(id)) {
+    res.status(400).json({ error: "無效的 ID" });
+    return;
+  }
+
+  const { name, logoUrl, websiteUrl, tier } = req.body || {};
+  const updateData: Record<string, unknown> = {};
+  if (name) updateData.name = name;
+  if (logoUrl) updateData.logoUrl = logoUrl;
+  if (websiteUrl) updateData.websiteUrl = websiteUrl;
+  if (tier) {
+    const validTiers = ["platinum", "gold", "silver", "bronze"];
+    if (!validTiers.includes(tier)) {
+      res.status(400).json({ error: "無效的贊助等級" });
+      return;
+    }
+    updateData.tier = tier;
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    res.status(400).json({ error: "未提供任何更新欄位" });
+    return;
+  }
+
+  const [sponsor] = await db
+    .update(sponsorsTable)
+    .set(updateData)
+    .where(eq(sponsorsTable.id, id))
+    .returning();
+
+  if (!sponsor) {
+    res.status(404).json({ error: "找不到贊助廠商" });
+    return;
+  }
+
+  res.json(sponsor);
+});
+
+router.delete("/admin/sponsors/:id", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res)) return;
+
+  const id = Number(req.params.id);
+  if (!id || isNaN(id)) {
+    res.status(400).json({ error: "無效的 ID" });
+    return;
+  }
+
+  const [deleted] = await db
+    .delete(sponsorsTable)
+    .where(eq(sponsorsTable.id, id))
+    .returning();
+
+  if (!deleted) {
+    res.status(404).json({ error: "找不到贊助廠商" });
     return;
   }
 

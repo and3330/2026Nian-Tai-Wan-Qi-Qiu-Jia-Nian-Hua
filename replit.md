@@ -46,7 +46,7 @@ artifacts-monorepo/
 - **News**: Latest announcements with detail pages
 - **Contestants**: Balloon art competition showcase with scores
 - **Sponsors**: Tiered sponsor display (platinum/gold/silver/bronze) with external links
-- **Admin Dashboard**: Protected by username/password login. Registration monitoring, CSV export, news/contestant CRUD
+- **Admin Dashboard**: Protected by username/password login. Registration monitoring, CSV export, news/contestant/sponsor CRUD
 - **Admin Auth**: Custom login system (username: 1, password: aa3210). No Replit Auth / OIDC.
 
 ### Database Tables
@@ -71,6 +71,7 @@ artifacts-monorepo/
 - `GET /api/admin/stats` - Admin: registration stats
 - `POST/PUT/DELETE /api/admin/news/:id` - Admin: news CRUD
 - `POST/PUT/DELETE /api/admin/contestants/:id` - Admin: contestant CRUD
+- `GET/POST/PUT/DELETE /api/admin/sponsors/:id` - Admin: sponsor CRUD
 - Auth endpoints: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/user`
 
 ## TypeScript & Composite Projects

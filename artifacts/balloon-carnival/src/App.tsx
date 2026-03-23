@@ -20,6 +20,7 @@ import AdminLoginPage from "@/pages/AdminLoginPage";
 import AdminDashboard from "@/pages/Admin/Dashboard";
 import AdminNewsManage from "@/pages/Admin/NewsManage";
 import AdminContestantsManage from "@/pages/Admin/ContestantsManage";
+import AdminSponsorsManage from "@/pages/Admin/SponsorsManage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +51,9 @@ function Router() {
         </Route>
         <Route path="/admin/contestants">
           {() => <AdminLayout><AdminContestantsManage /></AdminLayout>}
+        </Route>
+        <Route path="/admin/sponsors">
+          {() => <AdminLayout><AdminSponsorsManage /></AdminLayout>}
         </Route>
 
         <Route component={NotFound} />
