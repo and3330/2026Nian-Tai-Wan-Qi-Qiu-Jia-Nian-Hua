@@ -1,11 +1,10 @@
-import { useListExhibitions, useListNews, useListContestants, useListSponsors, useGetRegistrationAvailability } from "@workspace/api-client-react";
-import { Calendar, MapPin, Clock, ArrowRight, Tent, Ticket, Star, Users, Sparkles, Camera, Music, Heart, Crown, ChevronRight, PartyPopper, Baby, Gift, Handshake, BookOpen } from "lucide-react";
+import { useListNews, useListContestants, useListSponsors, useGetRegistrationAvailability } from "@workspace/api-client-react";
+import { Calendar, MapPin, Clock, ArrowRight, Tent, Ticket, Star, Users, Sparkles, Camera, Music, Heart, Crown, ChevronRight, PartyPopper, Baby, Gift, Handshake, BookOpen, Zap, Flower2, Shirt } from "lucide-react";
 import { Link } from "wouter";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 export default function HomePage() {
-  const { data: exhibitions, isLoading: exhLoading } = useListExhibitions();
   const { data: news } = useListNews();
   const { data: contestants } = useListContestants();
   const { data: sponsors } = useListSponsors();
@@ -17,7 +16,7 @@ export default function HomePage() {
   const totalCapacity = availability?.reduce((sum, d) => sum + d.totalCapacity, 0) || 1500;
 
   const highlights = [
-    { icon: Tent, title: "5 大主題展區", desc: "超過 50 座巨型氣球裝置藝術，橫跨奇幻、海洋、叢林、太空等主題", color: "text-primary", bg: "bg-primary/10" },
+    { icon: Tent, title: "5 大主題活動", desc: "中型氣球展、人偶展、快手比賽、服裝走秀遊行、花束展，精彩活動一次體驗", color: "text-primary", bg: "bg-primary/10" },
     { icon: Handshake, title: "氣球同行交流會", desc: "集結業界前輩與新銳，透過座談、工作坊與共同創作，傳承寶貴技藝", color: "text-amber-500", bg: "bg-amber-50" },
     { icon: Camera, title: "互動體驗區", desc: "親子 DIY 氣球工作坊、巨型氣球迷宮、AR 互動拍照打卡點", color: "text-secondary", bg: "bg-secondary/10" },
     { icon: Music, title: "舞台表演", desc: "每日精彩氣球秀、魔術表演、街頭藝人演出，感受嘉年華的歡樂氛圍", color: "text-violet-500", bg: "bg-violet-50" },
@@ -26,10 +25,10 @@ export default function HomePage() {
   ];
 
   const scheduleItems = [
-    { time: "Day 1", event: "7/23（四）大師工作坊", desc: "封閉研討 — 特邀中國氣球大師親自授課" },
-    { time: "Day 2", event: "7/24（五）研討會 + 開放", desc: "產業座談、經驗傳承，部分展區開放參觀" },
-    { time: "Day 3", event: "7/25（六）比賽日", desc: "中型氣球、人偶、花束比賽 & 氣球快手初賽" },
-    { time: "Day 4", event: "7/26（日）決賽 + 頒獎", desc: "服裝比賽、快手決賽、走秀、頒獎典禮" },
+    { time: "Day 1", event: "7/23（四）研習會", desc: "業內封閉 — 大師授課教學、開幕報到" },
+    { time: "Day 2", event: "7/24（五）業內比賽", desc: "業內封閉 — 中型氣球、人偶比賽 & 晚間同行交流" },
+    { time: "Day 3", event: "7/25（六）公開活動日", desc: "對外開放 — 快手比賽、走秀遊行、親子表演、工作坊" },
+    { time: "Day 4", event: "7/26（日）公開活動日", desc: "對外開放 — 作品展覽、親子表演、氣球工作坊" },
   ];
 
   return (
@@ -151,61 +150,71 @@ export default function HomePage() {
       <section className="py-20 px-4 max-w-7xl mx-auto w-full relative">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/10 text-secondary font-bold text-sm mb-4">
-            <Tent size={16} /> 展區介紹
+            <Star size={16} /> 五大主題
           </div>
-          <h2 className="font-display text-4xl mb-4">主題展區導覽</h2>
+          <h2 className="font-display text-4xl mb-4">主題活動</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            五大奇幻展區，每個展區都有獨特的氣球藝術主題，等你來探索！
+            五大精彩主題活動，從展覽到比賽、從走秀到手作，帶你體驗氣球藝術的無限魅力！
           </p>
         </div>
 
-        {exhLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="bg-card rounded-3xl p-6 border shadow-sm animate-pulse h-80"></div>
-            ))}
-          </div>
-        ) : exhibitions?.length ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {exhibitions.map((zone, idx) => (
-              <div key={zone.id} className="group glass-card rounded-3xl overflow-hidden hover-lift flex flex-col md:flex-row">
-                <div className="w-full md:w-2/5 h-64 md:h-auto relative overflow-hidden bg-muted">
-                  <img
-                    src={zone.imageUrl || `${import.meta.env.BASE_URL}images/exhibition-${(idx % 2) + 1}.png`}
-                    alt={zone.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-primary shadow-sm">
-                    Zone {idx + 1}
-                  </div>
-                </div>
-                <div className="p-8 md:w-3/5 flex flex-col justify-center">
-                  <h3 className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors">{zone.name}</h3>
-                  <p className="text-muted-foreground mb-6 line-clamp-3">{zone.description}</p>
-                  <div className="space-y-3 mt-auto pt-4 border-t border-border/50">
-                    <div className="flex items-center gap-3 text-sm font-medium">
-                      <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
-                        <MapPin size={16} />
-                      </div>
-                      {zone.location}
-                    </div>
-                    <div className="flex items-center gap-3 text-sm font-medium">
-                      <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent-foreground">
-                        <Clock size={16} />
-                      </div>
-                      {zone.openTime} - {zone.closeTime}
-                    </div>
-                  </div>
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            {
+              icon: Sparkles,
+              title: "中型氣球展",
+              desc: "參賽者在規定時間內，使用指定數量氣球完成中型造型作品，展現精湛技術與豐富創意。完賽作品於展區公開展覽。",
+              color: "text-blue-500",
+              bg: "bg-blue-50",
+              badge: "展覽 + 比賽",
+            },
+            {
+              icon: Users,
+              title: "氣球人偶展",
+              desc: "以氣球製作等比例或大型人偶造型，展現角色塑造與結構技巧。所有作品完成後集中於展覽區供遊客參觀拍照。",
+              color: "text-purple-500",
+              bg: "bg-purple-50",
+              badge: "展覽 + 比賽",
+            },
+            {
+              icon: Zap,
+              title: "氣球快手比賽活動",
+              desc: "舞臺公開競速賽！參賽者在限定時間內快速完成指定造型，現場觀眾可近距離觀看精彩對決，感受速度與技巧的碰撞。",
+              color: "text-orange-500",
+              bg: "bg-orange-50",
+              badge: "舞臺公開賽",
+            },
+            {
+              icon: Shirt,
+              title: "氣球衣服與服裝遊行",
+              desc: "參賽者以氣球製作可穿戴的服裝作品，結合時尚設計與氣球技藝。7/25（六）15:30 全場唯一一場走秀遊行，千萬不要錯過！",
+              color: "text-pink-500",
+              bg: "bg-pink-50",
+              badge: "走秀遊行",
+            },
+            {
+              icon: Flower2,
+              title: "氣球花束展",
+              desc: "以氣球製作精美花束或雕塑作品，考驗細膩的氣球塑形與配色能力。完成作品於展覽區展出，美不勝收。",
+              color: "text-green-500",
+              bg: "bg-green-50",
+              badge: "展覽 + 比賽",
+            },
+          ].map((item, idx) => (
+            <div key={idx} className="glass-card rounded-2xl p-8 hover-lift group relative overflow-hidden">
+              <div className="absolute top-4 right-4">
+                <span className={cn("text-xs font-bold px-3 py-1 rounded-full", item.bg, item.color)}>
+                  {item.badge}
+                </span>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-3xl">
-            <Tent className="w-16 h-16 mx-auto mb-4 opacity-20" />
-            <p>展區資訊準備中...</p>
-          </div>
-        )}
+              <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-5", item.bg)}>
+                <item.icon size={28} className={item.color} />
+              </div>
+              <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors">{item.title}</h3>
+              <p className="text-muted-foreground leading-relaxed text-sm">{item.desc}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="py-20 bg-muted/30">
