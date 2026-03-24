@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getListContestantsQueryKey } from "@workspace/api-client-react";
 
 export default function AdminContestantsManage() {
-  const { data: contestants, isLoading } = useListContestants();
+  const { data: members, isLoading } = useListContestants();
   const queryClient = useQueryClient();
   
   const createMutation = useAdminCreateContestant();
@@ -14,22 +14,22 @@ export default function AdminContestantsManage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({ name: "", description: "", imageUrl: "", score: "" as string | number });
+  const [formData, setFormData] = useState({ name: "", description: "", imageUrl: "" });
 
   const openCreate = () => {
     setEditingId(null);
-    setFormData({ name: "", description: "", imageUrl: "", score: "" });
+    setFormData({ name: "", description: "", imageUrl: "" });
     setIsDialogOpen(true);
   };
 
   const openEdit = (c: any) => {
     setEditingId(c.id);
-    setFormData({ name: c.name, description: c.description, imageUrl: c.imageUrl || "", score: c.score ?? "" });
+    setFormData({ name: c.name, description: c.description, imageUrl: c.imageUrl || "" });
     setIsDialogOpen(true);
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("確定要刪除這位參賽者嗎？")) {
+    if (confirm("確定要移除這位同行嗎？")) {
       deleteMutation.mutate({ id }, {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: getListContestantsQueryKey() })
       });
@@ -38,10 +38,7 @@ export default function AdminContestantsManage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      ...formData,
-      score: formData.score === "" ? undefined : Number(formData.score)
-    };
+    const payload = { ...formData };
 
     if (editingId) {
       updateMutation.mutate({ id: editingId, data: payload }, {
@@ -64,32 +61,32 @@ export default function AdminContestantsManage() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-display">參賽者管理</h1>
-          <p className="text-muted-foreground mt-1">管理氣球造型比賽參與者與評分</p>
+          <h1 className="text-3xl font-display">同行管理</h1>
+          <p className="text-muted-foreground mt-1">管理氣球同行交流會的參與者資訊</p>
         </div>
         <button
           onClick={openCreate}
           className="bg-accent text-accent-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:bg-accent/90 transition-all shadow-md"
         >
-          <Plus size={18} /> 新增參賽者
+          <Plus size={18} /> 新增同行
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
           <div className="col-span-full text-center py-10">載入中...</div>
-        ) : contestants?.map((c) => (
+        ) : members?.length === 0 ? (
+          <div className="col-span-full text-center py-16 bg-white rounded-3xl border">
+            <p className="text-muted-foreground text-lg">尚無同行資料</p>
+            <p className="text-muted-foreground text-sm mt-1">點擊「新增同行」開始新增</p>
+          </div>
+        ) : members?.map((c) => (
           <div key={c.id} className="bg-white rounded-3xl border shadow-sm overflow-hidden flex flex-col">
             <div className="h-48 bg-muted relative">
               {c.imageUrl ? (
                 <img src={c.imageUrl} alt={c.name} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground"><ImageIcon size={32} /></div>
-              )}
-              {c.score !== null && (
-                <div className="absolute top-3 right-3 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-bold">
-                  得分 {c.score}
-                </div>
               )}
             </div>
             <div className="p-5 flex-1 flex flex-col">
@@ -119,35 +116,23 @@ export default function AdminContestantsManage() {
             </button>
             
             <div className="p-8">
-              <h2 className="text-2xl font-bold mb-6">{editingId ? "編輯參賽者" : "新增參賽者"}</h2>
+              <h2 className="text-2xl font-bold mb-6">{editingId ? "編輯同行資訊" : "新增同行"}</h2>
               
               <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-sm font-bold mb-2">參賽者名稱</label>
-                    <input
-                      required
-                      type="text"
-                      value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
-                      className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
-                    />
-                  </div>
-                  <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-sm font-bold mb-2">比賽得分</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={formData.score}
-                      onChange={e => setFormData({...formData, score: e.target.value})}
-                      className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
-                      placeholder="留空表示尚未評分"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-bold mb-2">姓名 / 暱稱</label>
+                  <input
+                    required
+                    type="text"
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
+                    placeholder="例：王小明 / 氣球達人"
+                  />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold mb-2">作品圖片 URL</label>
+                  <label className="block text-sm font-bold mb-2">個人照片 URL</label>
                   <input
                     type="url"
                     value={formData.imageUrl}
@@ -158,12 +143,13 @@ export default function AdminContestantsManage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold mb-2">創作理念/介紹</label>
+                  <label className="block text-sm font-bold mb-2">自我介紹 / 經歷</label>
                   <textarea
                     required
                     value={formData.description}
                     onChange={e => setFormData({...formData, description: e.target.value})}
-                    className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none h-32 resize-none"
+                    className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none h-36 resize-none"
+                    placeholder="介紹專長、從業經歷、想交流的方向等..."
                   />
                 </div>
                 

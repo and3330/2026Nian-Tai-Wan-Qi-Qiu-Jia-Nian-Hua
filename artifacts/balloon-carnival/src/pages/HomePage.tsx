@@ -1,5 +1,5 @@
 import { useListExhibitions, useListNews, useListContestants, useListSponsors, useGetRegistrationAvailability } from "@workspace/api-client-react";
-import { Calendar, MapPin, Clock, ArrowRight, Tent, Ticket, Trophy, Star, Users, Sparkles, Camera, Music, Heart, Crown, ChevronRight, PartyPopper, Baby, Gift } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowRight, Tent, Ticket, Star, Users, Sparkles, Camera, Music, Heart, Crown, ChevronRight, PartyPopper, Baby, Gift, Handshake, BookOpen } from "lucide-react";
 import { Link } from "wouter";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -12,13 +12,13 @@ export default function HomePage() {
   const { data: availability } = useGetRegistrationAvailability();
 
   const latestNews = news?.slice(0, 3);
-  const topContestants = [...(contestants || [])].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 4);
+  const featuredMembers = (contestants || []).slice(0, 4);
   const totalRemaining = availability?.reduce((sum, d) => sum + d.remaining, 0) || 0;
   const totalCapacity = availability?.reduce((sum, d) => sum + d.totalCapacity, 0) || 1500;
 
   const highlights = [
     { icon: Tent, title: "5 大主題展區", desc: "超過 50 座巨型氣球裝置藝術，橫跨奇幻、海洋、叢林、太空等主題", color: "text-primary", bg: "bg-primary/10" },
-    { icon: Trophy, title: "國際氣球造型賽", desc: "邀請 20+ 位國際氣球大師同台競技，現場創作令人驚嘆的氣球藝術品", color: "text-amber-500", bg: "bg-amber-50" },
+    { icon: Handshake, title: "氣球同行交流會", desc: "集結業界前輩與新銳，透過座談、工作坊與共同創作，傳承寶貴技藝", color: "text-amber-500", bg: "bg-amber-50" },
     { icon: Camera, title: "互動體驗區", desc: "親子 DIY 氣球工作坊、巨型氣球迷宮、AR 互動拍照打卡點", color: "text-secondary", bg: "bg-secondary/10" },
     { icon: Music, title: "舞台表演", desc: "每日精彩氣球秀、魔術表演、街頭藝人演出，感受嘉年華的歡樂氛圍", color: "text-violet-500", bg: "bg-violet-50" },
     { icon: Gift, title: "限定周邊商品", desc: "嘉年華獨家設計氣球造型周邊、紀念品，現場限量發售", color: "text-rose-500", bg: "bg-rose-50" },
@@ -27,11 +27,11 @@ export default function HomePage() {
 
   const scheduleItems = [
     { time: "10:00", event: "開場入園", desc: "展區開放參觀" },
-    { time: "11:00", event: "氣球造型表演賽", desc: "國際選手現場創作" },
-    { time: "12:30", event: "午間特別演出", desc: "氣球魔術秀 & 小丑表演" },
-    { time: "14:00", event: "親子 DIY 工作坊", desc: "手作氣球造型體驗" },
-    { time: "15:30", event: "比賽評審時間", desc: "專業評審團現場評分" },
-    { time: "17:00", event: "頒獎典禮 & 閉幕", desc: "得獎公布與精彩回顧" },
+    { time: "11:00", event: "同行交流座談", desc: "資深前輩經驗分享" },
+    { time: "12:30", event: "午間特別演出", desc: "氣球魔術秀 & 互動表演" },
+    { time: "14:00", event: "技藝傳承工作坊", desc: "分組實作與教學交流" },
+    { time: "15:30", event: "共同創作時間", desc: "全體同行合力完成作品" },
+    { time: "17:00", event: "閉幕與交流茶敘", desc: "回顧精彩時刻，自由交流" },
   ];
 
   return (
@@ -248,23 +248,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      {topContestants.length > 0 && (
+      {featuredMembers.length > 0 && (
         <section className="py-20 px-4 max-w-7xl mx-auto w-full">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-4">
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 text-amber-600 font-bold text-sm mb-4">
-                <Trophy size={16} /> 氣球造型比賽
+                <Handshake size={16} /> 同行交流會
               </div>
-              <h2 className="font-display text-4xl mb-2">參賽者風采</h2>
-              <p className="text-muted-foreground text-lg">來自各地的頂尖氣球藝術家同台競技</p>
+              <h2 className="font-display text-4xl mb-2">交流夥伴</h2>
+              <p className="text-muted-foreground text-lg">來自各地的氣球同行，帶著故事與技藝齊聚一堂</p>
             </div>
             <Link href="/contestants" className="flex items-center gap-2 text-primary font-bold hover:underline">
-              查看全部參賽者 <ChevronRight size={18} />
+              了解更多與完整議程 <ChevronRight size={18} />
             </Link>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {topContestants.map((c, idx) => (
+            {featuredMembers.map((c) => (
               <div key={c.id} className="glass-card rounded-2xl overflow-hidden hover-lift group">
                 <div className="aspect-square bg-muted relative overflow-hidden">
                   {c.imageUrl ? (
@@ -274,20 +274,13 @@ export default function HomePage() {
                       <Users size={48} className="text-muted-foreground/30" />
                     </div>
                   )}
-                  {idx === 0 && (
-                    <div className="absolute top-3 right-3 bg-amber-400 text-white px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-md">
-                      <Crown size={12} /> 領先
-                    </div>
-                  )}
                 </div>
                 <div className="p-4">
                   <h4 className="font-bold text-lg truncate">{c.name}</h4>
-                  {c.score != null && (
-                    <div className="flex items-center gap-1 mt-1">
-                      <Star size={14} className="fill-amber-400 text-amber-400" />
-                      <span className="text-sm font-medium text-amber-600">{c.score} 分</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1 mt-1">
+                    <BookOpen size={14} className="text-amber-500" />
+                    <span className="text-sm font-medium text-amber-600">交流夥伴</span>
+                  </div>
                 </div>
               </div>
             ))}

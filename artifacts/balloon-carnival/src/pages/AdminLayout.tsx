@@ -17,7 +17,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const navs = [
     { href: "/admin", label: "報名監控總覽", icon: LayoutDashboard, exact: true },
     { href: "/admin/news", label: "最新消息管理", icon: Newspaper, exact: false },
-    { href: "/admin/contestants", label: "參賽者管理", icon: Users, exact: false },
+    { href: "/admin/contestants", label: "同行管理", icon: Users, exact: false },
     { href: "/admin/sponsors", label: "贊助廠商管理", icon: Handshake, exact: false },
   ];
 

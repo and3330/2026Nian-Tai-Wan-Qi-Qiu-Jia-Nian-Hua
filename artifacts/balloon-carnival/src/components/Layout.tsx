@@ -23,7 +23,7 @@ export function Layout({ children }: LayoutProps) {
     { href: "/", label: "首頁 / 展區", icon: Tent },
     { href: "/registration", label: "報名訂票", icon: Ticket },
     { href: "/news", label: "最新消息", icon: Info },
-    { href: "/contestants", label: "參賽者展示", icon: Users },
+    { href: "/contestants", label: "同行交流會", icon: Users },
     { href: "/sponsors", label: "贊助廠商", icon: Crown },
   ];
 
@@ -211,7 +211,7 @@ export function Layout({ children }: LayoutProps) {
             <ul className="space-y-2">
               <li><Link href="/registration" className="hover:text-primary transition-colors">報名與訂票</Link></li>
               <li><Link href="/news" className="hover:text-primary transition-colors">大會公告</Link></li>
-              <li><Link href="/contestants" className="hover:text-primary transition-colors">氣球造型比賽</Link></li>
+              <li><Link href="/contestants" className="hover:text-primary transition-colors">同行交流會</Link></li>
             </ul>
           </div>
           <div>
