@@ -26,12 +26,10 @@ export default function HomePage() {
   ];
 
   const scheduleItems = [
-    { time: "10:00", event: "開場入園", desc: "展區開放參觀" },
-    { time: "11:00", event: "同行交流座談", desc: "資深前輩經驗分享" },
-    { time: "12:30", event: "午間特別演出", desc: "氣球魔術秀 & 互動表演" },
-    { time: "14:00", event: "技藝傳承工作坊", desc: "分組實作與教學交流" },
-    { time: "15:30", event: "共同創作時間", desc: "全體同行合力完成作品" },
-    { time: "17:00", event: "閉幕與交流茶敘", desc: "回顧精彩時刻，自由交流" },
+    { time: "Day 1", event: "7/23（四）大師工作坊", desc: "封閉研討 — 特邀中國氣球大師親自授課" },
+    { time: "Day 2", event: "7/24（五）研討會 + 開放", desc: "產業座談、經驗傳承，部分展區開放參觀" },
+    { time: "Day 3", event: "7/25（六）比賽日", desc: "中型氣球、人偶、花束比賽 & 氣球快手初賽" },
+    { time: "Day 4", event: "7/26（日）決賽 + 頒獎", desc: "服裝比賽、快手決賽、走秀、頒獎典禮" },
   ];
 
   return (
