@@ -16,7 +16,7 @@ export default function HomePage() {
   const totalCapacity = availability?.reduce((sum, d) => sum + d.totalCapacity, 0) || 1500;
 
   const highlights = [
-    { icon: Tent, title: "5 大主題活動", desc: "中型氣球展、人偶展、快手比賽、服裝走秀遊行、花束展，精彩活動一次體驗", color: "text-primary", bg: "bg-primary/10" },
+    { icon: Tent, title: "5 大主題活動", desc: "中型氣球雕塑、人偶、12 分鐘快手、藝術服裝走秀遊行、外送花束，精彩一次體驗", color: "text-primary", bg: "bg-primary/10" },
     { icon: Handshake, title: "氣球同行交流會", desc: "集結業界前輩與新銳，透過座談、工作坊與共同創作，傳承寶貴技藝", color: "text-amber-500", bg: "bg-amber-50" },
     { icon: Camera, title: "互動體驗區", desc: "親子 DIY 氣球工作坊、巨型氣球迷宮、AR 互動拍照打卡點", color: "text-secondary", bg: "bg-secondary/10" },
     { icon: Music, title: "舞台表演", desc: "每日精彩氣球秀、魔術表演、街頭藝人演出，感受嘉年華的歡樂氛圍", color: "text-violet-500", bg: "bg-violet-50" },
@@ -27,7 +27,7 @@ export default function HomePage() {
   const scheduleItems = [
     { time: "Day 1", event: "7/23（四）研習會", desc: "業內封閉 — 大師授課教學、開幕報到" },
     { time: "Day 2", event: "7/24（五）業內比賽", desc: "業內封閉 — 中型氣球、人偶比賽 & 晚間同行交流" },
-    { time: "Day 3", event: "7/25（六）公開活動日", desc: "對外開放 — 快手比賽、走秀遊行、親子表演、工作坊" },
+    { time: "Day 3", event: "7/25（六）公開活動日", desc: "對外開放 — 12分鐘快手、藝術服裝走秀遊行、親子表演、工作坊" },
     { time: "Day 4", event: "7/26（日）公開活動日", desc: "對外開放 — 作品展覽、親子表演、氣球工作坊" },
   ];
 
@@ -162,40 +162,40 @@ export default function HomePage() {
           {[
             {
               icon: Sparkles,
-              title: "中型氣球展",
-              desc: "參賽者在規定時間內，使用指定數量氣球完成中型造型作品，展現精湛技術與豐富創意。完賽作品於展區公開展覽。",
+              title: "中型氣球雕塑",
+              desc: "主題「生活的小幸福」— 4～6 組參賽者在 8 小時內現場創作大型氣球造型，完賽作品公開展覽。",
               color: "text-blue-500",
               bg: "bg-blue-50",
               badge: "展覽 + 比賽",
             },
             {
               icon: Users,
-              title: "氣球人偶展",
-              desc: "以氣球製作等比例或大型人偶造型，展現角色塑造與結構技巧。所有作品完成後集中於展覽區供遊客參觀拍照。",
+              title: "氣球人偶",
+              desc: "主題「調皮的小時候」— 以氣球製作大型人偶造型，展現角色塑造與結構技巧，作品於展區公開展覽。",
               color: "text-purple-500",
               bg: "bg-purple-50",
               badge: "展覽 + 比賽",
             },
             {
               icon: Zap,
-              title: "氣球快手比賽活動",
-              desc: "舞臺公開競速賽！參賽者在限定時間內快速完成指定造型，現場觀眾可近距離觀看精彩對決，感受速度與技巧的碰撞。",
+              title: "12 分鐘快手",
+              desc: "舞臺公開競速賽！參賽者在 12 分鐘內快速完成作品，現場觀眾可近距離觀看精彩對決。",
               color: "text-orange-500",
               bg: "bg-orange-50",
               badge: "舞臺公開賽",
             },
             {
               icon: Shirt,
-              title: "氣球衣服與服裝遊行",
-              desc: "參賽者以氣球製作可穿戴的服裝作品，結合時尚設計與氣球技藝。7/25（六）15:30 全場唯一一場走秀遊行，千萬不要錯過！",
+              title: "藝術服裝走秀遊行",
+              desc: "主題「花語」— 以氣球製作可穿戴的藝術服裝。7/25（六）15:30 全場唯一一場走秀遊行，千萬不要錯過！",
               color: "text-pink-500",
               bg: "bg-pink-50",
               badge: "走秀遊行",
             },
             {
               icon: Flower2,
-              title: "氣球花束展",
-              desc: "以氣球製作精美花束或雕塑作品，考驗細膩的氣球塑形與配色能力。完成作品於展覽區展出，美不勝收。",
+              title: "外送花束",
+              desc: "主題不限 — 在 2 小時內以氣球製作精美花束作品，考驗細膩的塑形與配色能力，完成作品於展區展出。",
               color: "text-green-500",
               bg: "bg-green-50",
               badge: "展覽 + 比賽",
@@ -347,8 +347,8 @@ export default function HomePage() {
             <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
               <Ticket size={28} className="text-green-500" />
             </div>
-            <h4 className="font-bold text-lg mb-2">免費入場</h4>
-            <p className="text-muted-foreground text-sm">本屆嘉年華免費開放，只需提前線上預約即可入場</p>
+            <h4 className="font-bold text-lg mb-2">線上購票</h4>
+            <p className="text-muted-foreground text-sm">活動日單日票 200 元、兩日套票 300 元，線上預約購票更方便</p>
           </div>
           <div className="glass-card rounded-2xl p-6 text-center">
             <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
@@ -373,7 +373,7 @@ export default function HomePage() {
           >
             立即預約入場 <ArrowRight size={20} />
           </Link>
-          <p className="text-muted-foreground text-sm mt-4">免註冊、免費用，填寫基本資料即可完成預約</p>
+          <p className="text-muted-foreground text-sm mt-4">免註冊，填寫基本資料即可完成預約購票</p>
         </div>
       </section>
 
@@ -417,7 +417,7 @@ export default function HomePage() {
           </div>
           <div className="space-y-4">
             {[
-              { q: "需要購買門票嗎？", a: "本屆嘉年華免費開放入場，只需提前在官網預約即可。每日限量 500 名，建議儘早預約。" },
+              { q: "需要購買門票嗎？", a: "活動日（7/25、7/26）單日票 200 元、兩日套票 300 元，請提前在官網預約購票。每日限量 500 名，建議儘早預約。" },
               { q: "活動地點在哪裡？怎麼去？", a: "活動地點為臺北瓶蓋工廠（台北市南港區南港路二段13號）。可搭乘捷運至南港站1號出口，步行約5分鐘即可到達。" },
               { q: "小朋友適合參加嗎？", a: "非常適合！嘉年華特別設有親子區、DIY 工作坊和兒童遊戲區。6 歲以下兒童可免預約隨大人入場。" },
               { q: "可以現場報名嗎？", a: "建議提前線上預約，確保有入場名額。若當日尚有餘額，也可現場排隊候補入場。" },
@@ -450,7 +450,7 @@ export default function HomePage() {
               href="/registration"
               className="inline-flex items-center gap-2 px-10 py-4 rounded-full font-bold text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
             >
-              免費預約入場 <ArrowRight size={20} />
+              立即預約購票 <ArrowRight size={20} />
             </Link>
           </div>
         </div>
