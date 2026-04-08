@@ -231,8 +231,29 @@ export default function RegistrationPage() {
               <form onSubmit={(e) => {
                 e.preventDefault();
                 if (!proTicketType) { alert("請選擇票種"); return; }
-                setProSuccess(true);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                const ticketDateMap: Record<string, string> = {
+                  "四天通行票": "2026-07-23",
+                  "研習會通行票": "2026-07-23",
+                  "交流比賽通行票": "2026-07-24",
+                };
+                const eventDate = ticketDateMap[proTicketType] || "2026-07-23";
+                createMutation.mutate({
+                  data: {
+                    parentName: formData.parentName,
+                    phone: formData.phone,
+                    ticketCount: 1,
+                    eventDate,
+                  }
+                }, {
+                  onSuccess: () => {
+                    setProSuccess(true);
+                    queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  },
+                  onError: (err: any) => {
+                    alert(err.error?.error || "報名失敗，請重試或聯絡客服");
+                  }
+                });
               }} className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -273,19 +294,20 @@ export default function RegistrationPage() {
                     className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all text-lg appearance-none cursor-pointer"
                   >
                     <option value="">請選擇票種</option>
-                    <option value="四天通行票 — 12,000 元">四天通行票 — 12,000 元</option>
-                    <option value="研習會通行票 — 8,000 元">研習會通行票 — 8,000 元</option>
-                    <option value="交流比賽通行票 — 5,000 元">交流比賽通行票 — 5,000 元</option>
+                    <option value="四天通行票">四天通行票 — 12,000 元</option>
+                    <option value="研習會通行票">研習會通行票 — 8,000 元</option>
+                    <option value="交流比賽通行票">交流比賽通行票 — 5,000 元</option>
                   </select>
                 </div>
 
                 <div className="pt-6">
                   <button
                     type="submit"
-                    disabled={!proTicketType}
+                    disabled={createMutation.isPending || !proTicketType}
                     className="w-full py-5 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-amber-500 to-amber-600 shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:shadow-amber-500/40 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2"
                   >
-                    {!proTicketType ? "請選擇票種" : "確認送出報名"}
+                    {createMutation.isPending ? "處理中..." :
+                     !proTicketType ? "請選擇票種" : "確認送出報名"}
                   </button>
                 </div>
               </form>
