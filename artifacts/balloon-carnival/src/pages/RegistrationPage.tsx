@@ -6,6 +6,7 @@ import { getGetRegistrationAvailabilityQueryKey } from "@workspace/api-client-re
 import { cn } from "@/lib/utils";
 
 type AudienceType = "visitor" | "professional" | null;
+type VisitorTicketType = "single" | "combo" | "";
 
 export default function RegistrationPage() {
   const queryClient = useQueryClient();
@@ -15,6 +16,7 @@ export default function RegistrationPage() {
 
   const [audience, setAudience] = useState<AudienceType>(null);
   const [proTicketType, setProTicketType] = useState("");
+  const [visitorTicketType, setVisitorTicketType] = useState<VisitorTicketType>("");
   const [formData, setFormData] = useState({
     parentName: "",
     phone: "",
@@ -24,26 +26,42 @@ export default function RegistrationPage() {
   const [success, setSuccess] = useState(false);
   const [proSuccess, setProSuccess] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.eventDate) {
-      alert("請選擇活動日期");
+    if (!visitorTicketType) {
+      alert("請選擇票種");
       return;
     }
 
-    createMutation.mutate({
-      data: formData
-    }, {
-      onSuccess: () => {
-        setSuccess(true);
-        queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      },
-      onError: (err: any) => {
-        alert(err.error?.error || "報名失敗，請重試或聯絡客服");
+    if (visitorTicketType === "single" && !formData.eventDate) {
+      alert("請選擇入場日期");
+      return;
+    }
+
+    const submitOne = (eventDate: string) =>
+      new Promise<void>((resolve, reject) => {
+        createMutation.mutate({
+          data: { ...formData, eventDate }
+        }, {
+          onSuccess: () => resolve(),
+          onError: (err: unknown) => reject(err),
+        });
+      });
+
+    try {
+      if (visitorTicketType === "combo") {
+        await submitOne("2026-07-25");
+        await submitOne("2026-07-26");
+      } else {
+        await submitOne(formData.eventDate);
       }
-    });
+      setSuccess(true);
+      queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {
+      alert("報名失敗，請重試或聯絡客服");
+    }
   };
 
   const publicDates = availability?.filter(a => {
@@ -250,8 +268,8 @@ export default function RegistrationPage() {
                     queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   },
-                  onError: (err: any) => {
-                    alert(err.error?.error || "報名失敗，請重試或聯絡客服");
+                  onError: () => {
+                    alert("報名失敗，請重試或聯絡客服");
                   }
                 });
               }} className="space-y-6">
@@ -346,15 +364,29 @@ export default function RegistrationPage() {
       </div>
 
       <div className="flex justify-center gap-6 mb-12">
-        <div className="glass-card rounded-2xl p-6 text-center hover-lift">
+        <button
+          type="button"
+          onClick={() => { setVisitorTicketType("single"); setFormData({...formData, eventDate: ""}); }}
+          className={cn(
+            "glass-card rounded-2xl p-6 text-center hover-lift transition-all border-2",
+            visitorTicketType === "single" ? "border-primary shadow-md" : "border-transparent"
+          )}
+        >
           <h3 className="text-lg font-bold mb-1">單日票</h3>
           <div className="mb-2">
             <span className="text-3xl font-bold text-green-600">200</span>
             <span className="text-muted-foreground ml-1">元</span>
           </div>
           <p className="text-xs text-muted-foreground">7/25 或 7/26 擇一日</p>
-        </div>
-        <div className="glass-card rounded-2xl p-6 text-center hover-lift relative border-2 border-green-200">
+        </button>
+        <button
+          type="button"
+          onClick={() => { setVisitorTicketType("combo"); setFormData({...formData, eventDate: ""}); }}
+          className={cn(
+            "glass-card rounded-2xl p-6 text-center hover-lift relative transition-all border-2",
+            visitorTicketType === "combo" ? "border-primary shadow-md" : "border-green-200"
+          )}
+        >
           <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
             省 100 元
           </div>
@@ -364,7 +396,7 @@ export default function RegistrationPage() {
             <span className="text-muted-foreground ml-1">元</span>
           </div>
           <p className="text-xs text-muted-foreground">7/25 + 7/26 兩日</p>
-        </div>
+        </button>
       </div>
 
       {success ? (
@@ -372,7 +404,8 @@ export default function RegistrationPage() {
           <CheckCircle2 className="w-24 h-24 text-green-500 mx-auto mb-6" />
           <h2 className="text-3xl font-bold text-green-800 mb-4">報名成功！</h2>
           <p className="text-green-700 text-lg mb-8">
-            感謝您報名 2026 臺灣氣球嘉年華。我們期待在 {formData.eventDate} 與您相見！
+            感謝您報名 2026 臺灣氣球嘉年華。
+            {visitorTicketType === "combo" ? " 兩日套票已登記 7/25 + 7/26！" : ` 我們期待在 ${formData.eventDate} 與您相見！`}
           </p>
           <div className="bg-white rounded-2xl p-6 text-left max-w-sm mx-auto shadow-sm border border-green-100">
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -380,24 +413,31 @@ export default function RegistrationPage() {
               <div className="font-bold text-right">{formData.parentName}</div>
               <div className="text-muted-foreground">聯絡電話：</div>
               <div className="font-bold text-right">{formData.phone}</div>
+              <div className="text-muted-foreground">票種：</div>
+              <div className="font-bold text-right text-primary">{visitorTicketType === "combo" ? "兩日套票 300 元" : "單日票 200 元"}</div>
               <div className="text-muted-foreground">預購票數：</div>
               <div className="font-bold text-right">{formData.ticketCount} 張</div>
               <div className="text-muted-foreground">入場日期：</div>
-              <div className="font-bold text-right text-primary">{formData.eventDate}</div>
+              <div className="font-bold text-right text-primary">{visitorTicketType === "combo" ? "7/25 + 7/26" : formData.eventDate}</div>
             </div>
           </div>
           <button
-            onClick={() => { setSuccess(false); setFormData({ parentName: "", phone: "", ticketCount: 1, eventDate: "" }); }}
+            onClick={() => { setSuccess(false); setVisitorTicketType(""); setFormData({ parentName: "", phone: "", ticketCount: 1, eventDate: "" }); }}
             className="mt-10 text-green-600 font-bold hover:underline"
           >
-            繼續預購其他日期
+            繼續預購
           </button>
         </div>
+      ) : !visitorTicketType ? (
+          <div className="text-center text-muted-foreground py-8">
+            <p className="text-lg">請先選擇上方的票種（單日票或兩日套票）以繼續報名</p>
+          </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 max-w-5xl mx-auto">
+          {visitorTicketType === "single" && (
           <div className="lg:col-span-2 space-y-6">
             <h3 className="font-bold text-xl flex items-center gap-2">
-              <Calendar className="text-primary" /> 日期與名額狀況
+              <Calendar className="text-primary" /> 選擇入場日期
             </h3>
 
             {isAvailabilityLoading ? (
@@ -464,12 +504,18 @@ export default function RegistrationPage() {
               <p>系統會即時扣減庫存，若選定日期額滿將無法送出表單。每筆訂單最多限購 10 張。</p>
             </div>
           </div>
+          )}
 
-          <div className="lg:col-span-3">
+          <div className={visitorTicketType === "single" ? "lg:col-span-3" : "lg:col-span-5 max-w-2xl mx-auto w-full"}>
             <div className="glass-card rounded-3xl p-8 md:p-10 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 rounded-bl-full -z-10"></div>
 
-              <h2 className="text-2xl font-bold mb-8 border-b pb-4">填寫報名資料</h2>
+              <h2 className="text-2xl font-bold mb-8 border-b pb-4">
+                填寫報名資料
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  {visitorTicketType === "combo" ? "（兩日套票 7/25 + 7/26）" : ""}
+                </span>
+              </h2>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
@@ -518,12 +564,12 @@ export default function RegistrationPage() {
                 <div className="pt-6">
                   <button
                     type="submit"
-                    disabled={createMutation.isPending || isSelectedDateFull || !formData.eventDate}
+                    disabled={createMutation.isPending || (visitorTicketType === "single" && (isSelectedDateFull || !formData.eventDate))}
                     className="w-full py-5 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-primary to-primary/90 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2"
                   >
                     {createMutation.isPending ? "處理中..." :
-                     !formData.eventDate ? "請選擇入場日期" :
-                     isSelectedDateFull ? "選定日期已額滿" :
+                     visitorTicketType === "single" && !formData.eventDate ? "請選擇入場日期" :
+                     visitorTicketType === "single" && isSelectedDateFull ? "選定日期已額滿" :
                      "確認送出報名"}
                   </button>
                 </div>
