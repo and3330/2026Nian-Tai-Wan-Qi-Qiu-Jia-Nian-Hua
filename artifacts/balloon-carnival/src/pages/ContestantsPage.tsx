@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useListContestants } from "@workspace/api-client-react";
-import { Users, Handshake, Clock, Heart, MessageCircle, Lightbulb, BookOpen, ArrowRight, Sparkles, ChevronDown, Trophy, Palette, Zap, Shirt, Flower2, Eye, Lock, Ticket } from "lucide-react";
+import { Users, Handshake, Clock, Heart, MessageCircle, Lightbulb, BookOpen, ArrowRight, Sparkles, ChevronDown, Trophy, Palette, Zap, Shirt, Flower2, Eye, Lock, Ticket, GraduationCap } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 
@@ -283,6 +283,58 @@ export default function ContestantsPage() {
               <p className="text-muted-foreground leading-relaxed">{item.desc}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section id="workshops" className="py-20 bg-gradient-to-b from-indigo-50/50 to-background">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 text-indigo-600 font-bold text-sm mb-4">
+              <GraduationCap size={16} /> 研習課程
+            </div>
+            <h2 className="font-display text-4xl mb-4">大師工作坊</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+              7/23（四）研習會當日，特邀業界大師親授兩大核心技法
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="glass-card rounded-2xl p-8 hover-lift border-2 border-indigo-100">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mb-5">
+                <Users size={28} className="text-indigo-600" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-indigo-700">人偶拉線技法</h3>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                深入學習氣球人偶的骨架結構設計與拉線定型技巧。大師將現場示範如何透過精準的拉線手法，讓人偶造型更加立體、穩固且生動。
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600">結構設計</span>
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600">拉線定型</span>
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600">實作練習</span>
+              </div>
+            </div>
+
+            <div className="glass-card rounded-2xl p-8 hover-lift border-2 border-indigo-100">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mb-5">
+                <Sparkles size={28} className="text-indigo-600" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-indigo-700">W 大型裝置技法</h3>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                學習大型氣球裝置的 W 型結構搭建方法，掌握大型作品的承重、固定與造型技巧。課程涵蓋從設計概念到實際搭建的完整流程。
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600">W 型結構</span>
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600">大型裝置</span>
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600">搭建流程</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 p-5 bg-indigo-50 border border-indigo-200 rounded-2xl text-center">
+            <p className="text-sm text-indigo-700 font-medium">
+              研習課程包含於「四天通行票（12,000 元）」及「研習會通行票（8,000 元）」中，無需另外報名。
+            </p>
+          </div>
         </div>
       </section>
 

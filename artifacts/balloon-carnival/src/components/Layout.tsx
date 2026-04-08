@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ticket, Tent, MapPin, Info, Users, Crown, LogOut, LayoutDashboard, Menu, X, Shield } from "lucide-react";
+import { Ticket, Tent, MapPin, Info, Users, Crown, LogOut, LayoutDashboard, Menu, X, Shield, PartyPopper, Handshake } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
@@ -20,10 +20,11 @@ export function Layout({ children }: LayoutProps) {
   }, [location]);
 
   const navItems = [
-    { href: "/", label: "首頁 / 展區", icon: Tent },
+    { href: "/", label: "首頁", icon: Tent },
+    { href: "/carnival", label: "氣球嘉年華", icon: PartyPopper },
+    { href: "/contestants", label: "同行交流會", icon: Handshake },
     { href: "/registration", label: "報名訂票", icon: Ticket },
     { href: "/news", label: "最新消息", icon: Info },
-    { href: "/contestants", label: "同行交流會", icon: Users },
     { href: "/sponsors", label: "贊助廠商", icon: Crown },
   ];
 
@@ -209,9 +210,10 @@ export function Layout({ children }: LayoutProps) {
           <div>
             <h3 className="font-bold text-white mb-4">快速連結</h3>
             <ul className="space-y-2">
-              <li><Link href="/registration" className="hover:text-primary transition-colors">報名與訂票</Link></li>
-              <li><Link href="/news" className="hover:text-primary transition-colors">大會公告</Link></li>
+              <li><Link href="/carnival" className="hover:text-primary transition-colors">氣球嘉年華</Link></li>
               <li><Link href="/contestants" className="hover:text-primary transition-colors">同行交流會</Link></li>
+              <li><Link href="/registration" className="hover:text-primary transition-colors">報名訂票</Link></li>
+              <li><Link href="/news" className="hover:text-primary transition-colors">大會公告</Link></li>
             </ul>
           </div>
           <div>

@@ -12,6 +12,7 @@ import RegistrationPage from "@/pages/RegistrationPage";
 import NewsPage from "@/pages/NewsPage";
 import NewsDetailPage from "@/pages/NewsDetailPage";
 import ContestantsPage from "@/pages/ContestantsPage";
+import CarnivalPage from "@/pages/CarnivalPage";
 import SponsorsPage from "@/pages/SponsorsPage";
 
 // Admin Pages
@@ -39,6 +40,7 @@ function Router() {
         <Route path="/registration" component={RegistrationPage} />
         <Route path="/news" component={NewsPage} />
         <Route path="/news/:id" component={NewsDetailPage} />
+        <Route path="/carnival" component={CarnivalPage} />
         <Route path="/contestants" component={ContestantsPage} />
         <Route path="/sponsors" component={SponsorsPage} />
 

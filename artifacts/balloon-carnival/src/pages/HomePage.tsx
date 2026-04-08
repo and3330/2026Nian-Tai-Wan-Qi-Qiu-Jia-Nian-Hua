@@ -1,34 +1,21 @@
-import { useListNews, useListContestants, useListSponsors, useGetRegistrationAvailability } from "@workspace/api-client-react";
-import { Calendar, MapPin, Clock, ArrowRight, Tent, Ticket, Star, Users, Sparkles, Camera, Music, Heart, Crown, ChevronRight, PartyPopper, Baby, Gift, Handshake, BookOpen, Zap, Flower2, Shirt } from "lucide-react";
+import { useListNews, useListSponsors, useGetRegistrationAvailability } from "@workspace/api-client-react";
+import { Calendar, MapPin, Clock, ArrowRight, Ticket, Star, Users, Sparkles, Heart, ChevronRight, PartyPopper, Handshake, BookOpen, Palette, Baby, Eye, Cpu } from "lucide-react";
 import { Link } from "wouter";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 export default function HomePage() {
   const { data: news } = useListNews();
-  const { data: contestants } = useListContestants();
   const { data: sponsors } = useListSponsors();
   const { data: availability } = useGetRegistrationAvailability();
 
   const latestNews = news?.slice(0, 3);
-  const featuredMembers = (contestants || []).slice(0, 4);
-  const totalRemaining = availability?.reduce((sum, d) => sum + d.remaining, 0) || 0;
-  const totalCapacity = availability?.reduce((sum, d) => sum + d.totalCapacity, 0) || 1500;
-
-  const highlights = [
-    { icon: Tent, title: "5 大主題活動", desc: "中型氣球雕塑、人偶、12 分鐘快手、藝術服裝走秀遊行、外送花束，精彩一次體驗", color: "text-primary", bg: "bg-primary/10" },
-    { icon: Handshake, title: "氣球同行交流會", desc: "集結業界前輩與新銳，透過座談、工作坊與共同創作，傳承寶貴技藝", color: "text-amber-500", bg: "bg-amber-50" },
-    { icon: Camera, title: "互動體驗區", desc: "親子 DIY 氣球工作坊、巨型氣球迷宮、AR 互動拍照打卡點", color: "text-secondary", bg: "bg-secondary/10" },
-    { icon: Music, title: "舞台表演", desc: "每日精彩氣球秀、魔術表演、街頭藝人演出，感受嘉年華的歡樂氛圍", color: "text-violet-500", bg: "bg-violet-50" },
-    { icon: Gift, title: "限定周邊商品", desc: "嘉年華獨家設計氣球造型周邊、紀念品，現場限量發售", color: "text-rose-500", bg: "bg-rose-50" },
-    { icon: Baby, title: "親子友善空間", desc: "設有哺乳室、無障礙設施、幼童遊戲區，全家大小都能盡情同樂", color: "text-green-500", bg: "bg-green-50" },
-  ];
 
   const scheduleItems = [
-    { time: "Day 1", event: "7/23（四）研習會", desc: "業內封閉 — 大師授課教學、開幕報到" },
-    { time: "Day 2", event: "7/24（五）業內比賽", desc: "業內封閉 — 中型氣球、人偶比賽 & 晚間同行交流" },
-    { time: "Day 3", event: "7/25（六）公開活動日", desc: "對外開放 — 12分鐘快手、藝術服裝走秀遊行、親子表演、工作坊" },
-    { time: "Day 4", event: "7/26（日）公開活動日", desc: "對外開放 — 作品展覽、親子表演、氣球工作坊" },
+    { time: "Day 1", event: "7/23（四）研習會", desc: "業內封閉 — 大師授課教學、開幕報到", audience: "同行" },
+    { time: "Day 2", event: "7/24（五）業內比賽", desc: "業內封閉 — 中型氣球、人偶比賽 & 晚間同行交流", audience: "同行" },
+    { time: "Day 3", event: "7/25（六）公開活動日", desc: "對外開放 — 12分鐘快手、藝術服裝走秀遊行、親子表演、工作坊", audience: "全部" },
+    { time: "Day 4", event: "7/26（日）公開活動日", desc: "對外開放 — 作品展覽、親子表演、氣球工作坊", audience: "全部" },
   ];
 
   return (
@@ -123,97 +110,89 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="py-20 px-4 max-w-7xl mx-auto w-full">
+      <section className="py-20 px-4 max-w-5xl mx-auto w-full">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-4">
-            <Sparkles size={16} /> 活動亮點
+            <Sparkles size={16} /> 找到你的入口
           </div>
-          <h2 className="font-display text-4xl mb-4">精彩活動一次看</h2>
+          <h2 className="font-display text-4xl mb-4">你想怎麼參加？</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            四天的氣球嘉年華，準備了超多精彩活動等你來體驗
+            本活動分為兩大主軸，請選擇最適合你的路線
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {highlights.map((item, idx) => (
-            <div key={idx} className="glass-card rounded-2xl p-6 hover-lift group">
-              <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-4", item.bg)}>
-                <item.icon size={28} className={item.color} />
-              </div>
-              <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">{item.title}</h3>
-              <p className="text-muted-foreground leading-relaxed">{item.desc}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <Link
+            href="/carnival"
+            className="block glass-card rounded-3xl p-8 md:p-10 hover-lift group relative overflow-hidden border-2 border-transparent hover:border-secondary/40 transition-all"
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-secondary/10 to-transparent rounded-bl-full -z-10"></div>
+            <div className="w-16 h-16 rounded-2xl bg-secondary/10 flex items-center justify-center mb-6">
+              <PartyPopper size={32} className="text-secondary" />
             </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="py-20 px-4 max-w-7xl mx-auto w-full relative">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/10 text-secondary font-bold text-sm mb-4">
-            <Star size={16} /> 五大主題
-          </div>
-          <h2 className="font-display text-4xl mb-4">主題活動</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            五大精彩主題活動，從展覽到比賽、從走秀到手作，帶你體驗氣球藝術的無限魅力！
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[
-            {
-              icon: Sparkles,
-              title: "中型氣球雕塑",
-              desc: "主題「生活的小幸福」— 4～6 組參賽者在 8 小時內現場創作大型氣球造型，完賽作品公開展覽。",
-              color: "text-blue-500",
-              bg: "bg-blue-50",
-              badge: "展覽 + 比賽",
-            },
-            {
-              icon: Users,
-              title: "氣球人偶",
-              desc: "主題「調皮的小時候」— 以氣球製作大型人偶造型，展現角色塑造與結構技巧，作品於展區公開展覽。",
-              color: "text-purple-500",
-              bg: "bg-purple-50",
-              badge: "展覽 + 比賽",
-            },
-            {
-              icon: Zap,
-              title: "12 分鐘快手",
-              desc: "舞臺公開競速賽！參賽者在 12 分鐘內快速完成作品，現場觀眾可近距離觀看精彩對決。",
-              color: "text-orange-500",
-              bg: "bg-orange-50",
-              badge: "舞臺公開賽",
-            },
-            {
-              icon: Shirt,
-              title: "藝術服裝走秀遊行",
-              desc: "主題「花語」— 以氣球製作可穿戴的藝術服裝。7/25（六）15:30 全場唯一一場走秀遊行，千萬不要錯過！",
-              color: "text-pink-500",
-              bg: "bg-pink-50",
-              badge: "走秀遊行",
-            },
-            {
-              icon: Flower2,
-              title: "外送花束",
-              desc: "主題不限 — 在 2 小時內以氣球製作精美花束作品，考驗細膩的塑形與配色能力，完成作品於展區展出。",
-              color: "text-green-500",
-              bg: "bg-green-50",
-              badge: "展覽 + 比賽",
-            },
-          ].map((item, idx) => (
-            <div key={idx} className="glass-card rounded-2xl p-8 hover-lift group relative overflow-hidden">
-              <div className="absolute top-4 right-4">
-                <span className={cn("text-xs font-bold px-3 py-1 rounded-full", item.bg, item.color)}>
-                  {item.badge}
+            <h3 className="text-2xl font-bold mb-2 group-hover:text-secondary transition-colors">我想參觀嘉年華</h3>
+            <p className="text-sm text-muted-foreground font-medium mb-4">一般民眾 ・ 親子家庭 ・ 遊客</p>
+            <p className="text-muted-foreground leading-relaxed mb-6">
+              7/25-26 對外開放！觀賞氣球展覽、舞臺表演、親子手作坊、AI 教育科技體驗。
+            </p>
+            <div className="flex flex-wrap gap-2 mb-6">
+              {[
+                { icon: Eye, label: "展覽參觀" },
+                { icon: Baby, label: "親子手作" },
+                { icon: Sparkles, label: "氣球表演" },
+                { icon: Cpu, label: "AI 體驗" },
+              ].map((tag, i) => (
+                <span key={i} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                  <tag.icon size={12} /> {tag.label}
                 </span>
-              </div>
-              <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-5", item.bg)}>
-                <item.icon size={28} className={item.color} />
-              </div>
-              <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors">{item.title}</h3>
-              <p className="text-muted-foreground leading-relaxed text-sm">{item.desc}</p>
+              ))}
             </div>
-          ))}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-2xl font-bold text-green-600">200</span>
+                <span className="text-muted-foreground text-sm ml-1">元/日起</span>
+              </div>
+              <span className="inline-flex items-center gap-1 text-secondary font-bold text-sm group-hover:gap-2 transition-all">
+                查看詳情 <ArrowRight size={16} />
+              </span>
+            </div>
+          </Link>
+
+          <Link
+            href="/contestants"
+            className="block glass-card rounded-3xl p-8 md:p-10 hover-lift group relative overflow-hidden border-2 border-transparent hover:border-amber-400/40 transition-all"
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-amber-500/10 to-transparent rounded-bl-full -z-10"></div>
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mb-6">
+              <Handshake size={32} className="text-amber-500" />
+            </div>
+            <h3 className="text-2xl font-bold mb-2 group-hover:text-amber-500 transition-colors">我是氣球同行</h3>
+            <p className="text-sm text-muted-foreground font-medium mb-4">業界人士 ・ 氣球師 ・ 教學者</p>
+            <p className="text-muted-foreground leading-relaxed mb-6">
+              四天專業盛會！研習會、大師工作坊、五大交流賽、交流大賽，總獎金 12 萬元。
+            </p>
+            <div className="flex flex-wrap gap-2 mb-6">
+              {[
+                { icon: BookOpen, label: "研習會" },
+                { icon: Palette, label: "五大交流賽" },
+                { icon: Star, label: "12 萬獎金" },
+                { icon: Users, label: "同行交流" },
+              ].map((tag, i) => (
+                <span key={i} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-600">
+                  <tag.icon size={12} /> {tag.label}
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-2xl font-bold text-amber-600">5,000</span>
+                <span className="text-muted-foreground text-sm ml-1">元起</span>
+              </div>
+              <span className="inline-flex items-center gap-1 text-amber-500 font-bold text-sm group-hover:gap-2 transition-all">
+                查看詳情 <ArrowRight size={16} />
+              </span>
+            </div>
+          </Link>
         </div>
       </section>
 
@@ -221,11 +200,11 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/20 text-accent-foreground font-bold text-sm mb-4">
-              <Clock size={16} /> 每日流程
+              <Clock size={16} /> 四天概覽
             </div>
             <h2 className="font-display text-4xl mb-4">活動日程表</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              每日精心安排的活動流程，讓你一整天都精彩不斷
+              前兩天為業內同行專屬活動，後兩天對一般民眾開放
             </p>
           </div>
 
@@ -244,7 +223,15 @@ export default function HomePage() {
                       </div>
                     </div>
                     <div className="glass-card rounded-2xl p-5 flex-1 group-hover:border-primary/30 transition-colors ml-4">
-                      <h4 className="font-bold text-lg mb-1">{item.event}</h4>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-bold text-lg">{item.event}</h4>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-xs font-bold",
+                          item.audience === "同行" ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"
+                        )}>
+                          {item.audience === "同行" ? "業內限定" : "對外開放"}
+                        </span>
+                      </div>
                       <p className="text-muted-foreground text-sm">{item.desc}</p>
                     </div>
                   </div>
@@ -254,46 +241,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {featuredMembers.length > 0 && (
-        <section className="py-20 px-4 max-w-7xl mx-auto w-full">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 text-amber-600 font-bold text-sm mb-4">
-                <Handshake size={16} /> 同行交流會
-              </div>
-              <h2 className="font-display text-4xl mb-2">交流夥伴</h2>
-              <p className="text-muted-foreground text-lg">來自各地的氣球同行，帶著故事與技藝齊聚一堂</p>
-            </div>
-            <Link href="/contestants" className="flex items-center gap-2 text-primary font-bold hover:underline">
-              了解更多與完整議程 <ChevronRight size={18} />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {featuredMembers.map((c) => (
-              <div key={c.id} className="glass-card rounded-2xl overflow-hidden hover-lift group">
-                <div className="aspect-square bg-muted relative overflow-hidden">
-                  {c.imageUrl ? (
-                    <img src={c.imageUrl} alt={c.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
-                      <Users size={48} className="text-muted-foreground/30" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <h4 className="font-bold text-lg truncate">{c.name}</h4>
-                  <div className="flex items-center gap-1 mt-1">
-                    <BookOpen size={14} className="text-amber-500" />
-                    <span className="text-sm font-medium text-amber-600">交流夥伴</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {latestNews && latestNews.length > 0 && (
         <section className="py-20 bg-muted/30">

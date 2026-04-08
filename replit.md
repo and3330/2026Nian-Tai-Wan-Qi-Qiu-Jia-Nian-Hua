@@ -40,14 +40,26 @@ artifacts-monorepo/
 
 ## Project: 2026 臺灣氣球嘉年華
 
+### Dual-Audience Architecture
+The website serves two distinct audiences with clear separation:
+- **一般民眾 (General Public)** — `/carnival` page: AI教育科技, 親子手作坊, 氣球表演, 比賽展件參觀. Tickets: 200元/日, 300元/兩日套票. Dates: 7/25-26.
+- **業內同行 (Industry Professionals)** — `/contestants` page: 研習會, 五大交流活動, 大師工作坊 (人偶拉線技法, W大型裝置技法), 交流大賽. Tickets: 5,000-12,000元. Dates: 7/23-26.
+
+Homepage (`/`) has a dual-path entrance section ("我想參觀嘉年華" / "我是氣球同行") directing users to the appropriate page.
+Registration page (`/registration`) has an identity selector splitting into visitor vs professional registration flows.
+
 ### Features
-- **Home/Exhibition**: Hero section with event info, exhibition zones visible to all visitors (no login required)
-- **Registration**: Ticket booking with 500/day capacity per date (July 23-26, 2026), no login required
+- **Homepage**: Hero + dual-path entrance (嘉年華 vs 同行) + schedule overview + news + ticket info
+- **Carnival Page** (`/carnival`): Public activity page for general visitors with 4 highlights, schedule, pricing
+- **Contestants/Exchange Page** (`/contestants`): Professional exchange with workshops, 5 competition rules, schedule, pricing
+- **Registration**: Identity-based split — visitors see 7/25-26 dates (200/300元); professionals see ticket tiers (5K/8K/12K)
 - **News**: Latest announcements with detail pages
-- **Contestants**: Balloon art competition showcase with scores
-- **Sponsors**: Tiered sponsor display (platinum/gold/silver/bronze) with external links
+- **Sponsors**: Tiered sponsor display with external links
 - **Admin Dashboard**: Protected by username/password login. Registration monitoring, CSV export, news/contestant/sponsor CRUD
 - **Admin Auth**: Custom login system (username: 1, password: aa3210). No Replit Auth / OIDC.
+
+### Navigation
+首頁, 氣球嘉年華, 同行交流會, 報名訂票, 最新消息, 贊助廠商
 
 ### Database Tables
 - `sessions` - Admin auth sessions
