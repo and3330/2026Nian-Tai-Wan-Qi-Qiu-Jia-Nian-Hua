@@ -8,7 +8,6 @@ import { Layout } from "@/components/Layout";
 
 // Pages
 import HomePage from "@/pages/HomePage";
-import RegistrationPage from "@/pages/RegistrationPage";
 import NewsPage from "@/pages/NewsPage";
 import NewsDetailPage from "@/pages/NewsDetailPage";
 import ContestantsPage from "@/pages/ContestantsPage";
@@ -37,11 +36,10 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={HomePage} />
-        <Route path="/registration" component={RegistrationPage} />
         <Route path="/news" component={NewsPage} />
         <Route path="/news/:id" component={NewsDetailPage} />
         <Route path="/carnival" component={CarnivalPage} />
-        <Route path="/contestants" component={ContestantsPage} />
+        <Route path="/conference" component={ContestantsPage} />
         <Route path="/sponsors" component={SponsorsPage} />
 
         <Route path="/admin/login" component={AdminLoginPage} />

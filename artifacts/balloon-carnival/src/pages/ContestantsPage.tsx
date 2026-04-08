@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { useListContestants } from "@workspace/api-client-react";
-import { Users, Handshake, Clock, Heart, MessageCircle, Lightbulb, BookOpen, ArrowRight, Sparkles, ChevronDown, Trophy, Palette, Zap, Shirt, Flower2, Eye, Lock, Ticket, GraduationCap } from "lucide-react";
+import { useListContestants, useCreateRegistration } from "@workspace/api-client-react";
+import { Users, Handshake, Clock, Heart, MessageCircle, Lightbulb, BookOpen, ArrowRight, Sparkles, ChevronDown, Trophy, Palette, Zap, Shirt, Flower2, Eye, Lock, Ticket, GraduationCap, Phone, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { getGetRegistrationAvailabilityQueryKey } from "@workspace/api-client-react";
 
 const competitionCategories = [
   {
@@ -212,8 +214,42 @@ function CompetitionCard({ cat }: { cat: typeof competitionCategories[0] }) {
 }
 
 export default function ContestantsPage() {
+  const queryClient = useQueryClient();
   const { data: members, isLoading } = useListContestants();
+  const createMutation = useCreateRegistration();
   const [activeDay, setActiveDay] = useState(0);
+
+  const [proTicketType, setProTicketType] = useState("");
+  const [proFormData, setProFormData] = useState({ parentName: "", phone: "" });
+  const [proSuccess, setProSuccess] = useState(false);
+
+  const handleProSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!proTicketType) { alert("請選擇票種"); return; }
+    const ticketDateMap: Record<string, string> = {
+      "四天通行票": "2026-07-23",
+      "研習會通行票": "2026-07-23",
+      "交流比賽通行票": "2026-07-24",
+    };
+    const eventDate = ticketDateMap[proTicketType] || "2026-07-23";
+    createMutation.mutate({
+      data: {
+        parentName: proFormData.parentName,
+        phone: proFormData.phone,
+        ticketCount: 1,
+        eventDate,
+      }
+    }, {
+      onSuccess: () => {
+        setProSuccess(true);
+        queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      },
+      onError: () => {
+        alert("報名失敗，請重試或聯絡客服");
+      }
+    });
+  };
 
   return (
     <div className="flex flex-col">
@@ -224,7 +260,7 @@ export default function ContestantsPage() {
             <Handshake size={16} /> 以傳承為名，以交流為本
           </div>
           <h1 className="font-display text-4xl md:text-6xl mb-6 text-foreground">
-            氣球同行<span className="text-carnival">交流會</span>
+            傳奇工匠<span className="text-carnival">研討會</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-4">
             四天的專業盛會 — 研討會、大師工作坊、五大交流賽、作品展覽。
@@ -234,12 +270,12 @@ export default function ContestantsPage() {
             7/23（四）研習會 ・ 7/24（五）業內比賽 ・ 7/25（六）7/26（日）公開活動 + 展覽
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/registration"
+            <a
+              href="#register"
               className="px-8 py-4 rounded-full font-bold text-lg bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2"
             >
               我要報名參加 <ArrowRight size={20} />
-            </Link>
+            </a>
             <a
               href="#competitions"
               className="px-8 py-4 rounded-full font-bold text-lg bg-white text-foreground border-2 hover:border-primary/30 shadow-sm hover:shadow-md transition-all"
@@ -448,15 +484,15 @@ export default function ContestantsPage() {
         </div>
       </section>
 
-      <section id="pricing" className="py-20 bg-gradient-to-b from-primary/5 to-background">
+      <section id="register" className="py-20 bg-gradient-to-b from-primary/5 to-background scroll-mt-24">
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-4">
-              <Ticket size={16} /> 活動費用
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 text-amber-600 font-bold text-sm mb-4">
+              <Ticket size={16} /> 立即報名
             </div>
-            <h2 className="font-display text-4xl mb-4">報名票價</h2>
+            <h2 className="font-display text-4xl mb-4">同行報名</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              依需求選擇適合的票種，同行報名即享研習與比賽資格
+              歡迎氣球業界同行！請依需求選擇適合的票種
             </p>
           </div>
 
@@ -498,36 +534,93 @@ export default function ContestantsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-xl mx-auto">
-            <div className="glass-card rounded-2xl p-6 text-center hover-lift">
-              <h3 className="text-lg font-bold mb-1">活動日單日票</h3>
-              <div className="mb-2">
-                <span className="text-3xl font-bold text-green-600">200</span>
-                <span className="text-muted-foreground ml-1">元</span>
+          {proSuccess ? (
+            <div className="max-w-2xl mx-auto bg-amber-50 border-2 border-amber-200 rounded-3xl p-12 text-center shadow-lg">
+              <CheckCircle2 className="w-24 h-24 text-amber-500 mx-auto mb-6" />
+              <h2 className="text-3xl font-bold text-amber-800 mb-4">報名資料已送出！</h2>
+              <p className="text-amber-700 text-lg mb-4">感謝您報名傳奇工匠研討會。</p>
+              <div className="bg-white rounded-2xl p-6 text-left max-w-sm mx-auto shadow-sm border border-amber-100 mb-6">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="text-muted-foreground">姓名：</div>
+                  <div className="font-bold text-right">{proFormData.parentName}</div>
+                  <div className="text-muted-foreground">聯絡電話：</div>
+                  <div className="font-bold text-right">{proFormData.phone}</div>
+                  <div className="text-muted-foreground">票種：</div>
+                  <div className="font-bold text-right text-amber-600">{proTicketType}</div>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">7/25 或 7/26 擇一日入場</p>
+              <p className="text-amber-600 text-sm mb-6">主辦單位將於收到報名後，以電話或簡訊通知繳費方式。</p>
+              <button
+                onClick={() => { setProSuccess(false); setProFormData({ parentName: "", phone: "" }); setProTicketType(""); }}
+                className="text-amber-600 font-bold hover:underline"
+              >
+                繼續報名
+              </button>
             </div>
-            <div className="glass-card rounded-2xl p-6 text-center hover-lift relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                省 100 元
+          ) : (
+            <>
+              <div className="glass-card rounded-3xl p-8 md:p-10 relative overflow-hidden mb-8 max-w-2xl mx-auto">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-bl-full -z-10"></div>
+                <h2 className="text-2xl font-bold mb-8 border-b pb-4">填寫同行報名資料</h2>
+                <form onSubmit={handleProSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Users size={16} className="text-amber-500" /> 姓名 <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      required type="text" value={proFormData.parentName}
+                      onChange={e => setProFormData({...proFormData, parentName: e.target.value})}
+                      placeholder="例如：王小明"
+                      className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all text-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Phone size={16} className="text-amber-500" /> 聯絡電話 <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      required type="tel" value={proFormData.phone}
+                      onChange={e => setProFormData({...proFormData, phone: e.target.value})}
+                      placeholder="例如：0912345678"
+                      className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all text-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Ticket size={16} className="text-amber-500" /> 票種選擇 <span className="text-destructive">*</span>
+                    </label>
+                    <select
+                      required value={proTicketType}
+                      onChange={e => setProTicketType(e.target.value)}
+                      className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all text-lg appearance-none cursor-pointer"
+                    >
+                      <option value="">請選擇票種</option>
+                      <option value="四天通行票">四天通行票 — 12,000 元</option>
+                      <option value="研習會通行票">研習會通行票 — 8,000 元</option>
+                      <option value="交流比賽通行票">交流比賽通行票 — 5,000 元</option>
+                    </select>
+                  </div>
+                  <div className="pt-6">
+                    <button
+                      type="submit"
+                      disabled={createMutation.isPending || !proTicketType}
+                      className="w-full py-5 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-amber-500 to-amber-600 shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:shadow-amber-500/40 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2"
+                    >
+                      {createMutation.isPending ? "處理中..." : !proTicketType ? "請選擇票種" : "確認送出報名"}
+                    </button>
+                  </div>
+                </form>
               </div>
-              <h3 className="text-lg font-bold mb-1">活動兩日套票</h3>
-              <div className="mb-2">
-                <span className="text-3xl font-bold text-green-600">300</span>
-                <span className="text-muted-foreground ml-1">元</span>
+              <div className="bg-amber-50 text-amber-800 p-5 rounded-2xl text-sm border border-amber-200 max-w-2xl mx-auto">
+                <p className="font-bold mb-2">注意事項</p>
+                <ul className="space-y-1 text-amber-700">
+                  <li>・報名後將由主辦單位確認並通知繳費方式</li>
+                  <li>・7/23（四）、7/24（五）為業內封閉活動，僅限報名同行入場</li>
+                  <li>・如有疑問請洽服務專線 02-2720-8889</li>
+                </ul>
               </div>
-              <p className="text-xs text-muted-foreground">7/25 + 7/26 兩日皆可入場</p>
-            </div>
-          </div>
-
-          <div className="text-center mt-8">
-            <Link
-              href="/registration"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-1 transition-all"
-            >
-              立即報名 <ArrowRight size={20} />
-            </Link>
-          </div>
+            </>
+          )}
         </div>
       </section>
 
@@ -587,21 +680,17 @@ export default function ContestantsPage() {
         )}
       </section>
 
-      <section className="py-16 bg-gradient-to-b from-amber-50/50 to-background">
+      <section className="py-16 bg-gradient-to-b from-green-50/50 to-background">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-6">
-            <Sparkles size={32} className="text-amber-600" />
-          </div>
-          <h2 className="font-display text-3xl mb-4">一起讓技藝延續下去</h2>
+          <h2 className="font-display text-3xl mb-4">想帶家人朋友看展覽嗎？</h2>
           <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-            無論你是入行數十年的前輩，還是剛踏入氣球世界的新人，
-            這裡都有你的位置。讓我們在比賽中切磋、在交流中成長、在傳承中找到意義。
+            7/25-26 兩天對外開放，一般民眾也可入場觀賞氣球展覽、表演和親子活動。
           </p>
           <Link
-            href="/registration"
-            className="inline-flex items-center gap-2 px-10 py-4 rounded-full font-bold text-lg bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-1 transition-all"
+            href="/carnival"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-1 transition-all"
           >
-            立即報名交流會 <ArrowRight size={20} />
+            前往氣球嘉年華 <ArrowRight size={20} />
           </Link>
         </div>
       </section>

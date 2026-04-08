@@ -62,7 +62,7 @@ export default function AdminContestantsManage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-display">同行管理</h1>
-          <p className="text-muted-foreground mt-1">管理氣球同行交流會的參與者資訊</p>
+          <p className="text-muted-foreground mt-1">管理傳奇工匠研討會的參與者資訊</p>
         </div>
         <button
           onClick={openCreate}

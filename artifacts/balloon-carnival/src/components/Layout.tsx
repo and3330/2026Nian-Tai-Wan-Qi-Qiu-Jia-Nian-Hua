@@ -22,8 +22,7 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { href: "/", label: "首頁", icon: Tent },
     { href: "/carnival", label: "氣球嘉年華", icon: PartyPopper },
-    { href: "/contestants", label: "同行交流會", icon: Handshake },
-    { href: "/registration", label: "報名訂票", icon: Ticket },
+    { href: "/conference", label: "傳奇工匠研討會", icon: Handshake },
     { href: "/news", label: "最新消息", icon: Info },
     { href: "/sponsors", label: "贊助廠商", icon: Crown },
   ];
@@ -211,8 +210,7 @@ export function Layout({ children }: LayoutProps) {
             <h3 className="font-bold text-white mb-4">快速連結</h3>
             <ul className="space-y-2">
               <li><Link href="/carnival" className="hover:text-primary transition-colors">氣球嘉年華</Link></li>
-              <li><Link href="/contestants" className="hover:text-primary transition-colors">同行交流會</Link></li>
-              <li><Link href="/registration" className="hover:text-primary transition-colors">報名訂票</Link></li>
+              <li><Link href="/conference" className="hover:text-primary transition-colors">傳奇工匠研討會</Link></li>
               <li><Link href="/news" className="hover:text-primary transition-colors">大會公告</Link></li>
             </ul>
           </div>

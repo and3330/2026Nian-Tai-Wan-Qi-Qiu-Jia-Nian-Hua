@@ -67,16 +67,16 @@ export default function HomePage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/registration"
+              href="/carnival"
               className="px-8 py-4 rounded-full font-bold text-lg bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-1 transition-all flex items-center gap-2"
             >
-              立即報名訂票 <ArrowRight size={20} />
+              氣球嘉年華購票 <ArrowRight size={20} />
             </Link>
             <Link
-              href="/news"
-              className="px-8 py-4 rounded-full font-bold text-lg bg-white text-foreground border-2 border-transparent hover:border-border shadow-sm hover:shadow-md transition-all"
+              href="/conference"
+              className="px-8 py-4 rounded-full font-bold text-lg bg-amber-500 text-white shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 hover:-translate-y-1 transition-all flex items-center gap-2"
             >
-              查看最新消息
+              傳奇工匠研討會 <ArrowRight size={20} />
             </Link>
           </div>
         </div>
@@ -102,8 +102,8 @@ export default function HomePage() {
                   </span>
                 </div>
               ))}
-              <Link href="/registration" className="px-4 py-1.5 bg-white text-primary rounded-full text-sm font-bold hover:bg-white/90 transition-colors">
-                馬上報名
+              <Link href="/carnival#register" className="px-4 py-1.5 bg-white text-primary rounded-full text-sm font-bold hover:bg-white/90 transition-colors">
+                馬上購票
               </Link>
             </div>
           </div>
@@ -159,14 +159,14 @@ export default function HomePage() {
           </Link>
 
           <Link
-            href="/contestants"
+            href="/conference"
             className="block glass-card rounded-3xl p-8 md:p-10 hover-lift group relative overflow-hidden border-2 border-transparent hover:border-amber-400/40 transition-all"
           >
             <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-amber-500/10 to-transparent rounded-bl-full -z-10"></div>
             <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mb-6">
               <Handshake size={32} className="text-amber-500" />
             </div>
-            <h3 className="text-2xl font-bold mb-2 group-hover:text-amber-500 transition-colors">我是氣球同行</h3>
+            <h3 className="text-2xl font-bold mb-2 group-hover:text-amber-500 transition-colors">傳奇工匠研討會</h3>
             <p className="text-sm text-muted-foreground font-medium mb-4">業界人士 ・ 氣球師 ・ 教學者</p>
             <p className="text-muted-foreground leading-relaxed mb-6">
               四天專業盛會！研習會、大師工作坊、五大交流賽、交流大賽，總獎金 12 萬元。
@@ -315,7 +315,7 @@ export default function HomePage() {
 
         <div className="text-center mt-12">
           <Link
-            href="/registration"
+            href="/carnival#register"
             className="inline-flex items-center gap-2 px-10 py-4 rounded-full font-bold text-lg bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-1 transition-all"
           >
             立即預約入場 <ArrowRight size={20} />
@@ -393,12 +393,20 @@ export default function HomePage() {
             <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
               四天限定的氣球奇幻旅程，現在就預約你的入場名額，和家人朋友一起創造美好回憶！
             </p>
-            <Link
-              href="/registration"
-              className="inline-flex items-center gap-2 px-10 py-4 rounded-full font-bold text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
-            >
-              立即預約購票 <ArrowRight size={20} />
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                href="/carnival#register"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
+              >
+                嘉年華購票 <ArrowRight size={20} />
+              </Link>
+              <Link
+                href="/conference#register"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
+              >
+                研討會報名 <ArrowRight size={20} />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
