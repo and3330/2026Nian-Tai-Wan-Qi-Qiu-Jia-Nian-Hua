@@ -6,3 +6,9 @@ id = "YjHQf7qyFzJgxvs7y86tx"
 uri = "file://lib/docs/Meta廣告文案與投放教學指南.md"
 type = "text"
 title = "Meta 廣告文案與投放教學指南"
+
+[[outputs]]
+id = "SQdENw72t2ci_JUKmt8wq"
+uri = "file://lib/docs/Meta開發者應用程式設定與社群帳號綁定教學.md"
+type = "text"
+title = "Meta 開發者應用程式設定與社群帳號綁定教學"
