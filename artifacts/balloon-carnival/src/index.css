@@ -95,3 +95,36 @@
     @apply transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg;
   }
 }
+
+@media print {
+  body {
+    background-image: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  header, footer, .carnival-gradient {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .glass-card {
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    border: 1px solid #e5e7eb !important;
+    background: white !important;
+  }
+  .print\\:hidden {
+    display: none !important;
+  }
+  .print\\:py-8 {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+  }
+  .print\\:space-y-10 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 2.5rem !important;
+  }
+  .print\\:break-inside-avoid {
+    break-inside: avoid !important;
+  }
+}

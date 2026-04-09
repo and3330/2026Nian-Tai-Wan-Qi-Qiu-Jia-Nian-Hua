@@ -64,6 +64,9 @@ Each activity page has its own embedded registration form — no standalone regi
 ### Admin Navigation
 報名監控總覽, 最新消息管理, 研討會管理, 贊助廠商管理, 社群帳號, 社群貼文, 自動化設定
 
+### Ad Guide Page (`/ad-guide`)
+Meta (Facebook/Instagram) advertising guide for the carnival. Contains 3 ad copy variants (溫馨家庭風, 限量緊迫風, 活動亮點風), step-by-step Meta Ads Manager setup tutorial, and user journey with UTM parameter examples. Print-friendly layout with copy-to-clipboard buttons.
+
 ### Database Tables
 - `sessions` - Admin auth sessions
 - `users` - Legacy user table (unused after auth migration)
