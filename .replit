@@ -32,3 +32,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 FACEBOOK_APP_ID = "1330464739139386"
+THREADS_APP_ID = "1480681130228400"
