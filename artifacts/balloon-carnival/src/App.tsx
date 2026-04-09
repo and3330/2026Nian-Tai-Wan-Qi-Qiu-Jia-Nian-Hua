@@ -21,6 +21,9 @@ import AdminDashboard from "@/pages/Admin/Dashboard";
 import AdminNewsManage from "@/pages/Admin/NewsManage";
 import AdminContestantsManage from "@/pages/Admin/ContestantsManage";
 import AdminSponsorsManage from "@/pages/Admin/SponsorsManage";
+import AdminSocialAccounts from "@/pages/Admin/SocialAccountsManage";
+import AdminSocialPosts from "@/pages/Admin/SocialPostsManage";
+import AdminAutomation from "@/pages/Admin/AutomationSettings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +57,15 @@ function Router() {
         </Route>
         <Route path="/admin/sponsors">
           {() => <AdminLayout><AdminSponsorsManage /></AdminLayout>}
+        </Route>
+        <Route path="/admin/social-accounts">
+          {() => <AdminLayout><AdminSocialAccounts /></AdminLayout>}
+        </Route>
+        <Route path="/admin/social-posts">
+          {() => <AdminLayout><AdminSocialPosts /></AdminLayout>}
+        </Route>
+        <Route path="/admin/automation">
+          {() => <AdminLayout><AdminAutomation /></AdminLayout>}
         </Route>
 
         <Route component={NotFound} />

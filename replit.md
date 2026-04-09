@@ -42,24 +42,27 @@ artifacts-monorepo/
 
 ### Dual-Audience Architecture
 The website serves two distinct audiences with clear separation:
-- **一般民眾 (General Public)** — `/carnival` page: AI教育科技, 親子手作坊, 氣球表演, 比賽展件參觀. Tickets: 200元/日, 300元/兩日套票. Dates: 7/25-26.
-- **業內同行 (Industry Professionals)** — `/contestants` page: 研習會, 五大交流活動, 大師工作坊 (人偶拉線技法, W大型裝置技法), 交流大賽. Tickets: 5,000-12,000元. Dates: 7/23-26.
+- **一般民眾 (General Public)** — `/carnival` page: AI教育科技, 親子手作坊, 氣球表演, 比賽展件參觀. Tickets: 200元/日, 300元/兩日套票. Dates: 7/25-26. Embedded visitor registration form.
+- **業內同行 (Industry Professionals)** — `/conference` page (傳奇工匠研討會): 研習會, 五大交流活動, 大師工作坊, 交流大賽. Tickets: 5,000-12,000元. Dates: 7/23-26. Embedded professional registration form.
 
-Homepage (`/`) has a dual-path entrance section ("我想參觀嘉年華" / "我是氣球同行") directing users to the appropriate page.
-Registration page (`/registration`) has an identity selector splitting into visitor vs professional registration flows.
+Homepage (`/`) has a dual-path entrance section ("氣球嘉年華購票" / "傳奇工匠研討會") directing users to the appropriate page.
+Each activity page has its own embedded registration form — no standalone registration page.
 
 ### Features
-- **Homepage**: Hero + dual-path entrance (嘉年華 vs 同行) + schedule overview + news + ticket info
-- **Carnival Page** (`/carnival`): Public activity page for general visitors with 4 highlights, schedule, pricing
-- **Contestants/Exchange Page** (`/contestants`): Professional exchange with workshops, 5 competition rules, schedule, pricing
-- **Registration**: Identity-based split — visitors see 7/25-26 dates (200/300元); professionals see ticket tiers (5K/8K/12K)
+- **Homepage**: Hero + dual-path entrance (嘉年華 vs 研討會) + schedule overview + news + ticket info
+- **Carnival Page** (`/carnival`): Public activity page for general visitors with embedded ticket purchase form
+- **Conference Page** (`/conference`): 傳奇工匠研討會 — professional workshops, competitions, embedded registration
 - **News**: Latest announcements with detail pages
 - **Sponsors**: Tiered sponsor display with external links
 - **Admin Dashboard**: Protected by username/password login. Registration monitoring, CSV export, news/contestant/sponsor CRUD
+- **Social Media Marketing** (admin): FB/IG/Threads OAuth binding, post creation/scheduling/publishing, calendar view, automation settings
 - **Admin Auth**: Custom login system (username: 1, password: aa3210). No Replit Auth / OIDC.
 
 ### Navigation
-首頁, 氣球嘉年華, 同行交流會, 報名訂票, 最新消息, 贊助廠商
+首頁, 氣球嘉年華, 傳奇工匠研討會, 最新消息, 贊助廠商
+
+### Admin Navigation
+報名監控總覽, 最新消息管理, 研討會管理, 贊助廠商管理, 社群帳號, 社群貼文, 自動化設定
 
 ### Database Tables
 - `sessions` - Admin auth sessions
@@ -69,6 +72,9 @@ Registration page (`/registration`) has an identity selector splitting into visi
 - `contestants` - Competition participants (name, description, image_url, score)
 - `sponsors` - Sponsor information (name, logo_url, website_url, tier)
 - `exhibitions` - Exhibition zones (name, description, location, open/close times)
+- `social_marketing_accounts` - Connected social media accounts (FB/IG/Threads OAuth tokens)
+- `social_posts` - Social media posts (content, platforms, scheduling, publish status)
+- `marketing_automation_settings` - Automation config (auto-scheduler, auto-hashtag, notifications)
 
 ### API Endpoints
 - `GET /api/exhibitions` - List exhibition zones
@@ -85,6 +91,27 @@ Registration page (`/registration`) has an identity selector splitting into visi
 - `POST/PUT/DELETE /api/admin/contestants/:id` - Admin: contestant CRUD
 - `GET/POST/PUT/DELETE /api/admin/sponsors/:id` - Admin: sponsor CRUD
 - Auth endpoints: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/user`
+- `GET /api/admin/social-accounts` - List connected social accounts
+- `GET /api/admin/social-accounts/oauth-url/:platform` - Get OAuth URL (with CSRF state)
+- `GET /api/admin/social-accounts/oauth-callback/:platform` - OAuth callback (state verified)
+- `DELETE /api/admin/social-accounts/:id` - Remove social account
+- `PATCH /api/admin/social-accounts/:id/toggle` - Enable/disable social account
+- `GET /api/admin/social-posts` - List social posts
+- `POST /api/admin/social-posts` - Create social post
+- `PATCH /api/admin/social-posts/:id` - Update social post
+- `DELETE /api/admin/social-posts/:id` - Delete social post
+- `POST /api/admin/social-posts/:id/publish` - Publish post immediately
+- `POST /api/admin/social-posts/preview` - Preview post content per platform
+- `GET /api/admin/automation-settings` - List automation settings
+- `PUT /api/admin/automation-settings/:key` - Update automation setting
+
+### Social Media Integration
+- **Facebook**: OAuth → pages_manage_posts, pages_read_engagement, pages_show_list, business_management
+- **Instagram**: Auto-discovered via Facebook page linkage (instagram_business_account)
+- **Threads**: Separate OAuth → threads_basic, threads_content_publish
+- **Scheduler**: Checks every 60s for scheduled posts, gated by `auto_scheduler` setting
+- **Auto-hashtag**: When enabled, appends default hashtags to all published content
+- Required env vars: FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, THREADS_APP_ID, THREADS_APP_SECRET
 
 ## TypeScript & Composite Projects
 
@@ -98,13 +125,13 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 ## Packages
 
 ### `artifacts/api-server` (`@workspace/api-server`)
-Express 5 API server with custom admin auth, registration system, news, contestants, sponsors, exhibitions, and admin routes.
+Express 5 API server with custom admin auth, registration system, news, contestants, sponsors, exhibitions, social marketing, and admin routes.
 
 ### `artifacts/balloon-carnival` (`@workspace/balloon-carnival`)
 React + Vite frontend for the 2026 Taiwan Balloon Carnival website. Uses Tailwind CSS, shadcn/ui, wouter routing, React Query, and custom admin auth.
 
 ### `lib/db` (`@workspace/db`)
-Drizzle ORM schema + PostgreSQL connection. Tables: sessions, users, registrations, news, contestants, sponsors, exhibitions.
+Drizzle ORM schema + PostgreSQL connection. Tables: sessions, users, registrations, news, contestants, sponsors, exhibitions, social_marketing_accounts, social_posts, marketing_automation_settings.
 
 ### `lib/api-spec` (`@workspace/api-spec`)
 OpenAPI 3.1 spec and Orval codegen config.

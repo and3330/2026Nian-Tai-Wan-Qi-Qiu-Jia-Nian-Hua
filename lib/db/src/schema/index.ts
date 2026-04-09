@@ -4,3 +4,4 @@ export * from "./news";
 export * from "./contestants";
 export * from "./sponsors";
 export * from "./exhibitions";
+export * from "./social-marketing";

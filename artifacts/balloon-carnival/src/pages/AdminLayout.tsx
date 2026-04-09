@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation, Redirect } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
-import { LayoutDashboard, Newspaper, Users, Handshake, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Newspaper, Users, Handshake, ArrowLeft, Share2, FileText, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -19,6 +19,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     { href: "/admin/news", label: "最新消息管理", icon: Newspaper, exact: false },
     { href: "/admin/contestants", label: "研討會管理", icon: Users, exact: false },
     { href: "/admin/sponsors", label: "贊助廠商管理", icon: Handshake, exact: false },
+    { href: "/admin/social-accounts", label: "社群帳號", icon: Share2, exact: false },
+    { href: "/admin/social-posts", label: "社群貼文", icon: FileText, exact: false },
+    { href: "/admin/automation", label: "自動化設定", icon: Settings, exact: false },
   ];
 
   return (

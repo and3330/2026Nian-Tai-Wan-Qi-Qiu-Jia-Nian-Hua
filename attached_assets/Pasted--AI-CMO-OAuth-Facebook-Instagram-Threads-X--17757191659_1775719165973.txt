@@ -1,0 +1,731 @@
+社群行銷 + AI CMO 自動化封包
+封包概述
+本封包提供完整的社群行銷自動化系統，包含：
+
+社群帳號 OAuth 串接：Facebook 粉專、Instagram 商業帳號、Threads、X (Twitter)
+社群貼文管理：建立、排程、自動發布、批次建立
+AI 文案產生器：根據主題自動產生多平台貼文
+AI 圖片產生器：自動產生社群用圖片
+AI Content Planner：對話式 AI 內容排程規劃
+AI CMO 智慧中控台：KPI 管理、自動數據收集、每日營運報告、AI 策略對話
+環境變數
+# ===== 社群帳號 OAuth（必填） =====
+FACEBOOK_APP_ID=你的Facebook App ID
+FACEBOOK_APP_SECRET=你的Facebook App Secret
+THREADS_APP_ID=你的Threads App ID
+THREADS_APP_SECRET=你的Threads App Secret
+# Twitter/X（選填）
+TWITTER_CLIENT_ID=你的Twitter Client ID
+TWITTER_CLIENT_SECRET=你的Twitter Client Secret
+# ===== AI 模型（必填） =====
+ARK_API_KEY=你的BytePlus ARK API Key
+# 文字模型端點（用於文案、報告生成）
+# 程式內寫死為 ep-20260309164846-rlsd6，需換成你的端點
+# 圖片模型端點（用於社群圖片）
+# 程式內寫死為 ep-20260309013817-zbhwl，需換成你的端點
+# ===== CDN 圖片上傳（選填，用於AI圖片） =====
+BUNNY_API_KEY=你的BunnyCDN API Key
+BUNNY_STORAGE_API_KEY=你的BunnyCDN Storage Key
+
+Facebook / Instagram 開發者設定
+到 Meta for Developers 建立 App
+產品類型選「Business」
+啟用以下產品：
+Facebook Login for Business
+Instagram Graph API（IG 發文用）
+OAuth 重新導向 URI 設為：https://你的網域/api/admin/social-accounts/oauth-callback/facebook
+權限（Scopes）：pages_manage_posts, pages_read_engagement, pages_show_list, business_management
+Facebook 的 OAuth 會同時抓取：
+粉絲專頁（Page）帳號
+綁定的 Instagram 商業帳號（透過 instagram_business_account field）
+Threads 開發者設定
+在 Meta for Developers 啟用「Threads API」產品
+OAuth 重新導向 URI：https://你的網域/api/admin/social-accounts/oauth-callback/threads
+權限（Scopes）：threads_basic, threads_content_publish
+Twitter/X 開發者設定
+到 Twitter Developer Portal 建立 App
+OAuth 2.0 設定，啟用 PKCE
+重新導向 URI：https://你的網域/api/admin/social-accounts/oauth-callback/twitter
+權限：tweet.read, tweet.write, users.read, offline.access
+資料庫結構 (Drizzle ORM / PostgreSQL)
+社群帳號 social_marketing_accounts
+import { pgTable, uuid, text, boolean, timestamp, jsonb, index, unique } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+export const socialMarketingAccounts = pgTable("social_marketing_accounts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  platform: text("platform").notNull(),           // facebook | instagram | threads | twitter
+  platformAccountId: text("platform_account_id").notNull(),
+  accountName: text("account_name").notNull(),
+  accountType: text("account_type").notNull().default("page"), // page | instagram_business | threads | twitter
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  profileImageUrl: text("profile_image_url"),
+  metadata: jsonb("metadata"),                     // { pageId, igAccountId, userId }
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_sma_platform").on(table.platform),
+  unique("uq_sma_platform_account").on(table.platform, table.platformAccountId),
+]);
+
+社群貼文 social_posts
+export const socialPosts = pgTable("social_posts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  content: text("content").notNull(),
+  platforms: text("platforms").array().notNull().default(sql`ARRAY[]::text[]`),
+  hashtags: text("hashtags"),
+  imageUrls: text("image_urls").array().default(sql`ARRAY[]::text[]`),
+  scheduledAt: timestamp("scheduled_at"),         // 排程時間（null = 手動發布）
+  publishedAt: timestamp("published_at"),
+  status: text("status").notNull().default("draft"), // draft | scheduled | published | failed
+  platformResults: jsonb("platform_results"),      // 各平台發布結果
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_social_posts_status").on(table.status),
+  index("idx_social_posts_scheduled").on(table.scheduledAt),
+]);
+
+行銷自動化設定 marketing_automation_settings
+export const marketingAutomationSettings = pgTable("marketing_automation_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(),             // 設定鍵名
+  enabled: boolean("enabled").notNull().default(false),
+  config: jsonb("config"),                         // 額外設定
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+AI CMO 目標 cmo_goals
+import { numeric, date } from "drizzle-orm/pg-core";
+export const cmoGoals = pgTable("cmo_goals", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  metric: text("metric").notNull(),                // daily_revenue | new_members | ...
+  label: text("label").notNull(),                  // 顯示名稱
+  targetValue: numeric("target_value", { precision: 14, scale: 2 }).notNull(),
+  currentValue: numeric("current_value", { precision: 14, scale: 2 }).notNull().default("0"),
+  unit: text("unit").notNull().default(""),         // 元 | 人 | 筆 | 篇
+  period: text("period").notNull().default("monthly"),
+  priority: text("priority").notNull().default("medium"), // high | medium | low
+  status: text("status").notNull().default("active"),     // active | on_track | at_risk | behind | achieved
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+AI CMO 報告 cmo_reports
+export const cmoReports = pgTable("cmo_reports", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  reportDate: date("report_date").notNull(),
+  reportType: text("report_type").notNull().default("daily"),
+  summary: text("summary").notNull(),              // AI 生成的報告摘要
+  kpiSnapshot: jsonb("kpi_snapshot"),              // KPI 快照
+  goalProgress: jsonb("goal_progress"),            // 目標進度
+  recommendations: text("recommendations"),        // AI 建議
+  rawData: jsonb("raw_data"),                      // 原始數據
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+核心模組 1：社群服務 social-service.ts
+完整程式碼
+import { db } from "./db";
+import { socialMarketingAccounts, socialPosts } from "@shared/schema";
+import { eq, and, lte } from "drizzle-orm";
+import crypto from "crypto";
+// ========== Twitter PKCE 暫存 ==========
+const twitterOAuthStore = new Map<string, { codeVerifier: string; createdAt: number }>();
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of twitterOAuthStore) {
+    if (now - val.createdAt > 10 * 60 * 1000) twitterOAuthStore.delete(key);
+  }
+}, 60000);
+export function getTwitterOAuthVerifier(state: string): string | null {
+  const entry = twitterOAuthStore.get(state);
+  if (!entry) return null;
+  twitterOAuthStore.delete(state);
+  return entry.codeVerifier;
+}
+// ========== 平台字數限制 ==========
+export const PLATFORM_CHAR_LIMITS: Record<string, number> = {
+  threads: 500,
+  facebook: 5000,
+  instagram: 2200,
+  twitter: 280,
+};
+// ========== 文字處理工具 ==========
+export function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/h[1-6]>/gi, "\n\n")
+    .replace(/<li>/gi, "・ ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+export function adaptContentForPlatform(content: string, platform: string, hashtags?: string): string {
+  const limit = PLATFORM_CHAR_LIMITS[platform] || 500;
+  let text = stripHtml(content);
+  const hashtagStr = hashtags
+    ? `\n\n${hashtags.split(",").map(t => t.trim()).filter(Boolean).map(t => t.startsWith("#") ? t : `#${t}`).join(" ")}`
+    : "";
+  const availableLen = limit - hashtagStr.length;
+  if (text.length > availableLen) text = text.substring(0, availableLen - 3) + "...";
+  return text + hashtagStr;
+}
+// ========== OAuth URL 產生 ==========
+export function getOAuthUrl(platform: string, redirectUri: string): string {
+  switch (platform) {
+    case "facebook": {
+      const appId = process.env.FACEBOOK_APP_ID;
+      if (!appId) throw new Error("FACEBOOK_APP_ID not configured");
+      const scopes = "pages_manage_posts,pages_read_engagement,pages_show_list,business_management";
+      return `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code`;
+    }
+    case "threads": {
+      const appId = process.env.THREADS_APP_ID;
+      if (!appId) throw new Error("THREADS_APP_ID not configured");
+      const scopes = "threads_basic,threads_content_publish";
+      return `https://threads.net/oauth/authorize?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code`;
+    }
+    case "twitter": {
+      const clientId = process.env.TWITTER_CLIENT_ID;
+      if (!clientId) throw new Error("TWITTER_CLIENT_ID not configured");
+      const scopes = "tweet.read tweet.write users.read offline.access";
+      const codeVerifier = crypto.randomBytes(32).toString("base64url");
+      const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
+      const state = crypto.randomBytes(16).toString("hex");
+      twitterOAuthStore.set(state, { codeVerifier, createdAt: Date.now() });
+      return `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+    }
+    default:
+      throw new Error(`Unsupported platform: ${platform}`);
+  }
+}
+// ========== OAuth Callback 處理 ==========
+export async function handleOAuthCallback(
+  platform: string, code: string, redirectUri: string, state?: string
+): Promise<{ accounts: Array<{
+  platformAccountId: string; accountName: string; accountType: string;
+  accessToken: string; refreshToken?: string; tokenExpiresAt?: Date;
+  profileImageUrl?: string; metadata?: any;
+}> }> {
+  switch (platform) {
+    case "facebook": return handleFacebookCallback(code, redirectUri);
+    case "threads": return handleThreadsCallback(code, redirectUri);
+    case "twitter": {
+      if (!state) throw new Error("Missing OAuth state");
+      const codeVerifier = getTwitterOAuthVerifier(state);
+      if (!codeVerifier) throw new Error("Invalid or expired OAuth state");
+      return handleTwitterCallback(code, redirectUri, codeVerifier);
+    }
+    default: throw new Error(`Unsupported platform: ${platform}`);
+  }
+}
+// --- Facebook ---
+async function handleFacebookCallback(code: string, redirectUri: string) {
+  const appId = process.env.FACEBOOK_APP_ID;
+  const appSecret = process.env.FACEBOOK_APP_SECRET;
+  if (!appId || !appSecret) throw new Error("Facebook app credentials not configured");
+  // 取得短期 Token
+  const tokenRes = await fetch(
+    `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${appSecret}&code=${code}`
+  );
+  const tokenData = await tokenRes.json() as any;
+  if (tokenData.error) throw new Error(tokenData.error.message);
+  // 換取長期 Token（60 天）
+  const longTokenRes = await fetch(
+    `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${tokenData.access_token}`
+  );
+  const longTokenData = await longTokenRes.json() as any;
+  const userToken = longTokenData.access_token || tokenData.access_token;
+  const expiresIn = longTokenData.expires_in || 5184000;
+  // 取得管理的粉專
+  const pagesRes = await fetch(
+    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,picture&access_token=${userToken}`
+  );
+  const pagesData = await pagesRes.json() as any;
+  const accounts: any[] = [];
+  if (pagesData.data) {
+    for (const page of pagesData.data) {
+      // Facebook 粉專
+      accounts.push({
+        platformAccountId: page.id,
+        accountName: page.name,
+        accountType: "page",
+        accessToken: page.access_token,
+        tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
+        profileImageUrl: page.picture?.data?.url,
+        metadata: { pageId: page.id },
+      });
+      // 嘗試取得綁定的 IG 商業帳號
+      try {
+        const igRes = await fetch(
+          `https://graph.facebook.com/v21.0/${page.id}?fields=instagram_business_account{id,name,username,profile_picture_url}&access_token=${page.access_token}`
+        );
+        const igData = await igRes.json() as any;
+        const ig = igData.instagram_business_account;
+        if (ig) {
+          accounts.push({
+            platformAccountId: ig.id,
+            accountName: ig.username || ig.name || `IG-${ig.id}`,
+            accountType: "instagram_business",
+            accessToken: page.access_token,
+            tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
+            profileImageUrl: ig.profile_picture_url,
+            metadata: { igAccountId: ig.id, pageId: page.id },
+          });
+        }
+      } catch {}
+    }
+  }
+  return { accounts };
+}
+// --- Threads ---
+async function handleThreadsCallback(code: string, redirectUri: string) {
+  const appId = process.env.THREADS_APP_ID;
+  const appSecret = process.env.THREADS_APP_SECRET;
+  if (!appId || !appSecret) throw new Error("Threads credentials not configured");
+  const tokenRes = await fetch("https://graph.threads.net/oauth/access_token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: appId, client_secret: appSecret,
+      grant_type: "authorization_code", redirect_uri: redirectUri, code,
+    }),
+  });
+  const tokenData = await tokenRes.json() as any;
+  if (tokenData.error) throw new Error(tokenData.error_message || tokenData.error.message);
+  // 換取長期 Token
+  const longTokenRes = await fetch(
+    `https://graph.threads.net/access_token?grant_type=th_exchange_token&client_secret=${appSecret}&access_token=${tokenData.access_token}`
+  );
+  const longTokenData = await longTokenRes.json() as any;
+  const accessToken = longTokenData.access_token || tokenData.access_token;
+  const expiresIn = longTokenData.expires_in || 5184000;
+  const profileRes = await fetch(
+    `https://graph.threads.net/v1.0/me?fields=id,username,threads_profile_picture_url&access_token=${accessToken}`
+  );
+  const profile = await profileRes.json() as any;
+  return {
+    accounts: [{
+      platformAccountId: profile.id || tokenData.user_id,
+      accountName: profile.username || `Threads-${profile.id}`,
+      accountType: "threads",
+      accessToken,
+      tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
+      profileImageUrl: profile.threads_profile_picture_url,
+      metadata: { userId: profile.id },
+    }],
+  };
+}
+// --- Twitter/X ---
+async function handleTwitterCallback(code: string, redirectUri: string, codeVerifier: string) {
+  const clientId = process.env.TWITTER_CLIENT_ID;
+  const clientSecret = process.env.TWITTER_CLIENT_SECRET;
+  if (!clientId || !clientSecret) throw new Error("Twitter credentials not configured");
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: `Basic ${basicAuth}` },
+    body: new URLSearchParams({ code, grant_type: "authorization_code", redirect_uri: redirectUri, code_verifier: codeVerifier }),
+  });
+  const tokenData = await tokenRes.json() as any;
+  if (tokenData.error) throw new Error(tokenData.error_description || tokenData.error);
+  const userRes = await fetch("https://api.twitter.com/2/users/me?user.fields=profile_image_url", {
+    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+  });
+  const userData = await userRes.json() as any;
+  return {
+    accounts: [{
+      platformAccountId: userData.data?.id || "unknown",
+      accountName: userData.data?.username || "X User",
+      accountType: "twitter",
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token,
+      tokenExpiresAt: new Date(Date.now() + (tokenData.expires_in || 7200) * 1000),
+      profileImageUrl: userData.data?.profile_image_url,
+      metadata: { userId: userData.data?.id },
+    }],
+  };
+}
+// ========== Token 自動刷新 ==========
+export async function refreshTokenIfNeeded(accountId: string): Promise<boolean> {
+  const [account] = await db.select().from(socialMarketingAccounts)
+    .where(eq(socialMarketingAccounts.id, accountId)).limit(1);
+  if (!account || !account.tokenExpiresAt) return true;
+  if (account.tokenExpiresAt.getTime() - Date.now() > 86400000) return true; // 超過 24 小時才需刷新
+  try {
+    if (account.platform === "threads") {
+      const res = await fetch(
+        `https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token=${account.accessToken}`
+      );
+      const data = await res.json() as any;
+      if (data.access_token) {
+        await db.update(socialMarketingAccounts).set({
+          accessToken: data.access_token,
+          tokenExpiresAt: new Date(Date.now() + (data.expires_in || 5184000) * 1000),
+          updatedAt: new Date(),
+        }).where(eq(socialMarketingAccounts.id, accountId));
+        return true;
+      }
+    } else if (account.platform === "twitter" && account.refreshToken) {
+      const clientId = process.env.TWITTER_CLIENT_ID;
+      const clientSecret = process.env.TWITTER_CLIENT_SECRET;
+      if (!clientId || !clientSecret) return false;
+      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+      const res = await fetch("https://api.twitter.com/2/oauth2/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: `Basic ${basicAuth}` },
+        body: new URLSearchParams({ refresh_token: account.refreshToken, grant_type: "refresh_token" }),
+      });
+      const data = await res.json() as any;
+      if (data.access_token) {
+        await db.update(socialMarketingAccounts).set({
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token || account.refreshToken,
+          tokenExpiresAt: new Date(Date.now() + (data.expires_in || 7200) * 1000),
+          updatedAt: new Date(),
+        }).where(eq(socialMarketingAccounts.id, accountId));
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+// ========== 各平台發布函數 ==========
+async function getAccountForPlatform(platform: string) {
+  const accountType = platform === "instagram" ? "instagram_business" : undefined;
+  const [account] = await db.select().from(socialMarketingAccounts).where(
+    and(
+      accountType
+        ? eq(socialMarketingAccounts.accountType, accountType)
+        : eq(socialMarketingAccounts.platform, platform),
+      eq(socialMarketingAccounts.isActive, true)
+    )
+  ).limit(1);
+  return account;
+}
+// --- Threads ---
+export async function publishToThreads(content: string, accountId?: string, imageUrl?: string) {
+  let account;
+  if (accountId) {
+    [account] = await db.select().from(socialMarketingAccounts).where(eq(socialMarketingAccounts.id, accountId)).limit(1);
+  } else {
+    account = await getAccountForPlatform("threads");
+  }
+  if (!account) throw new Error("No Threads account connected");
+  await refreshTokenIfNeeded(account.id);
+  const [refreshed] = await db.select().from(socialMarketingAccounts).where(eq(socialMarketingAccounts.id, account.id)).limit(1);
+  const token = refreshed?.accessToken || account.accessToken;
+  const userId = (account.metadata as any)?.userId || account.platformAccountId;
+  // 步驟 1：建立 media container
+  const createBody: any = { text: content, access_token: token };
+  createBody.media_type = imageUrl ? "IMAGE" : "TEXT";
+  if (imageUrl) createBody.image_url = imageUrl;
+  const createRes = await fetch(`https://graph.threads.net/v1.0/${userId}/threads`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(createBody),
+  });
+  const createData = await createRes.json() as any;
+  if (createData.error) throw new Error(`Threads: ${createData.error.message}`);
+  // 步驟 2：發布
+  const publishRes = await fetch(`https://graph.threads.net/v1.0/${userId}/threads_publish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ creation_id: createData.id, access_token: token }),
+  });
+  const publishData = await publishRes.json() as any;
+  if (publishData.error) throw new Error(`Threads publish: ${publishData.error.message}`);
+  return { postId: publishData.id, platform: "threads" };
+}
+// --- Facebook ---
+export async function publishToFacebook(content: string, accountId?: string, imageUrl?: string) {
+  let account;
+  if (accountId) {
+    [account] = await db.select().from(socialMarketingAccounts).where(eq(socialMarketingAccounts.id, accountId)).limit(1);
+  } else {
+    account = await getAccountForPlatform("facebook");
+  }
+  if (!account) throw new Error("No Facebook page connected");
+  const pageId = (account.metadata as any)?.pageId || account.platformAccountId;
+  if (imageUrl) {
+    const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/photos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: imageUrl, message: content, access_token: account.accessToken }),
+    });
+    const data = await res.json() as any;
+    if (data.error) throw new Error(`Facebook: ${data.error.message}`);
+    return { postId: data.id || data.post_id, platform: "facebook" };
+  }
+  const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/feed`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: content, access_token: account.accessToken }),
+  });
+  const data = await res.json() as any;
+  if (data.error) throw new Error(`Facebook: ${data.error.message}`);
+  return { postId: data.id, platform: "facebook" };
+}
+// --- Instagram ---
+export async function publishToInstagram(content: string, accountId?: string, imageUrl?: string) {
+  let account;
+  if (accountId) {
+    [account] = await db.select().from(socialMarketingAccounts).where(eq(socialMarketingAccounts.id, accountId)).limit(1);
+  } else {
+    account = await getAccountForPlatform("instagram");
+  }
+  if (!account) throw new Error("No Instagram business account connected");
+  if (!imageUrl) throw new Error("Instagram requires an image");
+  const igAccountId = (account.metadata as any)?.igAccountId || account.platformAccountId;
+  // 步驟 1：建立 media container
+  const createRes = await fetch(`https://graph.facebook.com/v21.0/${igAccountId}/media`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image_url: imageUrl, caption: content, access_token: account.accessToken }),
+  });
+  const createData = await createRes.json() as any;
+  if (createData.error) throw new Error(`Instagram: ${createData.error.message}`);
+  // 步驟 2：發布
+  const publishRes = await fetch(`https://graph.facebook.com/v21.0/${igAccountId}/media_publish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ creation_id: createData.id, access_token: account.accessToken }),
+  });
+  const publishData = await publishRes.json() as any;
+  if (publishData.error) throw new Error(`Instagram publish: ${publishData.error.message}`);
+  return { postId: publishData.id, platform: "instagram" };
+}
+// --- Twitter/X ---
+export async function publishToTwitter(content: string, accountId?: string) {
+  let account;
+  if (accountId) {
+    [account] = await db.select().from(socialMarketingAccounts).where(eq(socialMarketingAccounts.id, accountId)).limit(1);
+  } else {
+    account = await getAccountForPlatform("twitter");
+  }
+  if (!account) throw new Error("No Twitter/X account connected");
+  await refreshTokenIfNeeded(account.id);
+  const [refreshed] = await db.select().from(socialMarketingAccounts).where(eq(socialMarketingAccounts.id, account.id)).limit(1);
+  const token = refreshed?.accessToken || account.accessToken;
+  const res = await fetch("https://api.twitter.com/2/tweets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ text: content }),
+  });
+  const data = await res.json() as any;
+  if (data.errors) throw new Error(`Twitter: ${data.errors[0]?.message || "Unknown error"}`);
+  return { postId: data.data?.id, platform: "twitter" };
+}
+// ========== 貼文發布主流程 ==========
+const publishFnMap: Record<string, Function> = {
+  threads: publishToThreads,
+  facebook: publishToFacebook,
+  instagram: publishToInstagram,
+  twitter: publishToTwitter,
+};
+export async function publishPost(postId: string) {
+  const [post] = await db.select().from(socialPosts).where(eq(socialPosts.id, postId)).limit(1);
+  if (!post) throw new Error("Post not found");
+  const imageUrl = post.imageUrls?.length ? post.imageUrls[0] : undefined;
+  const results: Record<string, any> = {};
+  const errors: string[] = [];
+  for (const platform of post.platforms) {
+    const publishFn = publishFnMap[platform];
+    if (!publishFn) { errors.push(`${platform}: Unsupported`); continue; }
+    try {
+      const adapted = adaptContentForPlatform(post.content, platform, post.hashtags || undefined);
+      const result = await publishFn(adapted, undefined, imageUrl);
+      results[platform] = { success: true, postId: result.postId };
+    } catch (err) {
+      const msg = (err as Error).message;
+      errors.push(`${platform}: ${msg}`);
+      results[platform] = { success: false, error: msg };
+    }
+  }
+  const allFailed = Object.values(results).every((r: any) => !r.success);
+  await db.update(socialPosts).set({
+    status: allFailed ? "failed" : "published",
+    publishedAt: allFailed ? undefined : new Date(),
+    platformResults: results,
+    errorMessage: errors.length ? errors.join("; ") : null,
+    updatedAt: new Date(),
+  }).where(eq(socialPosts.id, postId));
+  return { results, errors };
+}
+// ========== 排程發布器（每 60 秒） ==========
+export async function processScheduledPosts() {
+  const now = new Date();
+  const pending = await db.select().from(socialPosts)
+    .where(and(eq(socialPosts.status, "scheduled"), lte(socialPosts.scheduledAt, now)))
+    .limit(10);
+  for (const post of pending) {
+    try {
+      await publishPost(post.id);
+    } catch (err) {
+      await db.update(socialPosts).set({
+        status: "failed", errorMessage: (err as Error).message, updatedAt: new Date(),
+      }).where(eq(socialPosts.id, post.id));
+    }
+  }
+  return pending.length;
+}
+let schedulerInterval: ReturnType<typeof setInterval> | null = null;
+export function startSocialScheduler() {
+  if (schedulerInterval) return;
+  console.log("[Social] Scheduler started (every 60s)");
+  schedulerInterval = setInterval(async () => {
+    try { await processScheduledPosts(); } catch {}
+  }, 60000);
+}
+
+核心模組 2：社群行銷路由 routes/social-marketing.ts
+包含以下 API 端點：
+
+方法	路徑	說明
+GET	/api/admin/social-accounts	列出所有已連接帳號
+GET	/api/admin/social-accounts/oauth-url/:platform	取得 OAuth 授權 URL
+GET	/api/admin/social-accounts/oauth-callback/:platform	OAuth 回調
+DELETE	/api/admin/social-accounts/:id	刪除帳號
+PATCH	/api/admin/social-accounts/:id/toggle	啟用/停用帳號
+GET	/api/admin/social-posts	列出所有貼文
+POST	/api/admin/social-posts	建立貼文
+PATCH	/api/admin/social-posts/:id	編輯貼文
+DELETE	/api/admin/social-posts/:id	刪除貼文
+POST	/api/admin/social-posts/:id/publish	立即發布貼文
+POST	/api/admin/social-posts/generate-content	AI 產生文案
+POST	/api/admin/social-posts/generate-image	AI 產生圖片
+POST	/api/admin/social-posts/ai-planner	AI 內容排程規劃
+POST	/api/admin/social-posts/batch-create	批次建立貼文
+POST	/api/admin/social-posts/preview	預覽各平台內容
+核心模組 3：AI CMO 路由 routes/cmo.ts
+方法	路徑	說明
+GET	/api/admin/cmo/goals	列出所有 KPI 目標
+POST	/api/admin/cmo/goals	建立 KPI 目標
+PATCH	/api/admin/cmo/goals/:id	更新 KPI
+DELETE	/api/admin/cmo/goals/:id	刪除 KPI
+GET	/api/admin/cmo/reports	列出報告
+GET	/api/admin/cmo/reports/:id	查看單篇報告
+POST	/api/admin/cmo/reports/generate	手動觸發報告生成
+GET	/api/admin/cmo/status	查看系統狀態
+POST	/api/admin/cmo/chat	AI CMO 對話（SSE 串流）
+核心模組 4：AI CMO 數據收集器 cmo-data-collector.ts
+每日凌晨 3:00 自動收集以下 12 種數據源：
+
+訂單與營收：服務訂單 / 課程訂單 / 家教訂單 / 商品訂單
+會員數據：新註冊、各會員等級分佈
+內容數據：文章瀏覽量、按讚數
+點數數據：發放 / 使用 / 過期
+社群數據：已發布貼文數
+電子報數據：發送 / 開信 / 點擊
+行銷自動化日誌
+廣告花費
+GA4 流量（需串接 Google Analytics）
+Ahrefs SEO 排名（需 AHREFS_API_KEY）
+Search Console（需串接 GSC）
+AI 能見度
+收集後存入向量資料庫，供 AI CMO 報告和對話使用。
+
+核心模組 5：AI CMO 報告生成器 cmo-report-generator.ts
+每日早上 8:00 自動生成營運報告：
+
+比較昨日與今日數據
+偵測異常（營收下降 > 30% 等）
+更新 KPI 進度
+透過 ARK AI 生成繁體中文營運摘要
+自動推送通知給管理員
+使用步驟
+1. 安裝必要套件
+npm install drizzle-orm pg express zod express-rate-limit
+npm install -D drizzle-kit @types/express
+
+2. 複製檔案到你的專案
+your-project/
+├── shared/
+│   └── schema.ts          # 加入上方資料庫結構
+├── server/
+│   ├── social-service.ts  # 社群服務核心
+│   ├── routes/
+│   │   ├── social-marketing.ts  # 社群 API 路由
+│   │   └── cmo.ts               # CMO API 路由
+│   ├── cmo-data-collector.ts    # 數據收集器
+│   └── cmo-report-generator.ts  # 報告生成器
+└── client/
+    └── src/pages/admin/
+        ├── social-accounts.tsx   # 社群帳號管理頁
+        ├── social-posts.tsx      # 貼文管理頁
+        └── ai-cmo.tsx            # AI CMO 頁面
+
+3. 在 Express 應用中註冊路由
+import express from "express";
+import { registerSocialMarketingRoutes } from "./routes/social-marketing";
+import { registerCmoRoutes } from "./routes/cmo";
+import { startCmoDataCollector } from "./cmo-data-collector";
+import { startCmoReportScheduler } from "./cmo-report-generator";
+const app = express();
+// 註冊路由
+registerSocialMarketingRoutes(app);   // 包含社群排程器
+registerCmoRoutes(app);
+// 啟動排程器
+startCmoDataCollector();   // 每日凌晨 3:00 收集數據
+startCmoReportScheduler(); // 每日早上 8:00 生成報告
+
+4. 設定環境變數
+按照上方「環境變數」章節設定。
+
+5. 推送資料庫結構
+npx drizzle-kit push
+
+6. 替換 AI 模型端點
+在程式碼中搜尋以下端點 ID，替換成你自己的：
+
+ep-20260309164846-rlsd6（文字模型，用於文案和報告）
+ep-20260309013817-zbhwl（圖片模型，用於社群圖片）
+發布流程圖
+建立貼文 (draft)
+    ↓
+設定排程時間 → status: "scheduled"
+    ↓
+排程器每 60 秒檢查 → scheduledAt <= now?
+    ↓
+publishPost() → 遍歷所有平台
+    ↓
+┌─── Threads: 建立 container → 發布
+├─── Facebook: 直接發到粉專 feed
+├─── Instagram: 建立 media → 發布（需圖片）
+└─── Twitter: POST /2/tweets
+    ↓
+更新 status: "published" / "failed"
+更新 platformResults（各平台結果）
+
+AI Content Planner 對話式排程
+管理員可以透過對話和 AI 一起規劃內容：
+
+管理員：「幫我規劃下週的社群內容，主打夏令營」
+AI：「好的！我先了解一下...目標對象是家長嗎？想著重哪些類型的夏令營？」
+管理員：「對，主要是6-12歲的小朋友，以程式和科學為主」
+AI：「了解！以下是我的建議排程...」→ 輸出 JSON plan
+                ↓
+系統解析 JSON → 批次建立 scheduled posts → 自動排程發布
+
+Meta 平台特殊注意事項
+Facebook 粉專 Token 有效期 60 天，需定期重新授權
+Instagram 發文必須有圖片，純文字會被 API 拒絕
+Threads 發文需兩步驟：先建立 container 再 publish
+Facebook 資料刪除回調（GDPR 合規）需設定回調 URL：
+取消授權：POST /api/admin/social-accounts/:platform/deauthorize
+資料刪除：POST /api/admin/social-accounts/:platform/data-deletion
