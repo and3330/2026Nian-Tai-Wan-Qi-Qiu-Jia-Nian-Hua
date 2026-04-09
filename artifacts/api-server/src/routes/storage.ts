@@ -11,7 +11,7 @@ const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
-  if (!(req as any).isAuthenticated?.()) {
+  if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
