@@ -96,11 +96,12 @@ export default function SocialAccountsManage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        {(["facebook", "threads"] as const).map(platform => {
+        {(["facebook", "instagram", "threads"] as const).map(platform => {
           const info = PLATFORM_INFO[platform];
           const Icon = info.icon;
-          const linked = accounts.filter(a => a.platform === platform || (platform === "facebook" && a.platform === "instagram"));
-          const isConnecting = connecting === platform;
+          const linked = accounts.filter(a => a.platform === platform);
+          const isConnecting = connecting === (platform === "instagram" ? "facebook" : platform);
+          const isAutoLinked = platform === "instagram";
 
           return (
             <div key={platform} className={cn("rounded-2xl border p-6", info.bgColor, "border-transparent")}>
@@ -111,7 +112,9 @@ export default function SocialAccountsManage() {
                 <div>
                   <h3 className="font-bold">{info.label}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {platform === "facebook" ? "含 Instagram 商業帳號" : "獨立授權"}
+                    {platform === "facebook" && "粉絲專頁授權"}
+                    {platform === "instagram" && "透過 Facebook 自動連結"}
+                    {platform === "threads" && "獨立授權"}
                   </p>
                 </div>
               </div>
@@ -120,14 +123,13 @@ export default function SocialAccountsManage() {
                 <div className="space-y-2 mb-4">
                   {linked.map(account => {
                     const tokenStatus = getTokenStatus(account.tokenExpiresAt);
-                    const pInfo = PLATFORM_INFO[account.platform] || info;
                     return (
                       <div key={account.id} className="bg-white rounded-xl p-3 flex items-center gap-3">
                         {account.profileImageUrl ? (
                           <img src={account.profileImageUrl} alt="" className="w-8 h-8 rounded-full" />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                            <pInfo.icon size={14} className={pInfo.color} />
+                            <Icon size={14} className={info.color} />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
@@ -147,30 +149,41 @@ export default function SocialAccountsManage() {
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground mb-4">尚未連結</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {isAutoLinked ? "連結 Facebook 後自動偵測" : "尚未連結"}
+                </p>
               )}
 
-              <button
-                onClick={() => connectPlatform(platform)}
-                disabled={isConnecting}
-                className={cn(
-                  "w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all",
-                  "bg-white shadow-sm hover:shadow-md",
-                  isConnecting && "opacity-50 cursor-wait"
-                )}
-              >
-                <ExternalLink size={16} />
-                {isConnecting ? "連結中..." : linked.length > 0 ? "重新授權" : "連結帳號"}
-              </button>
+              {isAutoLinked ? (
+                <button
+                  onClick={() => connectPlatform("facebook")}
+                  disabled={isConnecting}
+                  className={cn(
+                    "w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all",
+                    "bg-white shadow-sm hover:shadow-md",
+                    isConnecting && "opacity-50 cursor-wait"
+                  )}
+                >
+                  <Facebook size={16} className="text-blue-600" />
+                  {isConnecting ? "連結中..." : linked.length > 0 ? "重新授權 Facebook" : "透過 Facebook 連結"}
+                </button>
+              ) : (
+                <button
+                  onClick={() => connectPlatform(platform)}
+                  disabled={isConnecting}
+                  className={cn(
+                    "w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all",
+                    "bg-white shadow-sm hover:shadow-md",
+                    isConnecting && "opacity-50 cursor-wait"
+                  )}
+                >
+                  <ExternalLink size={16} />
+                  {isConnecting ? "連結中..." : linked.length > 0 ? "重新授權" : "連結帳號"}
+                </button>
+              )}
             </div>
           );
         })}
-
-        <div className="rounded-2xl border border-dashed border-muted-foreground/30 p-6 flex flex-col items-center justify-center text-center">
-          <MessageCircle size={32} className="text-muted-foreground/40 mb-3" />
-          <p className="font-medium text-muted-foreground">更多平台</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">X (Twitter) 等平台即將支援</p>
-        </div>
       </div>
 
       {accounts.length > 0 && (
