@@ -107,6 +107,9 @@ Meta (Facebook/Instagram) advertising guide for the carnival. Contains 3 ad copy
 - `POST /api/admin/social-posts/preview` - Preview post content per platform
 - `GET /api/admin/automation-settings` - List automation settings
 - `PUT /api/admin/automation-settings/:key` - Update automation setting
+- `POST /api/storage/uploads/request-url` - Request presigned upload URL (admin auth required)
+- `GET /api/storage/objects/*` - Serve uploaded objects (public, for social media image access)
+- `GET /api/storage/public-objects/*` - Serve public assets from Object Storage tool pane
 
 ### Social Media Integration
 - **Facebook**: OAuth → pages_manage_posts, pages_read_engagement, pages_show_list, business_management
@@ -147,6 +150,9 @@ Generated React Query hooks and fetch client.
 
 ### `lib/replit-auth-web` (`@workspace/replit-auth-web`)
 Admin auth client providing AuthProvider context and useAuth() hook for login/logout/session state.
+
+### `lib/object-storage-web` (`@workspace/object-storage-web`)
+Uppy v5-based file upload components (ObjectUploader, useUpload hook) for uploading files to Replit Object Storage via presigned URLs.
 
 ### `scripts` (`@workspace/scripts`)
 Utility scripts package.

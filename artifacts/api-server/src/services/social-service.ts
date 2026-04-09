@@ -346,7 +346,13 @@ async function getAutoHashtags(): Promise<string | null> {
 export async function publishPost(postId: string) {
   const [post] = await db.select().from(socialPosts).where(eq(socialPosts.id, postId)).limit(1);
   if (!post) throw new Error("Post not found");
-  const imageUrl = post.imageUrls?.length ? post.imageUrls[0] : undefined;
+  let imageUrl = post.imageUrls?.length ? post.imageUrls[0] : undefined;
+  if (imageUrl && imageUrl.startsWith("/")) {
+    const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0];
+    if (domain) {
+      imageUrl = `https://${domain}${imageUrl}`;
+    }
+  }
   const results: Record<string, any> = {};
   const errors: string[] = [];
 

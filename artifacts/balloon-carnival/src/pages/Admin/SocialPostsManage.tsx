@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
-import { Facebook, Instagram, MessageCircle, Send, Clock, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, CalendarDays, List, Eye } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Facebook, Instagram, MessageCircle, Send, Clock, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, CalendarDays, List, Eye, Upload, X, Link, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUpload } from "@workspace/object-storage-web";
 
 interface SocialPost {
   id: string;
@@ -45,6 +46,37 @@ export default function SocialPostsManage() {
   const [submitting, setSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<Record<string, any> | null>(null);
+  const [imageMode, setImageMode] = useState<"upload" | "url">("upload");
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { uploadFile, isUploading, progress, error: uploadError } = useUpload({
+    basePath: "/api/storage",
+    credentials: "include",
+    onSuccess: (response) => {
+      const servingUrl = `/api/storage${response.objectPath}`;
+      setImageUrl(servingUrl);
+    },
+  });
+
+  const handleFileSelect = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      alert("請選擇圖片檔案");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert("圖片大小不可超過 10MB");
+      return;
+    }
+    await uploadFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelect(file);
+  };
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -326,20 +358,65 @@ export default function SocialPostsManage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  圖片網址
-                  {platforms.includes("instagram") && <span className="text-red-500 ml-1">（Instagram 必填）</span>}
-                </label>
-                <input
-                  value={imageUrl}
-                  onChange={e => setImageUrl(e.target.value)}
-                  className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                  placeholder="https://example.com/image.jpg"
-                />
-                {imageUrl && (
-                  <div className="mt-2">
-                    <img src={imageUrl} alt="preview" className="w-32 h-32 object-cover rounded-lg border" onError={e => (e.currentTarget.style.display = "none")} />
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium">
+                    圖片
+                    {platforms.includes("instagram") && <span className="text-red-500 ml-1">（Instagram 必填）</span>}
+                  </label>
+                  <div className="flex bg-muted rounded-lg p-0.5">
+                    <button type="button" onClick={() => setImageMode("upload")} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1", imageMode === "upload" ? "bg-white shadow-sm" : "text-muted-foreground")}>
+                      <Upload size={12} /> 上傳
+                    </button>
+                    <button type="button" onClick={() => setImageMode("url")} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1", imageMode === "url" ? "bg-white shadow-sm" : "text-muted-foreground")}>
+                      <Link size={12} /> 網址
+                    </button>
                   </div>
+                </div>
+
+                {imageUrl ? (
+                  <div className="relative inline-block">
+                    <img src={imageUrl} alt="preview" className="w-40 h-40 object-cover rounded-xl border" onError={e => (e.currentTarget.style.display = "none")} />
+                    <button type="button" onClick={() => setImageUrl("")} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : imageMode === "upload" ? (
+                  <div
+                    onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={cn(
+                      "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all",
+                      dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50",
+                      isUploading && "pointer-events-none opacity-70"
+                    )}
+                  >
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); e.target.value = ""; }} />
+                    {isUploading ? (
+                      <div className="space-y-2">
+                        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+                        <p className="text-sm text-muted-foreground">上傳中... {progress}%</p>
+                        <div className="w-full bg-muted rounded-full h-1.5 max-w-[200px] mx-auto">
+                          <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <Image size={32} className="mx-auto text-muted-foreground/40 mb-2" />
+                        <p className="text-sm text-muted-foreground">拖放圖片或點擊選擇</p>
+                        <p className="text-xs text-muted-foreground/60 mt-1">支援 JPG、PNG、WebP，最大 10MB</p>
+                      </>
+                    )}
+                    {uploadError && <p className="text-xs text-red-500 mt-2">{uploadError.message}</p>}
+                  </div>
+                ) : (
+                  <input
+                    value={imageUrl}
+                    onChange={e => setImageUrl(e.target.value)}
+                    className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    placeholder="https://example.com/image.jpg"
+                  />
                 )}
               </div>
 

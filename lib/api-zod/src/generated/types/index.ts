@@ -28,3 +28,5 @@ export * from "./newsArticle";
 export * from "./registration";
 export * from "./sponsor";
 export * from "./sponsorTier";
+export * from "./uploadUrlRequest";
+export * from "./uploadUrlResponse";

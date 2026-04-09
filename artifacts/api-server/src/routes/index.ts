@@ -8,6 +8,7 @@ import sponsorsRouter from "./sponsors";
 import exhibitionsRouter from "./exhibitions";
 import adminRouter from "./admin";
 import socialMarketingRouter from "./social-marketing";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(sponsorsRouter);
 router.use(exhibitionsRouter);
 router.use(adminRouter);
 router.use(socialMarketingRouter);
+router.use(storageRouter);
 
 export default router;

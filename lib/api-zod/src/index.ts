@@ -21,4 +21,6 @@ export type {
   Registration,
   Sponsor,
   SponsorTier,
+  UploadUrlRequest,
+  UploadUrlResponse,
 } from "./generated/types";
