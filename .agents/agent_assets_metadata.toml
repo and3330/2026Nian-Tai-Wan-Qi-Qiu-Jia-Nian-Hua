@@ -12,6 +12,18 @@ uri = "file://attached_assets/generated_images/balloon_carnival_post_urgency.png
 type = "image"
 title = "balloon carnival urgency post"
 
+[[generated]]
+id = "KQRDMsC5zwf3jFHSXjbFu"
+uri = "file://artifacts/mockup-sandbox/src/components/mockups/bg_family.png"
+type = "image"
+title = "clean balloon carnival background"
+
+[[generated]]
+id = "VIaF_nMX90OPwqqBOR5fZ"
+uri = "file://artifacts/mockup-sandbox/src/components/mockups/bg_urgency.png"
+type = "image"
+title = "clean balloon fashion show background"
+
 [[outputs]]
 id = "YjHQf7qyFzJgxvs7y86tx"
 uri = "file://lib/docs/Meta廣告文案與投放教學指南.md"
@@ -35,3 +47,15 @@ id = "Ct2kvPgd1PP4_U5dat-Eo"
 uri = "file://attached_assets/generated_images/balloon_carnival_post_urgency.png"
 type = "image"
 title = "社群貼文圖 2：限量緊迫風（氣球禮服走秀）"
+
+[[outputs]]
+id = "DIlvEhJcHw26rwcu2g3qy"
+uri = "file://attached_assets/generated_images/social_post_family_final.jpg"
+type = "image"
+title = "社群貼文圖 1：溫馨家庭風"
+
+[[outputs]]
+id = "IsI7BpKnP_mco7uythmjX"
+uri = "file://attached_assets/generated_images/social_post_urgency_final.jpg"
+type = "image"
+title = "社群貼文圖 2：限量緊迫風"
