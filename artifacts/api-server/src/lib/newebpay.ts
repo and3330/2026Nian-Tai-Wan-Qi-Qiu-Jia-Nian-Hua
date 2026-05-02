@@ -1,9 +1,24 @@
 import crypto from "crypto";
 
-const MERCHANT_ID = "MS149014346";
-const HASH_KEY = "Yb4VoFickhroXrSS1lJMEgXo9JrKquGz";
-const HASH_IV = "dHU1ERbBYNJswxdt";
-const MPG_URL = "https://ccore.newebpay.com/MPG/mpg_gateway";
+// Default values are NewebPay's public TEST/staging credentials, used only
+// when no environment overrides are provided. Production deployments MUST
+// set NEWEBPAY_MERCHANT_ID, NEWEBPAY_HASH_KEY, NEWEBPAY_HASH_IV, and
+// (optionally) NEWEBPAY_MPG_URL to point at https://core.newebpay.com.
+const NEWEBPAY_TEST_DEFAULTS = {
+  merchantId: "MS149014346",
+  hashKey: "Yb4VoFickhroXrSS1lJMEgXo9JrKquGz",
+  hashIV: "dHU1ERbBYNJswxdt",
+  mpgUrl: "https://ccore.newebpay.com/MPG/mpg_gateway",
+};
+
+function getConfig() {
+  return {
+    merchantId: process.env.NEWEBPAY_MERCHANT_ID || NEWEBPAY_TEST_DEFAULTS.merchantId,
+    hashKey: process.env.NEWEBPAY_HASH_KEY || NEWEBPAY_TEST_DEFAULTS.hashKey,
+    hashIV: process.env.NEWEBPAY_HASH_IV || NEWEBPAY_TEST_DEFAULTS.hashIV,
+    mpgUrl: process.env.NEWEBPAY_MPG_URL || NEWEBPAY_TEST_DEFAULTS.mpgUrl,
+  };
+}
 
 function aesEncrypt(data: string, key: string, iv: string): string {
   const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
@@ -43,8 +58,9 @@ export function createNewebPayOrder(input: NewebPayOrderInput): {
   apiUrl: string;
   params: Record<string, string>;
 } {
+  const cfg = getConfig();
   const tradeInfo: Record<string, string | number> = {
-    MerchantID: MERCHANT_ID,
+    MerchantID: cfg.merchantId,
     RespondType: "JSON",
     TimeStamp: Math.floor(Date.now() / 1000).toString(),
     Version: "2.3",
@@ -61,13 +77,13 @@ export function createNewebPayOrder(input: NewebPayOrderInput): {
   };
 
   const tradeInfoStr = buildQueryString(tradeInfo);
-  const tradeInfoEncrypted = aesEncrypt(tradeInfoStr, HASH_KEY, HASH_IV);
-  const tradeSha = sha256Hash(`HashKey=${HASH_KEY}&${tradeInfoEncrypted}&HashIV=${HASH_IV}`);
+  const tradeInfoEncrypted = aesEncrypt(tradeInfoStr, cfg.hashKey, cfg.hashIV);
+  const tradeSha = sha256Hash(`HashKey=${cfg.hashKey}&${tradeInfoEncrypted}&HashIV=${cfg.hashIV}`);
 
   return {
-    apiUrl: MPG_URL,
+    apiUrl: cfg.mpgUrl,
     params: {
-      MerchantID: MERCHANT_ID,
+      MerchantID: cfg.merchantId,
       TradeInfo: tradeInfoEncrypted,
       TradeSha: tradeSha,
       Version: "2.3",
@@ -89,13 +105,14 @@ export function verifyNewebPayCallback(body: Record<string, string>): NewebPayCa
     if (!body.TradeInfo || !body.TradeSha) {
       return { valid: false, orderNo: "", tradeNo: "", paid: false, amount: null, rawData: null };
     }
-    const tradeSha = sha256Hash(`HashKey=${HASH_KEY}&${body.TradeInfo}&HashIV=${HASH_IV}`);
+    const cfg = getConfig();
+    const tradeSha = sha256Hash(`HashKey=${cfg.hashKey}&${body.TradeInfo}&HashIV=${cfg.hashIV}`);
     const valid = tradeSha === body.TradeSha;
     if (!valid) {
       return { valid: false, orderNo: "", tradeNo: "", paid: false, amount: null, rawData: null };
     }
 
-    const decrypted = aesDecrypt(body.TradeInfo, HASH_KEY, HASH_IV);
+    const decrypted = aesDecrypt(body.TradeInfo, cfg.hashKey, cfg.hashIV);
     let data: any;
     try {
       data = JSON.parse(decrypted);

@@ -70,7 +70,7 @@ Meta (Facebook/Instagram) advertising guide for the carnival. Contains 3 ad copy
 ### Payment & Invoice
 - **Payment methods** (3): NewebPay (信用卡/ATM via 藍新), Stripe Checkout (海外信用卡), 銀行轉帳 (匯款後人工確認).
 - **Flow**: registration → `PaymentMethodModal` → `/api/payments/initiate` → provider redirect/form post or bank info screen → `/payment/result` polling page.
-- **NewebPay notify** (`/api/payments/newebpay/notify`) verifies AES+SHA256, marks paid, then auto-issues ECPay invoice.
+- **NewebPay notify** (`/api/payments/newebpay/notify`) verifies AES+SHA256, marks paid, then auto-issues ECPay invoice. Test creds built-in; production override via `NEWEBPAY_MERCHANT_ID/HASH_KEY/HASH_IV/MPG_URL` (set MPG_URL to `https://core.newebpay.com/MPG/mpg_gateway`).
 - **Stripe webhook** (`/api/stripe/webhook`) mounted BEFORE `express.json` with raw body parser; `checkout.session.completed` marks paid + auto-issues invoice. Best-effort `confirmStripePayment` from result page covers webhook delays.
 - **Bank transfer** stays in `awaiting_transfer` until admin marks paid (no auto-issuance until paid).
 - **ECPay 電子發票 (B2C v3.0)**: `lib/ecpay-invoice.ts` — AES-128-CBC + URLencode + Base64 against `https://einvoice-stage.ecpay.com.tw` (test creds built-in; override via `ECPAY_INVOICE_MERCHANT_ID/HASH_KEY/HASH_IV`). Supports 個人 (手機條碼/自然人憑證/綠界載具/紙本), 公司 (統編), 捐贈 (愛心碼). Auto-issued in `markPaymentPaid`; lifecycle pending→issued/failed→voided stored in `invoices` table.
