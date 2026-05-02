@@ -329,7 +329,7 @@ async function markPaymentPaid(
         status: "paid",
         paidAt: now,
         providerTradeNo: providerTradeNo || current.providerTradeNo,
-        rawResult: rawResult as any,
+        rawResult: (rawResult ?? null) as Record<string, unknown> | null,
       })
       .where(eq(paymentTransactionsTable.paymentRef, paymentRef));
     await tx
@@ -399,7 +399,7 @@ async function issueInvoiceForPayment(paymentRef: string): Promise<void> {
         invoiceNumber: result.invoiceNumber || null,
         invoiceDate: result.invoiceDate || null,
         randomNumber: result.randomNumber || null,
-        rawResponse: (result.rawResponse as any) || null,
+        rawResponse: (result.rawResponse ?? null) as Record<string, unknown> | null,
         issuedAt: new Date(),
         errorMessage: null,
       })
@@ -414,7 +414,7 @@ async function issueInvoiceForPayment(paymentRef: string): Promise<void> {
       .set({
         status: "failed",
         errorMessage: result.message || "未知錯誤",
-        rawResponse: (result.rawResponse as any) || null,
+        rawResponse: (result.rawResponse ?? null) as Record<string, unknown> | null,
       })
       .where(eq(invoicesTable.id, invoice.id));
     logger.error(
