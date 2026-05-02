@@ -161,14 +161,13 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-          <Link href="/carnival#register" className="group glass-card rounded-3xl p-8 hover-lift border-2 border-transparent hover:border-primary/40 transition-all relative overflow-hidden block">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -z-10"></div>
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto pt-4">
+          <Link href="/carnival#register" className="group glass-card rounded-3xl p-8 hover-lift border-2 border-transparent hover:border-primary/40 transition-all relative block">
+            <div className="flex items-start justify-between mb-4 gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
                 <Ticket size={28} className="text-primary" />
               </div>
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-600">彈性選擇</span>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">彈性選擇</span>
             </div>
             <h3 className="text-2xl font-bold mb-1">單日票</h3>
             <p className="text-sm text-muted-foreground mb-5">7/25（六）或 7/26（日）擇一日入場</p>
@@ -185,20 +184,19 @@ export default function HomePage() {
             </span>
           </Link>
 
-          <Link href="/carnival#register" className="group glass-card rounded-3xl p-8 hover-lift border-2 border-primary shadow-xl shadow-primary/10 transition-all relative overflow-hidden block">
-            <div className="absolute -top-3 left-8 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md">
+          <Link href="/carnival#register" className="group glass-card rounded-3xl p-8 pt-10 hover-lift border-2 border-primary shadow-xl shadow-primary/10 transition-all relative block">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap">
               最划算 ・ 省 100 元
             </div>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 rounded-bl-full -z-10"></div>
-            <div className="flex items-start justify-between mb-4 mt-2">
-              <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center">
+            <div className="flex items-start justify-between mb-4 gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center shrink-0">
                 <Star size={28} className="text-secondary" />
               </div>
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-secondary/10 text-secondary">人氣推薦</span>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-secondary/15 text-secondary whitespace-nowrap">人氣推薦</span>
             </div>
             <h3 className="text-2xl font-bold mb-1">兩日套票</h3>
             <p className="text-sm text-muted-foreground mb-5">7/25 + 7/26 兩日完整體驗</p>
-            <div className="flex items-baseline gap-1 mb-6">
+            <div className="flex items-baseline gap-1 mb-6 flex-wrap">
               <span className="text-5xl font-bold text-secondary">300</span>
               <span className="text-lg text-muted-foreground">元 / 人</span>
               <span className="text-sm text-muted-foreground line-through ml-2">原價 400</span>
