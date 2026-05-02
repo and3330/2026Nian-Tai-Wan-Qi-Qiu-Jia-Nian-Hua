@@ -113,18 +113,18 @@ export function verifyNewebPayCallback(body: Record<string, string>): NewebPayCa
     }
 
     const decrypted = aesDecrypt(body.TradeInfo, cfg.hashKey, cfg.hashIV);
-    let data: any;
+    let data: { Status?: string; Result?: Record<string, unknown> };
     try {
       data = JSON.parse(decrypted);
     } catch {
       const params = new URLSearchParams(decrypted);
       data = {
-        Status: params.get("Status"),
+        Status: params.get("Status") ?? undefined,
         Result: Object.fromEntries(params.entries()),
       };
     }
 
-    const result = data.Result || {};
+    const result: Record<string, unknown> = data.Result ?? {};
     const amtRaw = result.Amt;
     const amount = amtRaw == null ? null : parseInt(String(amtRaw), 10);
     return {

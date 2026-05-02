@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import express from "express";
 import { eq, inArray, sql, desc } from "drizzle-orm";
 import { db, registrationsTable, paymentTransactionsTable, invoicesTable } from "@workspace/db";
@@ -424,7 +424,7 @@ async function issueInvoiceForPayment(paymentRef: string): Promise<void> {
   }
 }
 
-function requireAdmin(req: any, res: any): boolean {
+function requireAdmin(req: Request, res: Response): boolean {
   if (typeof req.isAuthenticated !== "function" || !req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return false;
