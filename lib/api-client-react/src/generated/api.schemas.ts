@@ -73,6 +73,16 @@ export interface CreateRegistrationBody {
    */
   ticketCount: number;
   eventDate: string;
+  /**
+   * One of single, combo, four-day-pass, workshop, competition
+   * @nullable
+   */
+  ticketType?: string | null;
+  /**
+   * Total amount in TWD; verified server-side against the price book.
+   * @nullable
+   */
+  amount?: number | null;
 }
 
 export interface Registration {
@@ -81,7 +91,82 @@ export interface Registration {
   phone: string;
   ticketCount: number;
   eventDate: string;
+  /** @nullable */
+  ticketType?: string | null;
+  /** @nullable */
+  amount?: number | null;
+  /** @nullable */
+  paymentMethod?: string | null;
+  paymentStatus: string;
+  /** @nullable */
+  paymentRef?: string | null;
   createdAt: string;
+}
+
+export type InitiatePaymentBodyMethod =
+  (typeof InitiatePaymentBodyMethod)[keyof typeof InitiatePaymentBodyMethod];
+
+export const InitiatePaymentBodyMethod = {
+  newebpay: "newebpay",
+  stripe: "stripe",
+  bank: "bank",
+} as const;
+
+export interface InitiatePaymentBody {
+  /** @minItems 1 */
+  registrationIds: number[];
+  method: InitiatePaymentBodyMethod;
+  email?: string;
+}
+
+export type InitiatePaymentResponseType =
+  (typeof InitiatePaymentResponseType)[keyof typeof InitiatePaymentResponseType];
+
+export const InitiatePaymentResponseType = {
+  form_redirect: "form_redirect",
+  redirect: "redirect",
+  bank_info: "bank_info",
+} as const;
+
+export type InitiatePaymentResponseParams = { [key: string]: string };
+
+export type InitiatePaymentResponseBankInfo = {
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  memo?: string;
+};
+
+export interface InitiatePaymentResponse {
+  type: InitiatePaymentResponseType;
+  paymentRef: string;
+  amount: number;
+  apiUrl?: string;
+  params?: InitiatePaymentResponseParams;
+  /** @nullable */
+  url?: string | null;
+  bankInfo?: InitiatePaymentResponseBankInfo;
+}
+
+/**
+ * @nullable
+ */
+export type PaymentStatusBankInfo = {
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+} | null;
+
+export interface PaymentStatus {
+  paymentRef: string;
+  provider: string;
+  amount: number;
+  status: string;
+  itemName: string;
+  /** @nullable */
+  paidAt?: string | null;
+  /** @nullable */
+  bankInfo?: PaymentStatusBankInfo;
 }
 
 export interface DateAvailability {
@@ -174,6 +259,14 @@ export type HandleBrowserLoginCallbackParams = {
   code?: string;
   state?: string;
   iss?: string;
+};
+
+export type ConfirmStripePaymentBody = {
+  paymentRef: string;
+};
+
+export type ConfirmStripePayment200 = {
+  status?: string;
 };
 
 export type AdminListRegistrationsParams = {

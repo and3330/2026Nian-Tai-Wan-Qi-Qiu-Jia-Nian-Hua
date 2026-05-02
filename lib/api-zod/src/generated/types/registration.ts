@@ -12,5 +12,14 @@ export interface Registration {
   phone: string;
   ticketCount: number;
   eventDate: Date;
+  /** @nullable */
+  ticketType?: string | null;
+  /** @nullable */
+  amount?: number | null;
+  /** @nullable */
+  paymentMethod?: string | null;
+  paymentStatus: string;
+  /** @nullable */
+  paymentRef?: string | null;
   createdAt: Date;
 }

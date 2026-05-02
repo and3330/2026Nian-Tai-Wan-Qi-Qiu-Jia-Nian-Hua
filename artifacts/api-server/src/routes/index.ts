@@ -9,6 +9,7 @@ import exhibitionsRouter from "./exhibitions";
 import adminRouter from "./admin";
 import socialMarketingRouter from "./social-marketing";
 import storageRouter from "./storage";
+import paymentsRouter from "./payments";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(exhibitionsRouter);
 router.use(adminRouter);
 router.use(socialMarketingRouter);
 router.use(storageRouter);
+router.use(paymentsRouter);
 
 export default router;

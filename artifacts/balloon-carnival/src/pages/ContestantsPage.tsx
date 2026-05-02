@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useListContestants, useCreateRegistration } from "@workspace/api-client-react";
+import { PaymentMethodModal } from "@/components/PaymentMethodModal";
 import { Users, Handshake, Clock, Heart, MessageCircle, Lightbulb, BookOpen, ArrowRight, Sparkles, ChevronDown, Trophy, Palette, Zap, Shirt, Flower2, Eye, Lock, Ticket, GraduationCap, Phone, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
@@ -222,28 +223,39 @@ export default function ContestantsPage() {
   const [proTicketType, setProTicketType] = useState("");
   const [proFormData, setProFormData] = useState({ parentName: "", phone: "" });
   const [proSuccess, setProSuccess] = useState(false);
+  const [proPendingPayment, setProPendingPayment] = useState<{
+    registrationIds: number[];
+    amount: number;
+    itemLabel: string;
+  } | null>(null);
+
+  const ticketCatalog: Record<string, { eventDate: string; price: number; ticketType: string; label: string }> = {
+    "四天通行票": { eventDate: "2026-07-23", price: 12000, ticketType: "four-day-pass", label: "四天通行票" },
+    "研習會通行票": { eventDate: "2026-07-23", price: 8000, ticketType: "workshop", label: "研習會通行票" },
+    "交流比賽通行票": { eventDate: "2026-07-24", price: 5000, ticketType: "competition", label: "交流比賽通行票" },
+  };
 
   const handleProSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!proTicketType) { alert("請選擇票種"); return; }
-    const ticketDateMap: Record<string, string> = {
-      "四天通行票": "2026-07-23",
-      "研習會通行票": "2026-07-23",
-      "交流比賽通行票": "2026-07-24",
-    };
-    const eventDate = ticketDateMap[proTicketType] || "2026-07-23";
+    const ticket = ticketCatalog[proTicketType] || ticketCatalog["四天通行票"];
     createMutation.mutate({
       data: {
         parentName: proFormData.parentName,
         phone: proFormData.phone,
         ticketCount: 1,
-        eventDate,
+        eventDate: ticket.eventDate,
+        ticketType: ticket.ticketType,
+        amount: ticket.price,
       }
     }, {
-      onSuccess: () => {
-        setProSuccess(true);
+      onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setProPendingPayment({
+          registrationIds: [data.id],
+          amount: ticket.price,
+          itemLabel: ticket.label,
+        });
       },
       onError: () => {
         alert("報名失敗，請重試或聯絡客服");
@@ -253,6 +265,22 @@ export default function ContestantsPage() {
 
   return (
     <div className="flex flex-col">
+      {proPendingPayment && (
+        <PaymentMethodModal
+          open
+          registrationIds={proPendingPayment.registrationIds}
+          amount={proPendingPayment.amount}
+          itemLabel={proPendingPayment.itemLabel}
+          payerName={proFormData.parentName}
+          payerPhone={proFormData.phone}
+          onClose={() => setProPendingPayment(null)}
+          onCompleted={() => {
+            setProPendingPayment(null);
+            setProSuccess(true);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
+      )}
       <section className="relative py-20 lg:py-28 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-amber-50/80 via-background to-background"></div>
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">

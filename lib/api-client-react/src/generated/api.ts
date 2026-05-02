@@ -21,6 +21,8 @@ import type {
   AdminListRegistrationsParams,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
+  ConfirmStripePayment200,
+  ConfirmStripePaymentBody,
   Contestant,
   CreateContestantBody,
   CreateNewsBody,
@@ -30,10 +32,13 @@ import type {
   Exhibition,
   HandleBrowserLoginCallbackParams,
   HealthStatus,
+  InitiatePaymentBody,
+  InitiatePaymentResponse,
   LogoutSuccess,
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
   NewsArticle,
+  PaymentStatus,
   Registration,
   Sponsor,
   UploadUrlRequest,
@@ -885,6 +890,266 @@ export function useGetRegistrationAvailability<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Initiate a payment for one or more registrations
+ */
+export const getInitiatePaymentUrl = () => {
+  return `/api/payments/initiate`;
+};
+
+export const initiatePayment = async (
+  initiatePaymentBody: InitiatePaymentBody,
+  options?: RequestInit,
+): Promise<InitiatePaymentResponse> => {
+  return customFetch<InitiatePaymentResponse>(getInitiatePaymentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(initiatePaymentBody),
+  });
+};
+
+export const getInitiatePaymentMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initiatePayment>>,
+    TError,
+    { data: BodyType<InitiatePaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof initiatePayment>>,
+  TError,
+  { data: BodyType<InitiatePaymentBody> },
+  TContext
+> => {
+  const mutationKey = ["initiatePayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof initiatePayment>>,
+    { data: BodyType<InitiatePaymentBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return initiatePayment(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InitiatePaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof initiatePayment>>
+>;
+export type InitiatePaymentMutationBody = BodyType<InitiatePaymentBody>;
+export type InitiatePaymentMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Initiate a payment for one or more registrations
+ */
+export const useInitiatePayment = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initiatePayment>>,
+    TError,
+    { data: BodyType<InitiatePaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof initiatePayment>>,
+  TError,
+  { data: BodyType<InitiatePaymentBody> },
+  TContext
+> => {
+  return useMutation(getInitiatePaymentMutationOptions(options));
+};
+
+/**
+ * @summary Get the current status of a payment
+ */
+export const getGetPaymentStatusUrl = (ref: string) => {
+  return `/api/payments/status/${ref}`;
+};
+
+export const getPaymentStatus = async (
+  ref: string,
+  options?: RequestInit,
+): Promise<PaymentStatus> => {
+  return customFetch<PaymentStatus>(getGetPaymentStatusUrl(ref), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPaymentStatusQueryKey = (ref: string) => {
+  return [`/api/payments/status/${ref}`] as const;
+};
+
+export const getGetPaymentStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPaymentStatus>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  ref: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPaymentStatus>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPaymentStatusQueryKey(ref);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPaymentStatus>>
+  > = ({ signal }) => getPaymentStatus(ref, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!ref,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPaymentStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPaymentStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPaymentStatus>>
+>;
+export type GetPaymentStatusQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get the current status of a payment
+ */
+
+export function useGetPaymentStatus<
+  TData = Awaited<ReturnType<typeof getPaymentStatus>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  ref: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPaymentStatus>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPaymentStatusQueryOptions(ref, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Best-effort poll of a Stripe Checkout session to mark payment paid
+ */
+export const getConfirmStripePaymentUrl = () => {
+  return `/api/payments/stripe/confirm`;
+};
+
+export const confirmStripePayment = async (
+  confirmStripePaymentBody: ConfirmStripePaymentBody,
+  options?: RequestInit,
+): Promise<ConfirmStripePayment200> => {
+  return customFetch<ConfirmStripePayment200>(getConfirmStripePaymentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(confirmStripePaymentBody),
+  });
+};
+
+export const getConfirmStripePaymentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmStripePayment>>,
+    TError,
+    { data: BodyType<ConfirmStripePaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmStripePayment>>,
+  TError,
+  { data: BodyType<ConfirmStripePaymentBody> },
+  TContext
+> => {
+  const mutationKey = ["confirmStripePayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmStripePayment>>,
+    { data: BodyType<ConfirmStripePaymentBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return confirmStripePayment(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmStripePaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmStripePayment>>
+>;
+export type ConfirmStripePaymentMutationBody =
+  BodyType<ConfirmStripePaymentBody>;
+export type ConfirmStripePaymentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Best-effort poll of a Stripe Checkout session to mark payment paid
+ */
+export const useConfirmStripePayment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmStripePayment>>,
+    TError,
+    { data: BodyType<ConfirmStripePaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmStripePayment>>,
+  TError,
+  { data: BodyType<ConfirmStripePaymentBody> },
+  TContext
+> => {
+  return useMutation(getConfirmStripePaymentMutationOptions(options));
+};
 
 /**
  * @summary List news articles

@@ -25,6 +25,8 @@ tags:
     description: Exhibition zones
   - name: Storage
     description: Object storage upload and serving endpoints.
+  - name: payments
+    description: Payment initiation and status
 
 paths:
   /healthz:
@@ -210,6 +212,82 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/DateAvailability"
+
+  /payments/initiate:
+    post:
+      operationId: initiatePayment
+      tags: [payments]
+      summary: Initiate a payment for one or more registrations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitiatePaymentBody"
+      responses:
+        "201":
+          description: Payment initialized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InitiatePaymentResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /payments/status/{ref}:
+    get:
+      operationId: getPaymentStatus
+      tags: [payments]
+      summary: Get the current status of a payment
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Payment status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentStatus"
+        "404":
+          description: Payment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /payments/stripe/confirm:
+    post:
+      operationId: confirmStripePayment
+      tags: [payments]
+      summary: Best-effort poll of a Stripe Checkout session to mark payment paid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paymentRef]
+              properties:
+                paymentRef:
+                  type: string
+      responses:
+        "200":
+          description: Confirmation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
 
   /news:
     get:
@@ -726,10 +804,16 @@ components:
         eventDate:
           type: string
           format: date
+        ticketType:
+          type: [string, 'null']
+          description: One of single, combo, four-day-pass, workshop, competition
+        amount:
+          type: [number, 'null']
+          description: Total amount in TWD; verified server-side against the price book.
 
     Registration:
       type: object
-      required: [id, parentName, phone, ticketCount, eventDate, createdAt]
+      required: [id, parentName, phone, ticketCount, eventDate, paymentStatus, createdAt]
       properties:
         id:
           type: number
@@ -742,9 +826,92 @@ components:
         eventDate:
           type: string
           format: date
+        ticketType:
+          type: [string, 'null']
+        amount:
+          type: [number, 'null']
+        paymentMethod:
+          type: [string, 'null']
+        paymentStatus:
+          type: string
+        paymentRef:
+          type: [string, 'null']
         createdAt:
           type: string
           format: date-time
+
+    InitiatePaymentBody:
+      type: object
+      required: [registrationIds, method]
+      properties:
+        registrationIds:
+          type: array
+          items:
+            type: number
+          minItems: 1
+        method:
+          type: string
+          enum: [newebpay, stripe, bank]
+        email:
+          type: string
+
+    InitiatePaymentResponse:
+      type: object
+      required: [type, paymentRef, amount]
+      properties:
+        type:
+          type: string
+          enum: [form_redirect, redirect, bank_info]
+        paymentRef:
+          type: string
+        amount:
+          type: number
+        apiUrl:
+          type: string
+        params:
+          type: object
+          additionalProperties:
+            type: string
+        url:
+          type: [string, 'null']
+        bankInfo:
+          type: object
+          properties:
+            bankName:
+              type: string
+            accountName:
+              type: string
+            accountNumber:
+              type: string
+            memo:
+              type: string
+
+    PaymentStatus:
+      type: object
+      required: [paymentRef, provider, amount, status, itemName]
+      properties:
+        paymentRef:
+          type: string
+        provider:
+          type: string
+        amount:
+          type: number
+        status:
+          type: string
+        itemName:
+          type: string
+        paidAt:
+          type: [string, 'null']
+          format: date-time
+        bankInfo:
+          type: [object, 'null']
+          properties:
+            bankName:
+              type: string
+            accountName:
+              type: string
+            accountNumber:
+              type: string
 
     DateAvailability:
       type: object

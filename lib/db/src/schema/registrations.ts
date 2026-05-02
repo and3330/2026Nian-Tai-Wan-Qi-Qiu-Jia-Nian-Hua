@@ -8,6 +8,11 @@ export const registrationsTable = pgTable("registrations", {
   phone: text("phone").notNull(),
   ticketCount: integer("ticket_count").notNull(),
   eventDate: date("event_date", { mode: "string" }).notNull(),
+  ticketType: text("ticket_type"),
+  amount: integer("amount"),
+  paymentMethod: text("payment_method"),
+  paymentStatus: text("payment_status").notNull().default("unpaid"),
+  paymentRef: text("payment_ref"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

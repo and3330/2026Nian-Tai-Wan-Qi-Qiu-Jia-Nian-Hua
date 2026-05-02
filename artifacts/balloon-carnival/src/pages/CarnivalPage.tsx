@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, Cpu, Baby, Sparkles, Eye, Calendar, Clock, MapPin, Ticket, Star, Users, Phone, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useGetRegistrationAvailability, useCreateRegistration } from "@workspace/api-client-react";
+import { useGetRegistrationAvailability, useCreateRegistration, type Registration } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetRegistrationAvailabilityQueryKey } from "@workspace/api-client-react";
+import { PaymentMethodModal } from "@/components/PaymentMethodModal";
 
 type VisitorTicketType = "single" | "combo" | "";
 
@@ -78,6 +79,11 @@ export default function CarnivalPage() {
     eventDate: ""
   });
   const [success, setSuccess] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<{
+    registrationIds: number[];
+    amount: number;
+    itemLabel: string;
+  } | null>(null);
 
   const publicDates = availability?.filter(a => {
     const d = new Date(a.date);
@@ -92,24 +98,41 @@ export default function CarnivalPage() {
     if (!visitorTicketType) { alert("請選擇票種"); return; }
     if (visitorTicketType === "single" && !formData.eventDate) { alert("請選擇入場日期"); return; }
 
-    const submitOne = (eventDate: string) =>
-      new Promise<void>((resolve, reject) => {
-        createMutation.mutate({ data: { ...formData, eventDate } }, {
-          onSuccess: () => resolve(),
-          onError: (err: unknown) => reject(err),
-        });
+    const submitOne = (eventDate: string, ticketType: string | null, amount: number | null) =>
+      new Promise<Registration>((resolve, reject) => {
+        createMutation.mutate(
+          { data: { ...formData, eventDate, ticketType, amount } },
+          {
+            onSuccess: (data) => resolve(data),
+            onError: (err: unknown) => reject(err),
+          },
+        );
       });
 
     try {
+      const created: Registration[] = [];
+      let totalAmount = 0;
+      let itemLabel = "";
       if (visitorTicketType === "combo") {
-        await submitOne("2026-07-25");
-        await submitOne("2026-07-26");
+        const comboTotal = 300 * formData.ticketCount;
+        const r1 = await submitOne("2026-07-25", "combo", comboTotal);
+        const r2 = await submitOne("2026-07-26", null, null);
+        created.push(r1, r2);
+        totalAmount = comboTotal;
+        itemLabel = `兩日套票 × ${formData.ticketCount}（7/25 + 7/26）`;
       } else {
-        await submitOne(formData.eventDate);
+        const singleTotal = 200 * formData.ticketCount;
+        const r = await submitOne(formData.eventDate, "single", singleTotal);
+        created.push(r);
+        totalAmount = singleTotal;
+        itemLabel = `單日票 × ${formData.ticketCount}（${formData.eventDate}）`;
       }
-      setSuccess(true);
       queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setPendingPayment({
+        registrationIds: created.map((r) => r.id),
+        amount: totalAmount,
+        itemLabel,
+      });
     } catch {
       alert("報名失敗，請重試或聯絡客服");
     }
@@ -117,6 +140,22 @@ export default function CarnivalPage() {
 
   return (
     <div className="flex flex-col">
+      {pendingPayment && (
+        <PaymentMethodModal
+          open
+          registrationIds={pendingPayment.registrationIds}
+          amount={pendingPayment.amount}
+          itemLabel={pendingPayment.itemLabel}
+          payerName={formData.parentName}
+          payerPhone={formData.phone}
+          onClose={() => setPendingPayment(null)}
+          onCompleted={() => {
+            setPendingPayment(null);
+            setSuccess(true);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
+      )}
       <section className="relative py-20 lg:py-28 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-secondary/10 via-background to-background"></div>
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">

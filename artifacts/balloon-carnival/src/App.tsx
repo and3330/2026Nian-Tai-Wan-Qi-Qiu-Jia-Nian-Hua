@@ -14,6 +14,7 @@ import ContestantsPage from "@/pages/ContestantsPage";
 import CarnivalPage from "@/pages/CarnivalPage";
 import SponsorsPage from "@/pages/SponsorsPage";
 import AdGuidePage from "@/pages/AdGuidePage";
+import PaymentResultPage from "@/pages/PaymentResultPage";
 
 // Admin Pages
 import AdminLayout from "@/pages/AdminLayout";
@@ -46,6 +47,7 @@ function Router() {
         <Route path="/conference" component={ContestantsPage} />
         <Route path="/sponsors" component={SponsorsPage} />
         <Route path="/ad-guide" component={AdGuidePage} />
+        <Route path="/payment/result" component={PaymentResultPage} />
 
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route path="/admin">

@@ -109,6 +109,16 @@ export const CreateRegistrationBody = zod.object({
   phone: zod.string().min(1),
   ticketCount: zod.number().min(1).max(createRegistrationBodyTicketCountMax),
   eventDate: zod.date(),
+  ticketType: zod
+    .string()
+    .nullish()
+    .describe("One of single, combo, four-day-pass, workshop, competition"),
+  amount: zod
+    .number()
+    .nullish()
+    .describe(
+      "Total amount in TWD; verified server-side against the price book.",
+    ),
 });
 
 /**
@@ -123,6 +133,50 @@ export const GetRegistrationAvailabilityResponseItem = zod.object({
 export const GetRegistrationAvailabilityResponse = zod.array(
   GetRegistrationAvailabilityResponseItem,
 );
+
+/**
+ * @summary Initiate a payment for one or more registrations
+ */
+
+export const InitiatePaymentBody = zod.object({
+  registrationIds: zod.array(zod.number()).min(1),
+  method: zod.enum(["newebpay", "stripe", "bank"]),
+  email: zod.string().optional(),
+});
+
+/**
+ * @summary Get the current status of a payment
+ */
+export const GetPaymentStatusParams = zod.object({
+  ref: zod.coerce.string(),
+});
+
+export const GetPaymentStatusResponse = zod.object({
+  paymentRef: zod.string(),
+  provider: zod.string(),
+  amount: zod.number(),
+  status: zod.string(),
+  itemName: zod.string(),
+  paidAt: zod.date().nullish(),
+  bankInfo: zod
+    .object({
+      bankName: zod.string().optional(),
+      accountName: zod.string().optional(),
+      accountNumber: zod.string().optional(),
+    })
+    .nullish(),
+});
+
+/**
+ * @summary Best-effort poll of a Stripe Checkout session to mark payment paid
+ */
+export const ConfirmStripePaymentBody = zod.object({
+  paymentRef: zod.string(),
+});
+
+export const ConfirmStripePaymentResponse = zod.object({
+  status: zod.string().optional(),
+});
 
 /**
  * @summary List news articles
@@ -230,6 +284,11 @@ export const AdminListRegistrationsResponseItem = zod.object({
   phone: zod.string(),
   ticketCount: zod.number(),
   eventDate: zod.date(),
+  ticketType: zod.string().nullish(),
+  amount: zod.number().nullish(),
+  paymentMethod: zod.string().nullish(),
+  paymentStatus: zod.string(),
+  paymentRef: zod.string().nullish(),
   createdAt: zod.date(),
 });
 export const AdminListRegistrationsResponse = zod.array(

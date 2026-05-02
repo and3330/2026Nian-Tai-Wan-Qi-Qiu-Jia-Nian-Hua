@@ -17,4 +17,14 @@ export interface CreateRegistrationBody {
    */
   ticketCount: number;
   eventDate: Date;
+  /**
+   * One of single, combo, four-day-pass, workshop, competition
+   * @nullable
+   */
+  ticketType?: string | null;
+  /**
+   * Total amount in TWD; verified server-side against the price book.
+   * @nullable
+   */
+  amount?: number | null;
 }

@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { handleStripeWebhook } from "./routes/payments";
 
 const app: Express = express();
 
@@ -29,6 +30,25 @@ app.use(
 );
 app.use(cors({ credentials: true, origin: true }));
 app.use(cookieParser());
+
+// Stripe webhook MUST receive the raw request body to verify the signature.
+// Register this route BEFORE express.json() / express.urlencoded() parsers.
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const signature = req.headers["stripe-signature"];
+    const sig = Array.isArray(signature) ? signature[0] : signature || "";
+    try {
+      await handleStripeWebhook(req.body as Buffer, sig);
+      res.status(200).json({ received: true });
+    } catch (err) {
+      logger.error({ err }, "[Stripe webhook] error");
+      res.status(400).json({ error: "Webhook handling failed" });
+    }
+  },
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(authMiddleware);

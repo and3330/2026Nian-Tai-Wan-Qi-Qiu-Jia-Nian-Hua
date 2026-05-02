@@ -64,9 +64,42 @@ router.post("/registrations", async (req, res): Promise<void> => {
     return;
   }
 
+  // Optional payment fields — accept ticketType + amount when the client is starting
+  // a paid checkout flow. Server still validates amount against known prices.
+  const rawTicketType = typeof req.body?.ticketType === "string" ? req.body.ticketType.trim() : null;
+  const rawAmount = req.body?.amount;
+  const amountPerOrder = typeof rawAmount === "number" && Number.isFinite(rawAmount) ? Math.round(rawAmount) : null;
+
+  const PRICE_BOOK: Record<string, number> = {
+    single: 200,
+    combo: 300,
+    "four-day-pass": 12000,
+    workshop: 8000,
+    competition: 5000,
+  };
+
+  let amount: number | null = null;
+  if (rawTicketType && PRICE_BOOK[rawTicketType] != null) {
+    amount = PRICE_BOOK[rawTicketType] * ticketCount;
+    if (amountPerOrder != null && amountPerOrder !== amount) {
+      res.status(400).json({ error: "Amount does not match ticket type pricing" });
+      return;
+    }
+  } else if (amountPerOrder != null) {
+    res.status(400).json({ error: "Unknown ticketType for amount" });
+    return;
+  }
+
   const [registration] = await db
     .insert(registrationsTable)
-    .values({ parentName, phone, ticketCount, eventDate })
+    .values({
+      parentName,
+      phone,
+      ticketCount,
+      eventDate,
+      ticketType: rawTicketType,
+      amount,
+    })
     .returning();
 
   res.status(201).json(registration);
