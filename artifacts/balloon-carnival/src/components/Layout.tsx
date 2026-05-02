@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ticket, Tent, MapPin, Info, Users, Crown, LogOut, LayoutDashboard, Menu, X, Shield, PartyPopper, Handshake } from "lucide-react";
+import { Ticket, Tent, MapPin, Info, Crown, LogOut, LayoutDashboard, Menu, X, Shield, Handshake, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
@@ -21,10 +21,9 @@ export function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { href: "/", label: "首頁", icon: Tent },
-    { href: "/carnival", label: "氣球嘉年華", icon: PartyPopper },
-    { href: "/conference", label: "傳奇工匠研討會", icon: Handshake },
+    { href: "/carnival", label: "購票入場", icon: Ticket },
     { href: "/news", label: "最新消息", icon: Info },
-    { href: "/sponsors", label: "贊助廠商", icon: Crown },
+    { href: "/sponsors", label: "贊助夥伴", icon: Crown },
   ];
 
   return (
@@ -50,22 +49,43 @@ export function Layout({ children }: LayoutProps) {
           <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
               const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+              const isPrimary = item.href === "/carnival";
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
                     "px-4 py-2.5 rounded-full font-medium text-sm flex items-center gap-2 transition-all",
-                    isActive 
-                      ? "bg-primary/10 text-primary" 
+                    isPrimary
+                      ? cn(
+                          "bg-gradient-to-r from-primary to-secondary text-white shadow-md shadow-primary/30 hover:shadow-lg hover:shadow-primary/40 font-bold",
+                          isActive && "ring-2 ring-primary/30"
+                        )
+                      : isActive
+                      ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-black/5 hover:text-foreground"
                   )}
                 >
-                  <item.icon size={16} className={cn(isActive && "fill-primary/20")} />
+                  <item.icon size={16} className={cn(isActive && !isPrimary && "fill-primary/20")} />
                   {item.label}
                 </Link>
               );
             })}
+
+            <div className="w-px h-8 bg-border mx-2"></div>
+            <Link
+              href="/conference"
+              className={cn(
+                "px-3 py-2 rounded-full font-medium text-xs flex items-center gap-1.5 transition-all border",
+                location.startsWith("/conference")
+                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                  : "text-muted-foreground border-transparent hover:bg-amber-50/60 hover:text-amber-700 hover:border-amber-200"
+              )}
+              title="業內同行專區 — 傳奇工匠研討會"
+            >
+              <Handshake size={14} />
+              業內同行 · 研討會
+            </Link>
 
             {isAuthenticated && (
               <>
@@ -93,20 +113,17 @@ export function Layout({ children }: LayoutProps) {
             )}
 
             {!isLoading && !isAuthenticated && (
-              <>
-                <div className="w-px h-8 bg-border mx-2"></div>
-                <Link
-                  href="/admin/login"
-                  className="ml-1 px-4 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-black/5 rounded-full transition-all flex items-center gap-1.5 font-medium"
-                >
-                  <Shield size={14} />
-                  管理員登入
-                </Link>
-              </>
+              <Link
+                href="/admin/login"
+                className="ml-1 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-black/5 rounded-full transition-all flex items-center gap-1.5 font-medium"
+              >
+                <Shield size={14} />
+                管理員
+              </Link>
             )}
           </nav>
 
-          <button 
+          <button
             className="lg:hidden p-2 text-foreground"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
@@ -126,13 +143,18 @@ export function Layout({ children }: LayoutProps) {
             <div className="px-4 py-6 flex flex-col gap-2">
               {navItems.map((item) => {
                 const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+                const isPrimary = item.href === "/carnival";
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={cn(
                       "p-4 rounded-xl font-medium flex items-center gap-3 text-lg",
-                      isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-black/5"
+                      isPrimary
+                        ? "bg-gradient-to-r from-primary to-secondary text-white font-bold"
+                        : isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-black/5"
                     )}
                   >
                     <item.icon size={20} />
@@ -140,7 +162,20 @@ export function Layout({ children }: LayoutProps) {
                   </Link>
                 );
               })}
-              
+
+              <Link
+                href="/conference"
+                className={cn(
+                  "p-4 rounded-xl font-medium flex items-center gap-3 text-base border",
+                  location.startsWith("/conference")
+                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                    : "text-amber-700 border-amber-200 bg-amber-50/40"
+                )}
+              >
+                <Handshake size={18} />
+                業內同行 · 傳奇工匠研討會
+              </Link>
+
               {isAuthenticated && (
                 <Link
                   href="/admin"
@@ -153,9 +188,9 @@ export function Layout({ children }: LayoutProps) {
                   管理後臺
                 </Link>
               )}
-              
+
               <div className="h-px bg-border my-2"></div>
-              
+
               {!isLoading && (
                 isAuthenticated ? (
                   <button
@@ -196,22 +231,23 @@ export function Layout({ children }: LayoutProps) {
       </main>
 
       <footer className="bg-foreground text-white/70 py-12 mt-20 relative overflow-hidden">
-        <div 
-          className="absolute inset-0 opacity-5 pointer-events-none" 
+        <div
+          className="absolute inset-0 opacity-5 pointer-events-none"
           style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/carnival-pattern.png)`, backgroundSize: '200px' }}
         />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
           <div>
             <h2 className="font-display text-2xl text-white mb-4">2026 臺灣氣球嘉年華</h2>
-            <p className="mb-2 flex items-center gap-2"><Ticket size={16} className="text-primary" /> 2026 年 7 月 23 日 - 7 月 26 日</p>
+            <p className="mb-2 flex items-center gap-2"><Calendar size={16} className="text-primary" /> 2026 年 7 月 25 日 - 7 月 26 日</p>
             <p className="flex items-center gap-2"><MapPin size={16} className="text-secondary" /> 臺北瓶蓋工廠 (台北市南港區)</p>
           </div>
           <div>
-            <h3 className="font-bold text-white mb-4">快速連結</h3>
+            <h3 className="font-bold text-white mb-4">活動連結</h3>
             <ul className="space-y-2">
-              <li><Link href="/carnival" className="hover:text-primary transition-colors">氣球嘉年華</Link></li>
-              <li><Link href="/conference" className="hover:text-primary transition-colors">傳奇工匠研討會</Link></li>
+              <li><Link href="/carnival" className="hover:text-primary transition-colors">嘉年華購票</Link></li>
               <li><Link href="/news" className="hover:text-primary transition-colors">大會公告</Link></li>
+              <li><Link href="/sponsors" className="hover:text-primary transition-colors">贊助夥伴</Link></li>
+              <li><Link href="/conference" className="hover:text-amber-300 transition-colors">業內同行・傳奇工匠研討會</Link></li>
             </ul>
           </div>
           <div>

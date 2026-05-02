@@ -192,7 +192,7 @@ export default function CarnivalPage() {
         </div>
       </section>
 
-      <section className="py-20 bg-muted/30">
+      <section id="schedule" className="py-20 bg-muted/30 scroll-mt-24">
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/20 text-accent-foreground font-bold text-sm mb-4">

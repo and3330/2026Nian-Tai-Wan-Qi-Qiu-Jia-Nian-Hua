@@ -1,18 +1,6 @@
 uploads = []
 
 [[generated]]
-id = "kQQAXyoKC0mw6mv8iB124"
-uri = "file://attached_assets/generated_images/balloon_carnival_post_family.png"
-type = "image"
-title = "balloon carnival family post"
-
-[[generated]]
-id = "gP3SP8EhsUllMQIIn767T"
-uri = "file://attached_assets/generated_images/balloon_carnival_post_urgency.png"
-type = "image"
-title = "balloon carnival urgency post"
-
-[[generated]]
 id = "KQRDMsC5zwf3jFHSXjbFu"
 uri = "file://artifacts/mockup-sandbox/src/components/mockups/bg_family.png"
 type = "image"
@@ -35,18 +23,6 @@ id = "SQdENw72t2ci_JUKmt8wq"
 uri = "file://lib/docs/Meta開發者應用程式設定與社群帳號綁定教學.md"
 type = "text"
 title = "Meta 開發者應用程式設定與社群帳號綁定教學"
-
-[[outputs]]
-id = "xvGQMEhnt_21Adm8avwY-"
-uri = "file://attached_assets/generated_images/balloon_carnival_post_family.png"
-type = "image"
-title = "社群貼文圖 1：溫馨家庭風（氣球裝置嘉年華）"
-
-[[outputs]]
-id = "Ct2kvPgd1PP4_U5dat-Eo"
-uri = "file://attached_assets/generated_images/balloon_carnival_post_urgency.png"
-type = "image"
-title = "社群貼文圖 2：限量緊迫風（氣球禮服走秀）"
 
 [[outputs]]
 id = "DIlvEhJcHw26rwcu2g3qy"

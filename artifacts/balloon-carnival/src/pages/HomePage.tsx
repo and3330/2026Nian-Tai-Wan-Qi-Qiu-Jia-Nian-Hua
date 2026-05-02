@@ -1,5 +1,5 @@
 import { useListNews, useListSponsors, useGetRegistrationAvailability } from "@workspace/api-client-react";
-import { Calendar, MapPin, Clock, ArrowRight, Ticket, Star, Users, Sparkles, Heart, ChevronRight, PartyPopper, Handshake, BookOpen, Palette, Baby, Eye, Cpu } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowRight, Ticket, Users, Sparkles, Heart, ChevronRight, PartyPopper, Handshake, Baby, Eye, Cpu, ShieldCheck, Star } from "lucide-react";
 import { Link } from "wouter";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -11,20 +11,57 @@ export default function HomePage() {
 
   const latestNews = news?.slice(0, 3);
 
-  const scheduleItems = [
-    { time: "Day 1", event: "7/23（四）研習會", desc: "業內封閉 — 大師授課教學、開幕報到", audience: "同行" },
-    { time: "Day 2", event: "7/24（五）業內比賽", desc: "業內封閉 — 中型氣球、人偶比賽 & 晚間同行交流", audience: "同行" },
-    { time: "Day 3", event: "7/25（六）公開活動日", desc: "對外開放 — 12分鐘快手、藝術服裝走秀遊行、親子表演、工作坊", audience: "全部" },
-    { time: "Day 4", event: "7/26（日）公開活動日", desc: "對外開放 — 作品展覽、親子表演、氣球工作坊", audience: "全部" },
+  const publicAvailability = availability?.filter(d => {
+    const day = new Date(d.date).getDate();
+    return day >= 25;
+  });
+
+  const highlights = [
+    {
+      icon: Eye,
+      title: "巨型氣球展覽",
+      desc: "近距離欣賞中型氣球雕塑、氣球人偶、外送花束等業界精品作品。",
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    {
+      icon: Sparkles,
+      title: "舞臺氣球秀",
+      desc: "專業表演團隊帶來的精彩氣球藝術表演，全家共賞氣球的無限可能。",
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+    },
+    {
+      icon: Baby,
+      title: "親子手作坊",
+      desc: "專業老師帶領親子一起做氣球造型，每組 150 元，老少咸宜。",
+      color: "text-green-600",
+      bg: "bg-green-50",
+    },
+    {
+      icon: Cpu,
+      title: "AI 教育科技",
+      desc: "結合 AI 與氣球藝術的互動裝置，為傳統技藝注入科技新生命。",
+      color: "text-rose-600",
+      bg: "bg-rose-50",
+    },
+  ];
+
+  const stageProgram = [
+    { time: "13:00", title: "12 分鐘快手比賽", note: "舞臺競速 ・ 7/25" },
+    { time: "13:30", title: "親子氣球表演", note: "舞臺區 ・ 兩日皆有" },
+    { time: "14:30", title: "氣球藝術表演", note: "舞臺區 ・ 兩日皆有" },
+    { time: "15:30", title: "藝術服裝走秀遊行", note: "全場唯一場 ・ 7/25" },
   ];
 
   return (
     <div className="flex flex-col">
-      <section className="relative w-full py-20 lg:py-32 flex items-center justify-center overflow-hidden">
+      {/* HERO — 純粹聚焦氣球嘉年華售票 */}
+      <section className="relative w-full py-20 lg:py-28 flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img
             src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
-            alt="Colorful hot air balloons"
+            alt="繽紛氣球嘉年華"
             className="w-full h-full object-cover opacity-90"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/60 to-background"></div>
@@ -32,21 +69,21 @@ export default function HomePage() {
 
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
           <div className="inline-block mb-6 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur border border-primary/20 text-primary font-bold text-sm tracking-widest uppercase shadow-sm">
-            SUMMER 2026 EVENT
+            售票中 ・ SUMMER 2026
           </div>
           <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-foreground mb-6 drop-shadow-sm">
             2026 臺灣氣球<span className="text-carnival">嘉年華</span>
           </h1>
           <p className="text-xl md:text-2xl text-foreground/80 mb-10 max-w-2xl mx-auto font-medium leading-relaxed">
-            亞洲最大室內氣球藝術盛典！探索令人驚嘆的巨型氣球裝置，體驗充滿歡樂與奇幻的夏日派對。
+            亞洲最大室內氣球藝術盛典！7/25-26 兩日對外開放，巨型氣球展覽、舞臺表演、親子手作，全家共度奇幻夏日。
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
             <div className="flex items-center gap-3 bg-white/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white shadow-sm">
               <Calendar className="text-primary w-6 h-6" />
               <div className="text-left">
-                <div className="text-xs text-muted-foreground font-bold">活動日期</div>
-                <div className="font-bold text-foreground">7/23 (四) - 7/26 (日)</div>
+                <div className="text-xs text-muted-foreground font-bold">公開場次</div>
+                <div className="font-bold text-foreground">7/25 (六) - 7/26 (日)</div>
               </div>
             </div>
             <div className="flex items-center gap-3 bg-white/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white shadow-sm">
@@ -67,31 +104,33 @@ export default function HomePage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/carnival"
-              className="px-8 py-4 rounded-full font-bold text-lg bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-1 transition-all flex items-center gap-2"
+              href="/carnival#register"
+              className="px-10 py-5 rounded-full font-bold text-xl bg-gradient-to-r from-primary to-secondary text-white shadow-xl shadow-primary/40 hover:shadow-2xl hover:shadow-primary/50 hover:-translate-y-1 transition-all flex items-center gap-2"
             >
-              氣球嘉年華購票 <ArrowRight size={20} />
+              <Ticket size={22} /> 立即購票入場
             </Link>
             <Link
-              href="/conference"
-              className="px-8 py-4 rounded-full font-bold text-lg bg-amber-500 text-white shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 hover:-translate-y-1 transition-all flex items-center gap-2"
+              href="/carnival"
+              className="px-8 py-4 rounded-full font-bold text-base text-foreground bg-white/80 backdrop-blur border border-white hover:bg-white shadow-sm hover:shadow-md transition-all flex items-center gap-2"
             >
-              傳奇工匠研討會 <ArrowRight size={20} />
+              查看活動詳情 <ArrowRight size={18} />
             </Link>
           </div>
+          <p className="text-sm text-muted-foreground mt-4">每日限量 500 名・線上預約購票更便利</p>
         </div>
       </section>
 
+      {/* 即時剩餘票數 */}
       <section className="py-6 bg-gradient-to-r from-primary via-secondary to-accent relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="max-w-7xl mx-auto px-4 relative z-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-white">
             <div className="flex items-center gap-3">
               <PartyPopper className="w-6 h-6" />
-              <span className="font-bold text-lg">即日起開放報名！每日限量 500 名</span>
+              <span className="font-bold text-lg">即時剩餘名額</span>
             </div>
             <div className="flex items-center gap-6">
-              {availability?.map(day => (
+              {publicAvailability?.map(day => (
                 <div key={day.date} className="flex items-center gap-2 text-sm">
                   <span className="font-medium">{new Date(day.date).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}</span>
                   <span className={cn(
@@ -110,140 +149,172 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* 票價方案 — 主要購票轉換區 */}
       <section className="py-20 px-4 max-w-5xl mx-auto w-full">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-4">
-            <Sparkles size={16} /> 找到你的入口
+        <div className="text-center mb-14">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-50 text-green-600 font-bold text-sm mb-4">
+            <Ticket size={16} /> 票價方案
           </div>
-          <h2 className="font-display text-4xl mb-4">你想怎麼參加？</h2>
+          <h2 className="font-display text-4xl mb-4">選擇你的票種</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            本活動分為兩大主軸，請選擇最適合你的路線
+            選擇最適合的票種，提前線上預約以確保入場名額
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Link
-            href="/carnival"
-            className="block glass-card rounded-3xl p-8 md:p-10 hover-lift group relative overflow-hidden border-2 border-transparent hover:border-secondary/40 transition-all"
-          >
-            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-secondary/10 to-transparent rounded-bl-full -z-10"></div>
-            <div className="w-16 h-16 rounded-2xl bg-secondary/10 flex items-center justify-center mb-6">
-              <PartyPopper size={32} className="text-secondary" />
-            </div>
-            <h3 className="text-2xl font-bold mb-2 group-hover:text-secondary transition-colors">我想參觀嘉年華</h3>
-            <p className="text-sm text-muted-foreground font-medium mb-4">一般民眾 ・ 親子家庭 ・ 遊客</p>
-            <p className="text-muted-foreground leading-relaxed mb-6">
-              7/25-26 對外開放！觀賞氣球展覽、舞臺表演、親子手作坊、AI 教育科技體驗。
-            </p>
-            <div className="flex flex-wrap gap-2 mb-6">
-              {[
-                { icon: Eye, label: "展覽參觀" },
-                { icon: Baby, label: "親子手作" },
-                { icon: Sparkles, label: "氣球表演" },
-                { icon: Cpu, label: "AI 體驗" },
-              ].map((tag, i) => (
-                <span key={i} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
-                  <tag.icon size={12} /> {tag.label}
-                </span>
-              ))}
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-2xl font-bold text-green-600">200</span>
-                <span className="text-muted-foreground text-sm ml-1">元/日起</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <Link href="/carnival#register" className="group glass-card rounded-3xl p-8 hover-lift border-2 border-transparent hover:border-primary/40 transition-all relative overflow-hidden block">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -z-10"></div>
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <Ticket size={28} className="text-primary" />
               </div>
-              <span className="inline-flex items-center gap-1 text-secondary font-bold text-sm group-hover:gap-2 transition-all">
-                查看詳情 <ArrowRight size={16} />
-              </span>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-600">彈性選擇</span>
             </div>
+            <h3 className="text-2xl font-bold mb-1">單日票</h3>
+            <p className="text-sm text-muted-foreground mb-5">7/25（六）或 7/26（日）擇一日入場</p>
+            <div className="flex items-baseline gap-1 mb-6">
+              <span className="text-5xl font-bold text-primary">200</span>
+              <span className="text-lg text-muted-foreground">元 / 人</span>
+            </div>
+            <div className="space-y-2 text-sm text-muted-foreground mb-6">
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 全展區 ・ 舞臺表演</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 6 歲以下兒童免票隨行</p>
+            </div>
+            <span className="inline-flex items-center gap-2 text-primary font-bold text-sm group-hover:gap-3 transition-all">
+              選擇單日票 <ArrowRight size={16} />
+            </span>
           </Link>
 
-          <Link
-            href="/conference"
-            className="block glass-card rounded-3xl p-8 md:p-10 hover-lift group relative overflow-hidden border-2 border-transparent hover:border-amber-400/40 transition-all"
-          >
-            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-amber-500/10 to-transparent rounded-bl-full -z-10"></div>
-            <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mb-6">
-              <Handshake size={32} className="text-amber-500" />
+          <Link href="/carnival#register" className="group glass-card rounded-3xl p-8 hover-lift border-2 border-primary shadow-xl shadow-primary/10 transition-all relative overflow-hidden block">
+            <div className="absolute -top-3 left-8 bg-gradient-to-r from-amber-400 to-orange-400 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md">
+              最划算 ・ 省 100 元
             </div>
-            <h3 className="text-2xl font-bold mb-2 group-hover:text-amber-500 transition-colors">傳奇工匠研討會</h3>
-            <p className="text-sm text-muted-foreground font-medium mb-4">業界人士 ・ 氣球師 ・ 教學者</p>
-            <p className="text-muted-foreground leading-relaxed mb-6">
-              四天專業盛會！研習會、大師工作坊、五大交流賽、交流大賽，總獎金 12 萬元。
-            </p>
-            <div className="flex flex-wrap gap-2 mb-6">
-              {[
-                { icon: BookOpen, label: "研習會" },
-                { icon: Palette, label: "五大交流賽" },
-                { icon: Star, label: "12 萬獎金" },
-                { icon: Users, label: "同行交流" },
-              ].map((tag, i) => (
-                <span key={i} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-600">
-                  <tag.icon size={12} /> {tag.label}
-                </span>
-              ))}
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-2xl font-bold text-amber-600">5,000</span>
-                <span className="text-muted-foreground text-sm ml-1">元起</span>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 rounded-bl-full -z-10"></div>
+            <div className="flex items-start justify-between mb-4 mt-2">
+              <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center">
+                <Star size={28} className="text-secondary" />
               </div>
-              <span className="inline-flex items-center gap-1 text-amber-500 font-bold text-sm group-hover:gap-2 transition-all">
-                查看詳情 <ArrowRight size={16} />
-              </span>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-secondary/10 text-secondary">人氣推薦</span>
             </div>
+            <h3 className="text-2xl font-bold mb-1">兩日套票</h3>
+            <p className="text-sm text-muted-foreground mb-5">7/25 + 7/26 兩日完整體驗</p>
+            <div className="flex items-baseline gap-1 mb-6">
+              <span className="text-5xl font-bold text-secondary">300</span>
+              <span className="text-lg text-muted-foreground">元 / 人</span>
+              <span className="text-sm text-muted-foreground line-through ml-2">原價 400</span>
+            </div>
+            <div className="space-y-2 text-sm text-muted-foreground mb-6">
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 兩日無限暢遊</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 不錯過任何舞臺場次</p>
+            </div>
+            <span className="inline-flex items-center gap-2 text-secondary font-bold text-sm group-hover:gap-3 transition-all">
+              選擇兩日套票 <ArrowRight size={16} />
+            </span>
           </Link>
+        </div>
+
+        <div className="text-center mt-8">
+          <p className="text-sm text-muted-foreground">
+            親子手作坊另需現場購票 <span className="font-bold text-foreground">150 元/組</span>　・　6 歲以下兒童免票隨大人入場
+          </p>
         </div>
       </section>
 
+      {/* 嘉年華亮點 */}
       <section className="py-20 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/20 text-accent-foreground font-bold text-sm mb-4">
-              <Clock size={16} /> 四天概覽
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-4">
+              <Sparkles size={16} /> 活動亮點
             </div>
-            <h2 className="font-display text-4xl mb-4">活動日程表</h2>
+            <h2 className="font-display text-4xl mb-4">嘉年華精彩內容</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              前兩天為業內同行專屬活動，後兩天對一般民眾開放
+              一張門票，盡享四大主題體驗
             </p>
           </div>
 
-          <div className="max-w-3xl mx-auto">
-            <div className="relative">
-              <div className="absolute left-[60px] top-0 bottom-0 w-0.5 bg-border"></div>
-              <div className="space-y-6">
-                {scheduleItems.map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-6 group">
-                    <div className="w-[60px] text-right shrink-0">
-                      <span className="font-bold text-lg text-primary">{item.time}</span>
-                    </div>
-                    <div className="relative">
-                      <div className="absolute -left-[13px] top-2 w-6 h-6 rounded-full bg-white border-2 border-primary flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-colors z-10">
-                        <div className="w-2 h-2 rounded-full bg-primary group-hover:bg-white transition-colors"></div>
-                      </div>
-                    </div>
-                    <div className="glass-card rounded-2xl p-5 flex-1 group-hover:border-primary/30 transition-colors ml-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-bold text-lg">{item.event}</h4>
-                        <span className={cn(
-                          "px-2 py-0.5 rounded-full text-xs font-bold",
-                          item.audience === "同行" ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"
-                        )}>
-                          {item.audience === "同行" ? "業內限定" : "對外開放"}
-                        </span>
-                      </div>
-                      <p className="text-muted-foreground text-sm">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {highlights.map((item, idx) => (
+              <div key={idx} className="glass-card rounded-2xl p-6 hover-lift">
+                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-4", item.bg)}>
+                  <item.icon size={28} className={item.color} />
+                </div>
+                <h3 className="text-lg font-bold mb-2">{item.title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 舞臺節目時程 */}
+      <section className="py-20 px-4 max-w-5xl mx-auto w-full">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/20 text-accent-foreground font-bold text-sm mb-4">
+            <Clock size={16} /> 舞臺時程
+          </div>
+          <h2 className="font-display text-4xl mb-4">不可錯過的精彩場次</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+            7/25-26 兩日的重點舞臺節目
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {stageProgram.map((p, idx) => (
+            <div key={idx} className="glass-card rounded-2xl p-5 hover-lift relative overflow-hidden">
+              <div className="text-3xl font-bold text-primary mb-1">{p.time}</div>
+              <h4 className="font-bold mb-1">{p.title}</h4>
+              <p className="text-xs text-muted-foreground">{p.note}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="text-center mt-10">
+          <Link href="/carnival#schedule" className="inline-flex items-center gap-1 text-primary font-bold hover:underline">
+            查看完整活動時程 <ChevronRight size={18} />
+          </Link>
+        </div>
+      </section>
+
+      {/* 入場須知 */}
+      <section className="py-20 px-4 bg-muted/30">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 font-bold text-sm mb-4">
+              <ShieldCheck size={16} /> 安心入場
+            </div>
+            <h2 className="font-display text-4xl mb-4">購票須知</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="glass-card rounded-2xl p-6 text-center">
+              <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+                <Ticket size={28} className="text-green-500" />
+              </div>
+              <h4 className="font-bold text-lg mb-2">線上預約購票</h4>
+              <p className="text-muted-foreground text-sm">免註冊・填寫基本資料即可完成購票，當日憑姓名與電話入場</p>
+            </div>
+            <div className="glass-card rounded-2xl p-6 text-center">
+              <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
+                <Users size={28} className="text-blue-500" />
+              </div>
+              <h4 className="font-bold text-lg mb-2">每日限量 500 名</h4>
+              <p className="text-muted-foreground text-sm">為維護參觀品質，每日限量入場，建議提前線上預約以免向隅</p>
+            </div>
+            <div className="glass-card rounded-2xl p-6 text-center">
+              <div className="w-14 h-14 rounded-full bg-violet-50 flex items-center justify-center mx-auto mb-4">
+                <Heart size={28} className="text-violet-500" />
+              </div>
+              <h4 className="font-bold text-lg mb-2">老少咸宜</h4>
+              <p className="text-muted-foreground text-sm">適合全家大小一同參與，6 歲以下兒童可免預約隨大人入場</p>
             </div>
           </div>
         </div>
       </section>
 
+      {/* 最新消息 */}
       {latestNews && latestNews.length > 0 && (
-        <section className="py-20 bg-muted/30">
+        <section className="py-20">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-4">
               <div>
@@ -281,49 +352,36 @@ export default function HomePage() {
         </section>
       )}
 
-      <section className="py-20 px-4 max-w-7xl mx-auto w-full">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-4">
-            <Ticket size={16} /> 票務資訊
-          </div>
-          <h2 className="font-display text-4xl mb-4">入場須知</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-          <div className="glass-card rounded-2xl p-6 text-center">
-            <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
-              <Ticket size={28} className="text-green-500" />
-            </div>
-            <h4 className="font-bold text-lg mb-2">線上購票</h4>
-            <p className="text-muted-foreground text-sm">活動日單日票 200 元、兩日套票 300 元，線上預約購票更方便</p>
-          </div>
-          <div className="glass-card rounded-2xl p-6 text-center">
-            <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
-              <Users size={28} className="text-blue-500" />
-            </div>
-            <h4 className="font-bold text-lg mb-2">每日限量 500 名</h4>
-            <p className="text-muted-foreground text-sm">為維護參觀品質，每日限量入場，額滿為止</p>
-          </div>
-          <div className="glass-card rounded-2xl p-6 text-center">
-            <div className="w-14 h-14 rounded-full bg-violet-50 flex items-center justify-center mx-auto mb-4">
-              <Heart size={28} className="text-violet-500" />
-            </div>
-            <h4 className="font-bold text-lg mb-2">老少咸宜</h4>
-            <p className="text-muted-foreground text-sm">適合全家大小一同參與，6 歲以下兒童可免預約隨行</p>
-          </div>
-        </div>
-
-        <div className="text-center mt-12">
+      {/* 業界同行專區入口 — 較小、低調但清楚 */}
+      <section className="py-12 px-4">
+        <div className="max-w-4xl mx-auto">
           <Link
-            href="/carnival#register"
-            className="inline-flex items-center gap-2 px-10 py-4 rounded-full font-bold text-lg bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-1 transition-all"
+            href="/conference"
+            className="block group bg-gradient-to-r from-amber-50 via-amber-50/80 to-orange-50 border border-amber-200 hover:border-amber-300 rounded-3xl p-6 md:p-8 hover-lift transition-all"
           >
-            立即預約入場 <ArrowRight size={20} />
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-6 justify-between">
+              <div className="flex items-start gap-5 flex-1">
+                <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0">
+                  <Handshake size={28} className="text-amber-600" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">業內同行專區</div>
+                  <h3 className="text-xl md:text-2xl font-bold mb-2">傳奇工匠研討會</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">
+                    7/23-24 業內封閉場次：研習會、大師工作坊、五大交流賽、總獎金 12 萬元。
+                    氣球師、教學者、業界同行請點此進入。
+                  </p>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-amber-500 text-white font-bold shadow-md group-hover:bg-amber-600 group-hover:shadow-lg transition-all shrink-0">
+                進入研討會專區 <ArrowRight size={18} />
+              </span>
+            </div>
           </Link>
-          <p className="text-muted-foreground text-sm mt-4">免註冊，填寫基本資料即可完成預約購票</p>
         </div>
       </section>
 
+      {/* 贊助廠商 */}
       {sponsors && sponsors.length > 0 && (
         <section className="py-16 bg-muted/30">
           <div className="max-w-7xl mx-auto px-4">
@@ -357,6 +415,7 @@ export default function HomePage() {
         </section>
       )}
 
+      {/* 常見問題 */}
       <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10">
@@ -369,6 +428,7 @@ export default function HomePage() {
               { q: "小朋友適合參加嗎？", a: "非常適合！嘉年華特別設有親子區、DIY 工作坊和兒童遊戲區。6 歲以下兒童可免預約隨大人入場。" },
               { q: "可以現場報名嗎？", a: "建議提前線上預約，確保有入場名額。若當日尚有餘額，也可現場排隊候補入場。" },
               { q: "活動有提供停車場嗎？", a: "臺北瓶蓋工廠設有地下停車場，也可利用南港車站周邊停車場。建議搭乘大眾交通工具前往。" },
+              { q: "我是業界同行，有專屬票種嗎？", a: "有的，請至「業內同行・傳奇工匠研討會」專區查看，提供研習會、四天通行、交流比賽等專業票種。" },
             ].map((item, idx) => (
               <details key={idx} className="glass-card rounded-2xl group">
                 <summary className="p-5 font-bold cursor-pointer flex items-center justify-between hover:text-primary transition-colors list-none">
@@ -384,6 +444,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* 最終 CTA — 純粹售票 */}
       <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto glass-card rounded-3xl p-10 md:p-16 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-40 h-40 bg-primary/5 rounded-br-full"></div>
@@ -391,22 +452,15 @@ export default function HomePage() {
           <div className="relative z-10">
             <h2 className="font-display text-3xl md:text-4xl mb-4">準備好了嗎？</h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-              四天限定的氣球奇幻旅程，現在就預約你的入場名額，和家人朋友一起創造美好回憶！
+              7/25-26 兩日限定的氣球奇幻旅程，現在就預約你的入場名額，和家人朋友一起創造美好回憶！
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="/carnival#register"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
-              >
-                嘉年華購票 <ArrowRight size={20} />
-              </Link>
-              <Link
-                href="/conference#register"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
-              >
-                研討會報名 <ArrowRight size={20} />
-              </Link>
-            </div>
+            <Link
+              href="/carnival#register"
+              className="inline-flex items-center gap-2 px-10 py-5 rounded-full font-bold text-xl bg-gradient-to-r from-primary to-secondary text-white shadow-xl shadow-primary/40 hover:shadow-2xl hover:-translate-y-1 transition-all"
+            >
+              <Ticket size={22} /> 立即購票入場
+            </Link>
+            <p className="text-sm text-muted-foreground mt-4">每日限量 500 名・額滿為止</p>
           </div>
         </div>
       </section>
