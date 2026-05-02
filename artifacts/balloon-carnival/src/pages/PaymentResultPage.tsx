@@ -149,9 +149,18 @@ function ResultDetails({
     itemName: string;
     paidAt?: Date | string | null;
     bankInfo?: { bankName?: string; accountName?: string; accountNumber?: string } | null;
+    invoice?: {
+      status?: string;
+      invoiceType?: string;
+      invoiceNumber?: string | null;
+      invoiceDate?: string | null;
+      randomNumber?: string | null;
+      errorMessage?: string | null;
+    } | null;
   };
 }) {
   const bank = data.bankInfo;
+  const invoice = data.invoice;
   return (
     <div className="bg-muted/40 rounded-2xl p-5 text-left text-sm space-y-2 mt-2">
       <Row label="訂單編號" value={data.paymentRef} mono />
@@ -167,8 +176,39 @@ function ResultDetails({
           {bank.accountNumber && <Row label="帳號" value={bank.accountNumber} mono />}
         </>
       )}
+      {invoice && (
+        <>
+          <div className="border-t border-border pt-2 mt-2 text-muted-foreground text-xs font-bold">電子發票（綠界）</div>
+          <Row label="發票類型" value={invoiceTypeLabel(invoice.invoiceType)} />
+          <Row label="發票狀態" value={invoiceStatusLabel(invoice.status)} />
+          {invoice.invoiceNumber && <Row label="發票號碼" value={invoice.invoiceNumber} mono />}
+          {invoice.invoiceDate && <Row label="開立日期" value={invoice.invoiceDate} />}
+          {invoice.randomNumber && <Row label="隨機碼" value={invoice.randomNumber} mono />}
+          {invoice.status === "failed" && invoice.errorMessage && (
+            <div className="text-xs text-destructive">{invoice.errorMessage}</div>
+          )}
+          {invoice.status === "pending" && (
+            <div className="text-xs text-muted-foreground">付款完成後將自動開立發票，請稍候。</div>
+          )}
+        </>
+      )}
     </div>
   );
+}
+
+function invoiceTypeLabel(t?: string) {
+  if (t === "personal") return "個人發票";
+  if (t === "company") return "公司發票";
+  if (t === "donation") return "捐贈發票";
+  return t || "—";
+}
+
+function invoiceStatusLabel(s?: string) {
+  if (s === "issued") return "已開立";
+  if (s === "pending") return "等待開立";
+  if (s === "failed") return "開立失敗";
+  if (s === "voided") return "已作廢";
+  return s || "—";
 }
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {

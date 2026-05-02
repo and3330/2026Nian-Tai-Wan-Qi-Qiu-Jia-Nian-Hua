@@ -6,10 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { InitiatePaymentBodyMethod } from "./initiatePaymentBodyMethod";
+import type { InvoiceRequest } from "./invoiceRequest";
 
 export interface InitiatePaymentBody {
   /** @minItems 1 */
   registrationIds: number[];
   method: InitiatePaymentBodyMethod;
   email?: string;
+  invoice?: InvoiceRequest;
 }

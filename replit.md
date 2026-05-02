@@ -67,10 +67,21 @@ Each activity page has its own embedded registration form — no standalone regi
 ### Ad Guide Page (`/ad-guide`)
 Meta (Facebook/Instagram) advertising guide for the carnival. Contains 3 ad copy variants (溫馨家庭風, 限量緊迫風, 活動亮點風), step-by-step Meta Ads Manager setup tutorial, and user journey with UTM parameter examples. Print-friendly layout with copy-to-clipboard buttons.
 
+### Payment & Invoice
+- **Payment methods** (3): NewebPay (信用卡/ATM via 藍新), Stripe Checkout (海外信用卡), 銀行轉帳 (匯款後人工確認).
+- **Flow**: registration → `PaymentMethodModal` → `/api/payments/initiate` → provider redirect/form post or bank info screen → `/payment/result` polling page.
+- **NewebPay notify** (`/api/payments/newebpay/notify`) verifies AES+SHA256, marks paid, then auto-issues ECPay invoice.
+- **Stripe webhook** (`/api/stripe/webhook`) mounted BEFORE `express.json` with raw body parser; `checkout.session.completed` marks paid + auto-issues invoice. Best-effort `confirmStripePayment` from result page covers webhook delays.
+- **Bank transfer** stays in `awaiting_transfer` until admin marks paid (no auto-issuance until paid).
+- **ECPay 電子發票 (B2C v3.0)**: `lib/ecpay-invoice.ts` — AES-128-CBC + URLencode + Base64 against `https://einvoice-stage.ecpay.com.tw` (test creds built-in; override via `ECPAY_INVOICE_MERCHANT_ID/HASH_KEY/HASH_IV`). Supports 個人 (手機條碼/自然人憑證/綠界載具/紙本), 公司 (統編), 捐贈 (愛心碼). Auto-issued in `markPaymentPaid`; lifecycle pending→issued/failed→voided stored in `invoices` table.
+- **Admin endpoints** (cookie auth): `POST /api/payments/invoices/:ref/retry` re-issues failed/pending invoices; `POST /api/payments/invoices/:ref/void` calls B2CInvoice/Invalid (auto-strips `+HH:MM:SS` from invoiceDate).
+
 ### Database Tables
 - `sessions` - Admin auth sessions
 - `users` - Legacy user table (unused after auth migration)
-- `registrations` - Event registrations (parent_name, phone, ticket_count, event_date)
+- `registrations` - Event registrations (parent_name, phone, ticket_count, event_date, ticket_type, amount, payment_method, payment_status, payment_ref)
+- `payment_transactions` - Payment orders (payment_ref, provider, amount, item_name, payer_email, status, provider_trade_no, paid_at, raw_result)
+- `invoices` - ECPay 電子發票 (payment_ref, invoice_type, carrier_type/num, tax_id, company_title, love_code, invoice_number, invoice_date, random_number, status, raw_response, issued_at, voided_at)
 - `news` - News articles (title, content, summary)
 - `contestants` - Competition participants (name, description, image_url, score)
 - `sponsors` - Sponsor information (name, logo_url, website_url, tier)

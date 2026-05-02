@@ -34,6 +34,7 @@ import type {
   HealthStatus,
   InitiatePaymentBody,
   InitiatePaymentResponse,
+  InvoiceStatus,
   LogoutSuccess,
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
@@ -43,6 +44,8 @@ import type {
   Sponsor,
   UploadUrlRequest,
   UploadUrlResponse,
+  VoidInvoiceForPayment200,
+  VoidInvoiceForPaymentBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1149,6 +1152,181 @@ export const useConfirmStripePayment = <
   TContext
 > => {
   return useMutation(getConfirmStripePaymentMutationOptions(options));
+};
+
+/**
+ * @summary Retry issuing an ECPay invoice for a paid order
+ */
+export const getRetryInvoiceIssuanceUrl = (ref: string) => {
+  return `/api/payments/invoices/${ref}/retry`;
+};
+
+export const retryInvoiceIssuance = async (
+  ref: string,
+  options?: RequestInit,
+): Promise<InvoiceStatus> => {
+  return customFetch<InvoiceStatus>(getRetryInvoiceIssuanceUrl(ref), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRetryInvoiceIssuanceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof retryInvoiceIssuance>>,
+    TError,
+    { ref: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof retryInvoiceIssuance>>,
+  TError,
+  { ref: string },
+  TContext
+> => {
+  const mutationKey = ["retryInvoiceIssuance"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof retryInvoiceIssuance>>,
+    { ref: string }
+  > = (props) => {
+    const { ref } = props ?? {};
+
+    return retryInvoiceIssuance(ref, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RetryInvoiceIssuanceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof retryInvoiceIssuance>>
+>;
+
+export type RetryInvoiceIssuanceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Retry issuing an ECPay invoice for a paid order
+ */
+export const useRetryInvoiceIssuance = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof retryInvoiceIssuance>>,
+    TError,
+    { ref: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof retryInvoiceIssuance>>,
+  TError,
+  { ref: string },
+  TContext
+> => {
+  return useMutation(getRetryInvoiceIssuanceMutationOptions(options));
+};
+
+/**
+ * @summary Void the latest issued invoice for a payment
+ */
+export const getVoidInvoiceForPaymentUrl = (ref: string) => {
+  return `/api/payments/invoices/${ref}/void`;
+};
+
+export const voidInvoiceForPayment = async (
+  ref: string,
+  voidInvoiceForPaymentBody?: VoidInvoiceForPaymentBody,
+  options?: RequestInit,
+): Promise<VoidInvoiceForPayment200> => {
+  return customFetch<VoidInvoiceForPayment200>(
+    getVoidInvoiceForPaymentUrl(ref),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(voidInvoiceForPaymentBody),
+    },
+  );
+};
+
+export const getVoidInvoiceForPaymentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof voidInvoiceForPayment>>,
+    TError,
+    { ref: string; data: BodyType<VoidInvoiceForPaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof voidInvoiceForPayment>>,
+  TError,
+  { ref: string; data: BodyType<VoidInvoiceForPaymentBody> },
+  TContext
+> => {
+  const mutationKey = ["voidInvoiceForPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof voidInvoiceForPayment>>,
+    { ref: string; data: BodyType<VoidInvoiceForPaymentBody> }
+  > = (props) => {
+    const { ref, data } = props ?? {};
+
+    return voidInvoiceForPayment(ref, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VoidInvoiceForPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof voidInvoiceForPayment>>
+>;
+export type VoidInvoiceForPaymentMutationBody =
+  BodyType<VoidInvoiceForPaymentBody>;
+export type VoidInvoiceForPaymentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Void the latest issued invoice for a payment
+ */
+export const useVoidInvoiceForPayment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof voidInvoiceForPayment>>,
+    TError,
+    { ref: string; data: BodyType<VoidInvoiceForPaymentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof voidInvoiceForPayment>>,
+  TError,
+  { ref: string; data: BodyType<VoidInvoiceForPaymentBody> },
+  TContext
+> => {
+  return useMutation(getVoidInvoiceForPaymentMutationOptions(options));
 };
 
 /**

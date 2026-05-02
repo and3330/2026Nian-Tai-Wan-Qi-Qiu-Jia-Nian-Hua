@@ -5,6 +5,7 @@
  * 2026 Taiwan Balloon Carnival API
  * OpenAPI spec version: 0.1.0
  */
+import type { InvoiceStatus } from "./invoiceStatus";
 import type { PaymentStatusBankInfo } from "./paymentStatusBankInfo";
 
 export interface PaymentStatus {
@@ -17,4 +18,5 @@ export interface PaymentStatus {
   paidAt?: Date | null;
   /** @nullable */
   bankInfo?: PaymentStatusBankInfo;
+  invoice?: InvoiceStatus | null;
 }

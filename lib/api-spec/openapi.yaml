@@ -289,6 +289,58 @@ paths:
                   status:
                     type: string
 
+  /payments/invoices/{ref}/retry:
+    post:
+      operationId: retryInvoiceIssuance
+      tags: [payments]
+      summary: Retry issuing an ECPay invoice for a paid order
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Retry result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceStatus"
+
+  /payments/invoices/{ref}/void:
+    post:
+      operationId: voidInvoiceForPayment
+      tags: [payments]
+      summary: Void the latest issued invoice for a payment
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Void result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
   /news:
     get:
       operationId: listNews
@@ -854,6 +906,50 @@ components:
           enum: [newebpay, stripe, bank]
         email:
           type: string
+        invoice:
+          $ref: "#/components/schemas/InvoiceRequest"
+
+    InvoiceRequest:
+      type: object
+      required: [invoiceType]
+      properties:
+        invoiceType:
+          type: string
+          enum: [personal, company, donation]
+        carrierType:
+          type: [string, 'null']
+          enum: [phone_barcode, citizen_certificate, ecpay_carrier, "", null]
+        carrierNum:
+          type: string
+        taxId:
+          type: string
+        companyTitle:
+          type: string
+        loveCode:
+          type: string
+        buyerName:
+          type: string
+        buyerAddr:
+          type: string
+        buyerPhone:
+          type: string
+
+    InvoiceStatus:
+      type: object
+      required: [status, invoiceType]
+      properties:
+        status:
+          type: string
+        invoiceType:
+          type: string
+        invoiceNumber:
+          type: [string, 'null']
+        invoiceDate:
+          type: [string, 'null']
+        randomNumber:
+          type: [string, 'null']
+        errorMessage:
+          type: [string, 'null']
 
     InitiatePaymentResponse:
       type: object
@@ -912,6 +1008,10 @@ components:
               type: string
             accountNumber:
               type: string
+        invoice:
+          oneOf:
+            - $ref: "#/components/schemas/InvoiceStatus"
+            - type: 'null'
 
     DateAvailability:
       type: object

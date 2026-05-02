@@ -142,6 +142,27 @@ export const InitiatePaymentBody = zod.object({
   registrationIds: zod.array(zod.number()).min(1),
   method: zod.enum(["newebpay", "stripe", "bank"]),
   email: zod.string().optional(),
+  invoice: zod
+    .object({
+      invoiceType: zod.enum(["personal", "company", "donation"]),
+      carrierType: zod
+        .union([
+          zod.literal("phone_barcode"),
+          zod.literal("citizen_certificate"),
+          zod.literal("ecpay_carrier"),
+          zod.literal(""),
+          zod.literal(null),
+        ])
+        .nullish(),
+      carrierNum: zod.string().optional(),
+      taxId: zod.string().optional(),
+      companyTitle: zod.string().optional(),
+      loveCode: zod.string().optional(),
+      buyerName: zod.string().optional(),
+      buyerAddr: zod.string().optional(),
+      buyerPhone: zod.string().optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -165,6 +186,19 @@ export const GetPaymentStatusResponse = zod.object({
       accountNumber: zod.string().optional(),
     })
     .nullish(),
+  invoice: zod
+    .union([
+      zod.object({
+        status: zod.string(),
+        invoiceType: zod.string(),
+        invoiceNumber: zod.string().nullish(),
+        invoiceDate: zod.string().nullish(),
+        randomNumber: zod.string().nullish(),
+        errorMessage: zod.string().nullish(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
 });
 
 /**
@@ -176,6 +210,38 @@ export const ConfirmStripePaymentBody = zod.object({
 
 export const ConfirmStripePaymentResponse = zod.object({
   status: zod.string().optional(),
+});
+
+/**
+ * @summary Retry issuing an ECPay invoice for a paid order
+ */
+export const RetryInvoiceIssuanceParams = zod.object({
+  ref: zod.coerce.string(),
+});
+
+export const RetryInvoiceIssuanceResponse = zod.object({
+  status: zod.string(),
+  invoiceType: zod.string(),
+  invoiceNumber: zod.string().nullish(),
+  invoiceDate: zod.string().nullish(),
+  randomNumber: zod.string().nullish(),
+  errorMessage: zod.string().nullish(),
+});
+
+/**
+ * @summary Void the latest issued invoice for a payment
+ */
+export const VoidInvoiceForPaymentParams = zod.object({
+  ref: zod.coerce.string(),
+});
+
+export const VoidInvoiceForPaymentBody = zod.object({
+  reason: zod.string().optional(),
+});
+
+export const VoidInvoiceForPaymentResponse = zod.object({
+  success: zod.boolean().optional(),
+  message: zod.string().optional(),
 });
 
 /**

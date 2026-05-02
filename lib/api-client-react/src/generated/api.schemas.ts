@@ -112,11 +112,61 @@ export const InitiatePaymentBodyMethod = {
   bank: "bank",
 } as const;
 
+export type InvoiceRequestInvoiceType =
+  (typeof InvoiceRequestInvoiceType)[keyof typeof InvoiceRequestInvoiceType];
+
+export const InvoiceRequestInvoiceType = {
+  personal: "personal",
+  company: "company",
+  donation: "donation",
+} as const;
+
+/**
+ * @nullable
+ */
+export type InvoiceRequestCarrierType =
+  | (typeof InvoiceRequestCarrierType)[keyof typeof InvoiceRequestCarrierType]
+  | null;
+
+export const InvoiceRequestCarrierType = {
+  phone_barcode: "phone_barcode",
+  citizen_certificate: "citizen_certificate",
+  ecpay_carrier: "ecpay_carrier",
+  "": "",
+} as const;
+
+export interface InvoiceRequest {
+  invoiceType: InvoiceRequestInvoiceType;
+  /** @nullable */
+  carrierType?: InvoiceRequestCarrierType;
+  carrierNum?: string;
+  taxId?: string;
+  companyTitle?: string;
+  loveCode?: string;
+  buyerName?: string;
+  buyerAddr?: string;
+  buyerPhone?: string;
+}
+
 export interface InitiatePaymentBody {
   /** @minItems 1 */
   registrationIds: number[];
   method: InitiatePaymentBodyMethod;
   email?: string;
+  invoice?: InvoiceRequest;
+}
+
+export interface InvoiceStatus {
+  status: string;
+  invoiceType: string;
+  /** @nullable */
+  invoiceNumber?: string | null;
+  /** @nullable */
+  invoiceDate?: string | null;
+  /** @nullable */
+  randomNumber?: string | null;
+  /** @nullable */
+  errorMessage?: string | null;
 }
 
 export type InitiatePaymentResponseType =
@@ -167,6 +217,7 @@ export interface PaymentStatus {
   paidAt?: string | null;
   /** @nullable */
   bankInfo?: PaymentStatusBankInfo;
+  invoice?: InvoiceStatus | null;
 }
 
 export interface DateAvailability {
@@ -267,6 +318,15 @@ export type ConfirmStripePaymentBody = {
 
 export type ConfirmStripePayment200 = {
   status?: string;
+};
+
+export type VoidInvoiceForPaymentBody = {
+  reason?: string;
+};
+
+export type VoidInvoiceForPayment200 = {
+  success?: boolean;
+  message?: string;
 };
 
 export type AdminListRegistrationsParams = {

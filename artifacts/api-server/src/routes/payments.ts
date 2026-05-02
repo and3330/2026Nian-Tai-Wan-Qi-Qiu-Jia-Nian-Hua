@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
 import express from "express";
-import { eq, inArray, sql } from "drizzle-orm";
-import { db, registrationsTable, paymentTransactionsTable } from "@workspace/db";
+import { eq, inArray, sql, desc } from "drizzle-orm";
+import { db, registrationsTable, paymentTransactionsTable, invoicesTable } from "@workspace/db";
 import { createNewebPayOrder, verifyNewebPayCallback } from "../lib/newebpay";
 import { getStripeClient, isStripeConfigured } from "../lib/stripe-client";
+import { issueInvoice, voidInvoice, type InvoiceIssueOptions } from "../lib/ecpay-invoice";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -39,12 +40,65 @@ async function loadEligibleRegistrations(ids: number[]) {
   return db.select().from(registrationsTable).where(inArray(registrationsTable.id, ids));
 }
 
+interface InvoiceInput {
+  invoiceType: "personal" | "company" | "donation";
+  carrierType?: "phone_barcode" | "citizen_certificate" | "ecpay_carrier" | "" | null;
+  carrierNum?: string;
+  taxId?: string;
+  companyTitle?: string;
+  loveCode?: string;
+  buyerName?: string;
+  buyerAddr?: string;
+  buyerPhone?: string;
+}
+
+function parseInvoiceInput(raw: unknown): InvoiceInput | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const invoiceType = r.invoiceType;
+  if (invoiceType !== "personal" && invoiceType !== "company" && invoiceType !== "donation") {
+    return null;
+  }
+  const out: InvoiceInput = { invoiceType };
+  if (typeof r.carrierType === "string") out.carrierType = r.carrierType as InvoiceInput["carrierType"];
+  if (typeof r.carrierNum === "string") out.carrierNum = r.carrierNum;
+  if (typeof r.taxId === "string") out.taxId = r.taxId;
+  if (typeof r.companyTitle === "string") out.companyTitle = r.companyTitle;
+  if (typeof r.loveCode === "string") out.loveCode = r.loveCode;
+  if (typeof r.buyerName === "string") out.buyerName = r.buyerName;
+  if (typeof r.buyerAddr === "string") out.buyerAddr = r.buyerAddr;
+  if (typeof r.buyerPhone === "string") out.buyerPhone = r.buyerPhone;
+  return out;
+}
+
+function validateInvoice(invoice: InvoiceInput, hasContact: boolean): string | null {
+  if (!hasContact) return "電子發票需要 Email 或手機其中一項";
+  if (invoice.invoiceType === "company") {
+    if (!invoice.taxId || invoice.taxId.length !== 8) return "公司發票需填寫 8 碼統一編號";
+  }
+  if (invoice.invoiceType === "donation") {
+    if (!invoice.loveCode) return "捐贈發票需填寫愛心碼";
+  }
+  if (invoice.carrierType === "phone_barcode") {
+    if (!invoice.carrierNum || !/^\/[A-Z0-9.\-+ ]{7}$/.test(invoice.carrierNum.toUpperCase())) {
+      return "手機條碼格式錯誤（需以 / 開頭，共 8 碼）";
+    }
+  }
+  if (invoice.carrierType === "citizen_certificate") {
+    if (!invoice.carrierNum || !/^[A-Z]{2}[0-9]{14}$/.test(invoice.carrierNum.toUpperCase())) {
+      return "自然人憑證格式錯誤（前 2 碼大寫英文 + 後 14 碼數字）";
+    }
+  }
+  return null;
+}
+
 router.post("/payments/initiate", async (req, res): Promise<void> => {
   try {
-    const { registrationIds, method, email } = req.body as {
+    const { registrationIds, method, email, invoice: invoiceRaw } = req.body as {
       registrationIds?: unknown;
       method?: unknown;
       email?: unknown;
+      invoice?: unknown;
     };
 
     if (!Array.isArray(registrationIds) || registrationIds.length === 0) {
@@ -87,6 +141,20 @@ router.post("/payments/initiate", async (req, res): Promise<void> => {
     const paymentRef = generatePaymentRef();
     const payerEmail = typeof email === "string" && email.trim() ? email.trim() : null;
 
+    const invoiceInput = parseInvoiceInput(invoiceRaw);
+    if (invoiceRaw && !invoiceInput) {
+      res.status(400).json({ error: "無效的發票類型" });
+      return;
+    }
+    if (invoiceInput) {
+      const buyerPhone = invoiceInput.buyerPhone || registrations[0]?.phone || null;
+      const validationError = validateInvoice(invoiceInput, Boolean(payerEmail || buyerPhone));
+      if (validationError) {
+        res.status(400).json({ error: validationError });
+        return;
+      }
+    }
+
     await db.insert(paymentTransactionsTable).values({
       paymentRef,
       provider: method,
@@ -95,6 +163,24 @@ router.post("/payments/initiate", async (req, res): Promise<void> => {
       payerEmail,
       status: method === "bank" ? "awaiting_transfer" : "pending",
     });
+
+    if (invoiceInput) {
+      await db.insert(invoicesTable).values({
+        paymentRef,
+        invoiceType: invoiceInput.invoiceType,
+        carrierType: invoiceInput.carrierType || null,
+        carrierNum: invoiceInput.carrierNum || null,
+        taxId: invoiceInput.taxId || null,
+        companyTitle: invoiceInput.companyTitle || null,
+        loveCode: invoiceInput.loveCode || null,
+        buyerName: invoiceInput.buyerName || registrations[0]?.parentName || null,
+        buyerEmail: payerEmail,
+        buyerPhone: invoiceInput.buyerPhone || registrations[0]?.phone || null,
+        buyerAddr: invoiceInput.buyerAddr || null,
+        amount: totalAmount,
+        status: "pending",
+      });
+    }
 
     await db
       .update(registrationsTable)
@@ -197,6 +283,12 @@ router.get("/payments/status/:ref", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Payment not found" });
     return;
   }
+  const [invoice] = await db
+    .select()
+    .from(invoicesTable)
+    .where(eq(invoicesTable.paymentRef, ref))
+    .orderBy(desc(invoicesTable.id))
+    .limit(1);
   res.json({
     paymentRef: tx.paymentRef,
     provider: tx.provider,
@@ -205,6 +297,16 @@ router.get("/payments/status/:ref", async (req, res): Promise<void> => {
     itemName: tx.itemName,
     paidAt: tx.paidAt,
     bankInfo: tx.provider === "bank" ? BANK_INFO : null,
+    invoice: invoice
+      ? {
+          status: invoice.status,
+          invoiceType: invoice.invoiceType,
+          invoiceNumber: invoice.invoiceNumber,
+          invoiceDate: invoice.invoiceDate,
+          randomNumber: invoice.randomNumber,
+          errorMessage: invoice.errorMessage,
+        }
+      : null,
   });
 });
 
@@ -214,6 +316,7 @@ async function markPaymentPaid(
   rawResult: unknown,
 ): Promise<void> {
   const now = new Date();
+  let didTransitionToPaid = false;
   await db.transaction(async (tx) => {
     const [current] = await tx
       .select()
@@ -233,8 +336,166 @@ async function markPaymentPaid(
       .update(registrationsTable)
       .set({ paymentStatus: "paid" })
       .where(eq(registrationsTable.paymentRef, paymentRef));
+    didTransitionToPaid = true;
   });
+  if (didTransitionToPaid) {
+    // Fire-and-forget invoice issuance — failures should not roll back payment.
+    issueInvoiceForPayment(paymentRef).catch((err) => {
+      logger.error({ err, paymentRef }, "[ECPay Invoice] async issuance failed");
+    });
+  }
 }
+
+async function issueInvoiceForPayment(paymentRef: string): Promise<void> {
+  const [invoice] = await db
+    .select()
+    .from(invoicesTable)
+    .where(eq(invoicesTable.paymentRef, paymentRef))
+    .orderBy(desc(invoicesTable.id))
+    .limit(1);
+  if (!invoice) {
+    logger.info({ paymentRef }, "[ECPay Invoice] no invoice info recorded — skipping issuance");
+    return;
+  }
+  if (invoice.status === "issued") {
+    logger.info({ paymentRef }, "[ECPay Invoice] already issued — skipping");
+    return;
+  }
+  const [payment] = await db
+    .select()
+    .from(paymentTransactionsTable)
+    .where(eq(paymentTransactionsTable.paymentRef, paymentRef));
+  if (!payment) return;
+
+  const options: InvoiceIssueOptions = {
+    relateNumber: paymentRef,
+    customerEmail: invoice.buyerEmail || payment.payerEmail || "",
+    customerName: invoice.buyerName || undefined,
+    customerPhone: invoice.buyerPhone || undefined,
+    customerAddr: invoice.buyerAddr || undefined,
+    invoiceType: invoice.invoiceType as "personal" | "company" | "donation",
+    carrierType: invoice.carrierType as InvoiceIssueOptions["carrierType"],
+    carrierNum: invoice.carrierNum || undefined,
+    taxId: invoice.taxId || undefined,
+    companyTitle: invoice.companyTitle || undefined,
+    loveCode: invoice.loveCode || undefined,
+    salesAmount: invoice.amount,
+    items: [
+      {
+        name: payment.itemName,
+        count: 1,
+        unitPrice: invoice.amount,
+        amount: invoice.amount,
+      },
+    ],
+  };
+
+  const result = await issueInvoice(options);
+  if (result.success) {
+    await db
+      .update(invoicesTable)
+      .set({
+        status: "issued",
+        invoiceNumber: result.invoiceNumber || null,
+        invoiceDate: result.invoiceDate || null,
+        randomNumber: result.randomNumber || null,
+        rawResponse: (result.rawResponse as any) || null,
+        issuedAt: new Date(),
+        errorMessage: null,
+      })
+      .where(eq(invoicesTable.id, invoice.id));
+    logger.info(
+      { paymentRef, invoiceNumber: result.invoiceNumber },
+      "[ECPay Invoice] issued",
+    );
+  } else {
+    await db
+      .update(invoicesTable)
+      .set({
+        status: "failed",
+        errorMessage: result.message || "未知錯誤",
+        rawResponse: (result.rawResponse as any) || null,
+      })
+      .where(eq(invoicesTable.id, invoice.id));
+    logger.error(
+      { paymentRef, message: result.message },
+      "[ECPay Invoice] issuance failed",
+    );
+  }
+}
+
+function requireAdmin(req: any, res: any): boolean {
+  if (typeof req.isAuthenticated !== "function" || !req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  return true;
+}
+
+router.post("/payments/invoices/:ref/retry", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const ref = req.params.ref;
+    const [payment] = await db
+      .select()
+      .from(paymentTransactionsTable)
+      .where(eq(paymentTransactionsTable.paymentRef, ref));
+    if (!payment) {
+      res.status(404).json({ error: "Payment not found" });
+      return;
+    }
+    if (payment.status !== "paid") {
+      res.status(400).json({ error: "Payment is not paid yet" });
+      return;
+    }
+    await issueInvoiceForPayment(ref);
+    const [invoice] = await db
+      .select()
+      .from(invoicesTable)
+      .where(eq(invoicesTable.paymentRef, ref))
+      .orderBy(desc(invoicesTable.id))
+      .limit(1);
+    res.json({
+      status: invoice?.status || "missing",
+      invoiceNumber: invoice?.invoiceNumber || null,
+      errorMessage: invoice?.errorMessage || null,
+    });
+  } catch (error: unknown) {
+    logger.error({ err: error }, "[invoice/retry] error");
+    res.status(500).json({ error: "Failed to retry invoice issuance" });
+  }
+});
+
+router.post("/payments/invoices/:ref/void", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const ref = req.params.ref;
+    const reason = String(req.body?.reason || "訂單取消");
+    const [invoice] = await db
+      .select()
+      .from(invoicesTable)
+      .where(eq(invoicesTable.paymentRef, ref))
+      .orderBy(desc(invoicesTable.id))
+      .limit(1);
+    if (!invoice || !invoice.invoiceNumber || !invoice.invoiceDate) {
+      res.status(400).json({ error: "No issued invoice found for this payment" });
+      return;
+    }
+    // ECPay returns invoiceDate as "YYYY-MM-DD+HH:MM:SS"; the Invalid endpoint expects YYYY-MM-DD.
+    const dateOnly = invoice.invoiceDate.split("+")[0]?.split(" ")[0]?.split("T")[0] ?? invoice.invoiceDate;
+    const result = await voidInvoice(invoice.invoiceNumber, dateOnly, reason);
+    if (result.success) {
+      await db
+        .update(invoicesTable)
+        .set({ status: "voided", voidedAt: new Date() })
+        .where(eq(invoicesTable.id, invoice.id));
+    }
+    res.json({ success: result.success, message: result.message });
+  } catch (error: unknown) {
+    logger.error({ err: error }, "[invoice/void] error");
+    res.status(500).json({ error: "Failed to void invoice" });
+  }
+});
 
 // NewebPay sends URL-encoded form bodies; rely on express.urlencoded middleware
 // already applied at the app level.
