@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation, Redirect } from "wouter";
 import { useAuth, type AdminRole } from "@workspace/replit-auth-web";
-import { LayoutDashboard, Newspaper, Users, Handshake, ArrowLeft, Share2, FileText, Settings, ScanLine, Mail, ShieldCheck, LogOut } from "lucide-react";
+import { LayoutDashboard, Newspaper, Users, Handshake, ArrowLeft, Share2, FileText, Settings, ScanLine, Mail, ShieldCheck, LogOut, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -22,6 +22,7 @@ const ALL_NAVS: NavItem[] = [
   { href: "/admin/social-accounts", label: "社群帳號", icon: Share2, roles: ["editor"] },
   { href: "/admin/social-posts", label: "社群貼文", icon: FileText, roles: ["editor"] },
   { href: "/admin/automation", label: "自動化設定", icon: Settings, roles: ["editor"] },
+  { href: "/admin/promo-codes", label: "優惠碼管理", icon: Tag, roles: ["editor"] },
   { href: "/admin/users", label: "帳號管理", icon: ShieldCheck, roles: [] }, // owner-only
 ];
 

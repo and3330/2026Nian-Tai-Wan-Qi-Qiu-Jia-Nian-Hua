@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Cpu, Baby, Sparkles, Eye, Calendar, Clock, MapPin, Ticket, Star, Users, Phone, Mail, AlertCircle, CheckCircle2, QrCode } from "lucide-react";
+import { ArrowRight, Cpu, Baby, Sparkles, Eye, Calendar, Clock, MapPin, Ticket, Star, Users, Phone, Mail, AlertCircle, CheckCircle2, QrCode, Tag, X as XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useGetRegistrationAvailability,
@@ -99,6 +99,63 @@ export default function CarnivalPage() {
   } | null>(null);
   const [confirmedTokens, setConfirmedTokens] = useState<string[]>([]);
 
+  // Promo code state
+  const [promoInput, setPromoInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discountAmount: number;
+    finalAmount: number;
+    baseAmount: number;
+    label: string;
+  } | null>(null);
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
+  const baseTotal =
+    visitorTicketType === "combo"
+      ? 300 * formData.ticketCount
+      : visitorTicketType === "single"
+        ? 200 * formData.ticketCount
+        : 0;
+  const finalTotal = appliedPromo ? appliedPromo.finalAmount : baseTotal;
+
+  const applyPromo = async () => {
+    setPromoError(null);
+    const code = promoInput.trim().toUpperCase();
+    if (!code) { setPromoError("請輸入優惠碼"); return; }
+    if (!visitorTicketType) { setPromoError("請先選擇票種"); return; }
+    setPromoChecking(true);
+    try {
+      const res = await fetch("/api/promo-codes/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          ticketType: visitorTicketType,
+          ticketCount: formData.ticketCount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPromoError(data?.error || "優惠碼無效");
+        setAppliedPromo(null);
+        return;
+      }
+      setAppliedPromo({
+        code: data.code,
+        discountAmount: data.discountAmount,
+        finalAmount: data.finalAmount,
+        baseAmount: data.baseAmount,
+        label: data.label,
+      });
+    } catch {
+      setPromoError("套用失敗，請稍後再試");
+    } finally {
+      setPromoChecking(false);
+    }
+  };
+  const clearPromo = () => { setAppliedPromo(null); setPromoInput(""); setPromoError(null); };
+
   const publicDates = availability?.filter(a => {
     const d = new Date(a.date);
     return d.getDate() >= 25;
@@ -154,14 +211,15 @@ export default function CarnivalPage() {
             eventDates: ["2026-07-25", "2026-07-26"],
             ticketType: "combo",
             amount: comboTotal,
-          },
+            ...(appliedPromo ? { promoCode: appliedPromo.code } : {}),
+          } as any,
         });
         for (const r of result.registrations) {
           created.push(r);
           if (r.qrToken) tokens.push(r.qrToken);
         }
-        totalAmount = comboTotal;
-        itemLabel = `兩日套票 × ${formData.ticketCount}（7/25 + 7/26）`;
+        totalAmount = appliedPromo ? appliedPromo.finalAmount : comboTotal;
+        itemLabel = `兩日套票 × ${formData.ticketCount}（7/25 + 7/26）${appliedPromo ? ` · 折扣碼 ${appliedPromo.code}` : ""}`;
       } else {
         const singleTotal = 200 * formData.ticketCount;
         const r = await createMutation.mutateAsync({
@@ -173,12 +231,13 @@ export default function CarnivalPage() {
             eventDate: formData.eventDate,
             ticketType: "single",
             amount: singleTotal,
-          },
+            ...(appliedPromo ? { promoCode: appliedPromo.code } : {}),
+          } as any,
         });
         created.push(r);
         if (r.qrToken) tokens.push(r.qrToken);
-        totalAmount = singleTotal;
-        itemLabel = `單日票 × ${formData.ticketCount}（${formData.eventDate}）`;
+        totalAmount = appliedPromo ? appliedPromo.finalAmount : singleTotal;
+        itemLabel = `單日票 × ${formData.ticketCount}（${formData.eventDate}）${appliedPromo ? ` · 折扣碼 ${appliedPromo.code}` : ""}`;
       }
 
       setConfirmedTokens(tokens);
@@ -344,7 +403,7 @@ export default function CarnivalPage() {
         <div className="flex flex-col sm:flex-row sm:justify-center gap-4 sm:gap-6 mb-10 max-w-md sm:max-w-none mx-auto">
           <button
             type="button"
-            onClick={() => { setVisitorTicketType("single"); setFormData({...formData, eventDate: ""}); }}
+            onClick={() => { setVisitorTicketType("single"); setFormData({...formData, eventDate: ""}); clearPromo(); }}
             className={cn(
               "glass-card rounded-2xl p-6 text-center hover-lift transition-all border-2",
               visitorTicketType === "single" ? "border-primary shadow-md" : "border-transparent"
@@ -359,7 +418,7 @@ export default function CarnivalPage() {
           </button>
           <button
             type="button"
-            onClick={() => { setVisitorTicketType("combo"); setFormData({...formData, eventDate: ""}); }}
+            onClick={() => { setVisitorTicketType("combo"); setFormData({...formData, eventDate: ""}); clearPromo(); }}
             className={cn(
               "glass-card rounded-2xl p-6 text-center hover-lift relative transition-all border-2",
               visitorTicketType === "combo" ? "border-primary shadow-md" : "border-green-200"
@@ -554,7 +613,7 @@ export default function CarnivalPage() {
                     </label>
                     <select
                       value={formData.ticketCount}
-                      onChange={e => setFormData({...formData, ticketCount: parseInt(e.target.value)})}
+                      onChange={e => { setFormData({...formData, ticketCount: parseInt(e.target.value)}); clearPromo(); }}
                       className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg appearance-none cursor-pointer"
                     >
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
@@ -562,6 +621,77 @@ export default function CarnivalPage() {
                       ))}
                     </select>
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Tag size={16} className="text-primary" /> 優惠碼（選填）
+                    </label>
+                    {appliedPromo ? (
+                      <div
+                        data-testid="promo-applied"
+                        className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-green-50 border-2 border-green-200"
+                      >
+                        <div className="text-sm">
+                          <div className="font-bold text-green-800">已套用 {appliedPromo.code}</div>
+                          <div className="text-green-700 text-xs">{appliedPromo.label} · 折抵 NT$ {appliedPromo.discountAmount.toLocaleString()}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={clearPromo}
+                          data-testid="button-clear-promo"
+                          className="p-2 rounded-lg hover:bg-green-100 text-green-700"
+                          aria-label="移除優惠碼"
+                        >
+                          <XIcon size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={promoInput}
+                          onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(null); }}
+                          placeholder="例如：EARLYBIRD"
+                          maxLength={32}
+                          data-testid="input-promo-code"
+                          className="flex-1 px-4 py-3 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all uppercase"
+                        />
+                        <button
+                          type="button"
+                          onClick={applyPromo}
+                          disabled={promoChecking || !promoInput.trim()}
+                          data-testid="button-apply-promo"
+                          className="px-5 py-3 rounded-xl font-medium bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                        >
+                          {promoChecking ? "驗證中..." : "套用"}
+                        </button>
+                      </div>
+                    )}
+                    {promoError && (
+                      <p data-testid="promo-error" className="text-sm text-destructive flex items-center gap-1">
+                        <AlertCircle size={14} /> {promoError}
+                      </p>
+                    )}
+                  </div>
+
+                  {visitorTicketType && (
+                    <div className="rounded-xl bg-primary/5 border-2 border-primary/20 p-4 space-y-1 text-sm" data-testid="price-summary">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>原價小計</span>
+                        <span>NT$ {baseTotal.toLocaleString()}</span>
+                      </div>
+                      {appliedPromo && (
+                        <div className="flex justify-between text-green-700 font-medium">
+                          <span>優惠折抵</span>
+                          <span>− NT$ {appliedPromo.discountAmount.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-lg font-bold text-primary border-t border-primary/20 pt-2 mt-1">
+                        <span>應付總額</span>
+                        <span data-testid="text-final-total">NT$ {finalTotal.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
+
                   {comboBlocked && comboInsufficientDate && (
                     <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 text-sm text-amber-900 flex gap-3">
                       <AlertCircle className="shrink-0 mt-0.5" size={18} />

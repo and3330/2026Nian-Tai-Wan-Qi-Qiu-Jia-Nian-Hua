@@ -6,6 +6,7 @@ import { db, registrationsTable } from "@workspace/db";
 import { GetRegistrationAvailabilityResponse } from "@workspace/api-zod";
 import { sendConfirmationEmail } from "../services/email-service";
 import { logger } from "../lib/logger";
+import { applyPromoInTx, normalizeCode } from "../lib/promo-codes";
 
 const router: IRouter = Router();
 
@@ -143,6 +144,7 @@ router.post("/registrations", async (req, res): Promise<void> => {
   }
 
   const qrToken = crypto.randomBytes(16).toString("hex");
+  const rawPromoCode = normalizeCode(req.body?.promoCode);
 
   try {
     const result = await db.transaction(async (tx) => {
@@ -152,6 +154,24 @@ router.post("/registrations", async (req, res): Promise<void> => {
       if (currentCount + ticketCount > DAILY_CAPACITY) {
         return { soldOut: true as const, remaining, date: eventDate };
       }
+
+      let finalAmount = priced.amount;
+      let promoCode: string | null = null;
+      let discountAmount: number | null = null;
+      if (rawPromoCode && priced.amount != null && priced.amount > 0) {
+        const promoResult = await applyPromoInTx(tx, {
+          code: rawPromoCode,
+          baseAmount: priced.amount,
+          ticketType: priced.ticketType,
+        });
+        if (!promoResult.ok) {
+          return { promoFail: true as const, error: promoResult.error, code: promoResult.code };
+        }
+        finalAmount = promoResult.finalAmount;
+        promoCode = promoResult.code;
+        discountAmount = promoResult.discountAmount;
+      }
+
       const [reg] = await tx
         .insert(registrationsTable)
         .values({
@@ -161,12 +181,19 @@ router.post("/registrations", async (req, res): Promise<void> => {
           ticketCount,
           eventDate,
           ticketType: priced.ticketType,
-          amount: priced.amount,
+          amount: finalAmount,
+          promoCode,
+          discountAmount,
           qrToken,
         })
         .returning();
       return { soldOut: false as const, registration: reg };
     });
+
+    if ("promoFail" in result && result.promoFail) {
+      res.status(400).json({ error: result.error, code: result.code ?? "PROMO_INVALID" });
+      return;
+    }
 
     if (result.soldOut) {
       res.status(409).json({
@@ -234,6 +261,8 @@ router.post("/registrations/combo", async (req, res): Promise<void> => {
     return;
   }
 
+  const rawPromoCode = normalizeCode(body.promoCode);
+
   try {
     const result = await db.transaction(async (tx) => {
       // Always lock dates in sorted order to prevent deadlocks between
@@ -246,6 +275,23 @@ router.post("/registrations/combo", async (req, res): Promise<void> => {
         if (count + ticketCount > DAILY_CAPACITY) {
           return { soldOut: true as const, date: d, remaining: Math.max(0, DAILY_CAPACITY - count) };
         }
+      }
+
+      let finalAmount = priced.amount;
+      let promoCode: string | null = null;
+      let discountAmount: number | null = null;
+      if (rawPromoCode && priced.amount != null && priced.amount > 0) {
+        const promoResult = await applyPromoInTx(tx, {
+          code: rawPromoCode,
+          baseAmount: priced.amount,
+          ticketType: priced.ticketType,
+        });
+        if (!promoResult.ok) {
+          return { promoFail: true as const, error: promoResult.error, code: promoResult.code };
+        }
+        finalAmount = promoResult.finalAmount;
+        promoCode = promoResult.code;
+        discountAmount = promoResult.discountAmount;
       }
 
       const inserted: Array<typeof registrationsTable.$inferSelect> = [];
@@ -263,7 +309,9 @@ router.post("/registrations/combo", async (req, res): Promise<void> => {
             // Only the first leg carries the ticketType + amount so the
             // payment total isn't double-counted.
             ticketType: i === 0 ? priced.ticketType : null,
-            amount: i === 0 ? priced.amount : null,
+            amount: i === 0 ? finalAmount : null,
+            promoCode: i === 0 ? promoCode : null,
+            discountAmount: i === 0 ? discountAmount : null,
             qrToken,
           })
           .returning();
@@ -271,6 +319,11 @@ router.post("/registrations/combo", async (req, res): Promise<void> => {
       }
       return { soldOut: false as const, registrations: inserted };
     });
+
+    if ("promoFail" in result && result.promoFail) {
+      res.status(400).json({ error: result.error, code: result.code ?? "PROMO_INVALID" });
+      return;
+    }
 
     if (result.soldOut) {
       res.status(409).json({

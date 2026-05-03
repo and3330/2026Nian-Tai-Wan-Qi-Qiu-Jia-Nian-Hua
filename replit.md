@@ -38,6 +38,32 @@ artifacts-monorepo/
 └── package.json            # Root package
 ```
 
+## 25-Item Optimization Roadmap (User-defined Order)
+
+User chose option 3 ("一路做"). Phased plan:
+
+### 第一波 — 上線收錢前置 ✅ COMPLETE
+- [x] **#2** 訂單查詢頁（買家自助）— `/lookup` page + `POST /payments/lookup`
+- [x] **#4** 庫存擋賣 + 即時剩餘票數顯示 — `pg_advisory_xact_lock` per date, combo locks both legs in sorted order, returns 409 SOLD_OUT
+- [x] **#11** SEO + 社群分享卡片 — OG/Twitter Card, JSON-LD Event, robots.txt, sitemap.xml
+- [x] **#6** 行動版細修（購票流程針對手機優化）— flex-col on mobile in CarnivalPage + HomePage
+- [x] **#20** 後台多角色權限（owner/editor/checkin/viewer）— admin_users table, requireRole middleware, /admin/users page
+
+### 第二波 — 行銷檔期前
+- [x] **#5** 優惠碼系統 — `promo_codes` table (percent/fixed, applies_to, max_uses, valid date range), `applyPromoInTx` uses `SELECT ... FOR UPDATE` to prevent over-redemption. Public `POST /promo-codes/validate` for live preview; admin CRUD `/admin/promo-codes` (editor+). Stored on registration as `promo_code` + `discount_amount`. Combo only stores promo on first leg.
+- [ ] **#1** 退票 / 改票流程
+- [ ] **#12** 倒數 + 即時剩餘票數動畫
+- [ ] **#13** 一鍵分享社群
+
+### 第三波 — 活動前 2 週
+- [ ] **#19** 後台手機版（給現場工作人員）
+- [ ] **#7** Apple/Google Wallet
+- [ ] **#17** 參賽者投票
+- [ ] **#18** （未指定，待 user 補充）
+
+### 已延後
+- 金流整合（payment integration deferred to user）
+
 ## Project: 2026 臺灣氣球嘉年華
 
 ### Dual-Audience Architecture

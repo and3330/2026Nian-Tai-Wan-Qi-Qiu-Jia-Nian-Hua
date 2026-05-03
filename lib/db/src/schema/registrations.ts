@@ -16,6 +16,8 @@ export const registrationsTable = pgTable(
     paymentMethod: text("payment_method"),
     paymentStatus: text("payment_status").notNull().default("unpaid"),
     paymentRef: text("payment_ref"),
+    promoCode: text("promo_code"),
+    discountAmount: integer("discount_amount"),
     qrToken: text("qr_token").unique(),
     checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
     confirmationEmailSentAt: timestamp("confirmation_email_sent_at", { withTimezone: true }),

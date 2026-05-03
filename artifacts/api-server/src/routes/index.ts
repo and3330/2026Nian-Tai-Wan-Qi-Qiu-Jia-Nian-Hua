@@ -13,6 +13,7 @@ import paymentsRouter from "./payments";
 import checkinRouter from "./checkin";
 import emailTemplatesRouter from "./email-templates";
 import adminUsersRouter from "./admin-users";
+import promoCodesRouter from "./promo-codes";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(paymentsRouter);
 router.use(checkinRouter);
 router.use(emailTemplatesRouter);
 router.use(adminUsersRouter);
+router.use(promoCodesRouter);
 
 export default router;
