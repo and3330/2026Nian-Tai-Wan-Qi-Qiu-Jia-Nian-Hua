@@ -202,6 +202,9 @@ importers:
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
+      stripe:
+        specifier: ^22.1.0
+        version: 22.1.0(@types/node@25.3.5)
     devDependencies:
       '@types/cookie-parser':
         specifier: ^1.4.10

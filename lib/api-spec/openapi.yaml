@@ -820,6 +820,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /admin/sales-overview:
+    get:
+      operationId: adminGetSalesOverview
+      tags: [admin]
+      summary: Get aggregated ticketing KPIs and trends for the dashboard (admin)
+      responses:
+        "200":
+          description: Sales overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesOverview"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /admin/email-templates/{key}:
     put:
       operationId: adminUpdateEmailTemplate
@@ -1390,3 +1409,99 @@ components:
           type: string
         metadata:
           $ref: '#/components/schemas/UploadUrlRequest'
+
+    SalesTrendPoint:
+      type: object
+      required: [date, ticketsSold, revenue]
+      properties:
+        date:
+          type: string
+          format: date
+        ticketsSold:
+          type: number
+        revenue:
+          type: number
+
+    TicketTypeBreakdown:
+      type: object
+      required: [ticketType, label, ticketsSold, revenue, percentage]
+      properties:
+        ticketType:
+          type: string
+          description: Stored ticket_type value (e.g. "single", "combo"). Empty string for legacy rows with no ticket type.
+        label:
+          type: string
+          description: Human-readable label (e.g. "單日票", "兩日套票", "未指定").
+        ticketsSold:
+          type: number
+        revenue:
+          type: number
+        percentage:
+          type: number
+
+    SessionAvailability:
+      type: object
+      required: [eventDate, label, totalCapacity, registered, remaining, fillPercentage]
+      properties:
+        eventDate:
+          type: string
+          format: date
+        label:
+          type: string
+        totalCapacity:
+          type: number
+        registered:
+          type: number
+        remaining:
+          type: number
+        fillPercentage:
+          type: number
+
+    SalesOverview:
+      type: object
+      required:
+        - ticketPriceTwd
+        - todayTicketsSold
+        - todayRevenue
+        - totalTicketsSold
+        - totalRevenue
+        - totalCapacity
+        - overallFillPercentage
+        - dailySalesTrend
+        - ticketTypeBreakdown
+        - sessionAvailability
+      properties:
+        ticketPriceTwd:
+          type: number
+          description: Reference single-day ticket price in TWD (for display only; revenue is summed from registration.amount).
+        todayTicketsSold:
+          type: number
+          description: Paid tickets created today (by createdAt date in Asia/Taipei).
+        todayRevenue:
+          type: number
+          description: Revenue from paid registrations created today (sum of registration.amount).
+        totalTicketsSold:
+          type: number
+          description: Cumulative paid ticket count.
+        totalRevenue:
+          type: number
+          description: Cumulative revenue from paid registrations (sum of registration.amount).
+        totalCapacity:
+          type: number
+        overallFillPercentage:
+          type: number
+        dailySalesTrend:
+          type: array
+          description: Daily ticket sales (grouped by createdAt) for the last 14 days.
+          items:
+            $ref: '#/components/schemas/SalesTrendPoint'
+        ticketTypeBreakdown:
+          type: array
+          description: Ticket distribution across event sessions (each event date is a ticket type).
+          items:
+            $ref: '#/components/schemas/TicketTypeBreakdown'
+        sessionAvailability:
+          type: array
+          description: Per-session capacity / remaining seats.
+          items:
+            $ref: '#/components/schemas/SessionAvailability'

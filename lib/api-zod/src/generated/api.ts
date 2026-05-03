@@ -541,6 +541,79 @@ export const AdminListEmailTemplatesResponse = zod.array(
 );
 
 /**
+ * @summary Get aggregated ticketing KPIs and trends for the dashboard (admin)
+ */
+export const AdminGetSalesOverviewResponse = zod.object({
+  ticketPriceTwd: zod
+    .number()
+    .describe(
+      "Reference single-day ticket price in TWD (for display only; revenue is summed from registration.amount).",
+    ),
+  todayTicketsSold: zod
+    .number()
+    .describe(
+      "Paid tickets created today (by createdAt date in Asia\/Taipei).",
+    ),
+  todayRevenue: zod
+    .number()
+    .describe(
+      "Revenue from paid registrations created today (sum of registration.amount).",
+    ),
+  totalTicketsSold: zod.number().describe("Cumulative paid ticket count."),
+  totalRevenue: zod
+    .number()
+    .describe(
+      "Cumulative revenue from paid registrations (sum of registration.amount).",
+    ),
+  totalCapacity: zod.number(),
+  overallFillPercentage: zod.number(),
+  dailySalesTrend: zod
+    .array(
+      zod.object({
+        date: zod.date(),
+        ticketsSold: zod.number(),
+        revenue: zod.number(),
+      }),
+    )
+    .describe(
+      "Daily ticket sales (grouped by createdAt) for the last 14 days.",
+    ),
+  ticketTypeBreakdown: zod
+    .array(
+      zod.object({
+        ticketType: zod
+          .string()
+          .describe(
+            'Stored ticket_type value (e.g. \"single\", \"combo\"). Empty string for legacy rows with no ticket type.',
+          ),
+        label: zod
+          .string()
+          .describe(
+            'Human-readable label (e.g. \"單日票\", \"兩日套票\", \"未指定\").',
+          ),
+        ticketsSold: zod.number(),
+        revenue: zod.number(),
+        percentage: zod.number(),
+      }),
+    )
+    .describe(
+      "Ticket distribution across event sessions (each event date is a ticket type).",
+    ),
+  sessionAvailability: zod
+    .array(
+      zod.object({
+        eventDate: zod.date(),
+        label: zod.string(),
+        totalCapacity: zod.number(),
+        registered: zod.number(),
+        remaining: zod.number(),
+        fillPercentage: zod.number(),
+      }),
+    )
+    .describe("Per-session capacity \/ remaining seats."),
+});
+
+/**
  * @summary Update an email template (admin)
  */
 export const AdminUpdateEmailTemplateParams = zod.object({

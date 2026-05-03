@@ -54,7 +54,7 @@ Each activity page has its own embedded registration form — no standalone regi
 - **Conference Page** (`/conference`): 傳奇工匠研討會 — professional workshops, competitions, embedded registration
 - **News**: Latest announcements with detail pages
 - **Sponsors**: Tiered sponsor display with external links
-- **Admin Dashboard**: Protected by username/password login. Registration monitoring, CSV export, news/contestant/sponsor CRUD
+- **Admin Dashboard** (`/admin`): Protected by username/password login. 票務營運總覽 with KPIs (今日售票數, 累計收入, 累計售票, 剩餘名額), 每日售票趨勢 line chart (last 14 days), 各票種佔比 pie chart (per session date), 各日剩餘名額 stacked bar chart, 最新報名名單 table, and CSV export (with 票種, 入場日期, 單價, 小計, 付款狀態 columns). Plus news/contestant/sponsor CRUD.
 - **Social Media Marketing** (admin): FB/IG/Threads OAuth binding, post creation/scheduling/publishing, calendar view, automation settings
 - **Admin Auth**: Custom login system (username: 1, password: aa3210). No Replit Auth / OIDC.
 
@@ -115,7 +115,8 @@ Meta (Facebook/Instagram) advertising guide for the carnival. Contains 3 ad copy
 - `GET /api/sponsors` - List sponsors
 - `GET /api/admin/registrations` - Admin: list registrations
 - `GET /api/admin/registrations/export` - Admin: CSV export
-- `GET /api/admin/stats` - Admin: registration stats
+- `GET /api/admin/stats` - Admin: registration stats per event date
+- `GET /api/admin/sales-overview` - Admin: aggregated ticketing KPIs, daily sales trend (14d), ticket-type breakdown, session availability
 - `POST/PUT/DELETE /api/admin/news/:id` - Admin: news CRUD
 - `POST/PUT/DELETE /api/admin/contestants/:id` - Admin: contestant CRUD
 - `GET/POST/PUT/DELETE /api/admin/sponsors/:id` - Admin: sponsor CRUD

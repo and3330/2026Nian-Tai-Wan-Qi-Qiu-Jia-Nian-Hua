@@ -348,6 +348,52 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
+export interface SalesTrendPoint {
+  date: string;
+  ticketsSold: number;
+  revenue: number;
+}
+
+export interface TicketTypeBreakdown {
+  /** Stored ticket_type value (e.g. "single", "combo"). Empty string for legacy rows with no ticket type. */
+  ticketType: string;
+  /** Human-readable label (e.g. "單日票", "兩日套票", "未指定"). */
+  label: string;
+  ticketsSold: number;
+  revenue: number;
+  percentage: number;
+}
+
+export interface SessionAvailability {
+  eventDate: string;
+  label: string;
+  totalCapacity: number;
+  registered: number;
+  remaining: number;
+  fillPercentage: number;
+}
+
+export interface SalesOverview {
+  /** Reference single-day ticket price in TWD (for display only; revenue is summed from registration.amount). */
+  ticketPriceTwd: number;
+  /** Paid tickets created today (by createdAt date in Asia/Taipei). */
+  todayTicketsSold: number;
+  /** Revenue from paid registrations created today (sum of registration.amount). */
+  todayRevenue: number;
+  /** Cumulative paid ticket count. */
+  totalTicketsSold: number;
+  /** Cumulative revenue from paid registrations (sum of registration.amount). */
+  totalRevenue: number;
+  totalCapacity: number;
+  overallFillPercentage: number;
+  /** Daily ticket sales (grouped by createdAt) for the last 14 days. */
+  dailySalesTrend: SalesTrendPoint[];
+  /** Ticket distribution across event sessions (each event date is a ticket type). */
+  ticketTypeBreakdown: TicketTypeBreakdown[];
+  /** Per-session capacity / remaining seats. */
+  sessionAvailability: SessionAvailability[];
+}
+
 /**
  * Opaque session token
  */

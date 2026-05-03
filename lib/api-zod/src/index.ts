@@ -19,8 +19,12 @@ export type {
   MobileTokenExchangeSuccess,
   NewsArticle,
   Registration,
+  SalesOverview,
+  SalesTrendPoint,
+  SessionAvailability,
   Sponsor,
   SponsorTier,
+  TicketTypeBreakdown,
   UploadUrlRequest,
   UploadUrlResponse,
 } from "./generated/types";

@@ -43,6 +43,7 @@ import type {
   NewsArticle,
   PaymentStatus,
   Registration,
+  SalesOverview,
   SendTestEmailBody,
   SendTestEmailResponse,
   Sponsor,
@@ -2938,6 +2939,81 @@ export function useAdminListEmailTemplates<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getAdminListEmailTemplatesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get aggregated ticketing KPIs and trends for the dashboard (admin)
+ */
+export const getAdminGetSalesOverviewUrl = () => {
+  return `/api/admin/sales-overview`;
+};
+
+export const adminGetSalesOverview = async (
+  options?: RequestInit,
+): Promise<SalesOverview> => {
+  return customFetch<SalesOverview>(getAdminGetSalesOverviewUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAdminGetSalesOverviewQueryKey = () => {
+  return [`/api/admin/sales-overview`] as const;
+};
+
+export const getAdminGetSalesOverviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof adminGetSalesOverview>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminGetSalesOverview>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getAdminGetSalesOverviewQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof adminGetSalesOverview>>
+  > = ({ signal }) => adminGetSalesOverview({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof adminGetSalesOverview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AdminGetSalesOverviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof adminGetSalesOverview>>
+>;
+export type AdminGetSalesOverviewQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get aggregated ticketing KPIs and trends for the dashboard (admin)
+ */
+
+export function useAdminGetSalesOverview<
+  TData = Awaited<ReturnType<typeof adminGetSalesOverview>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminGetSalesOverview>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAdminGetSalesOverviewQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
