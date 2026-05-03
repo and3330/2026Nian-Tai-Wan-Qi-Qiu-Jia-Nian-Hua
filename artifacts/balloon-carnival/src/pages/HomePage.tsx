@@ -3,11 +3,14 @@ import { Calendar, MapPin, Clock, ArrowRight, Ticket, Users, Sparkles, Heart, Ch
 import { Link } from "wouter";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { EventCountdown, AnimatedNumber } from "@/components/EventCountdown";
 
 export default function HomePage() {
   const { data: news } = useListNews();
   const { data: sponsors } = useListSponsors();
-  const { data: availability } = useGetRegistrationAvailability();
+  const { data: availability } = useGetRegistrationAvailability({
+    query: { queryKey: ["getRegistrationAvailability"], refetchInterval: 30000 },
+  });
 
   const latestNews = news?.slice(0, 3);
 
@@ -102,6 +105,10 @@ export default function HomePage() {
             </div>
           </div>
 
+          <div className="flex justify-center mb-8">
+            <EventCountdown />
+          </div>
+
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/carnival#register"
@@ -137,7 +144,7 @@ export default function HomePage() {
                     "px-2 py-0.5 rounded-full text-xs font-bold",
                     day.remaining <= 0 ? "bg-red-500/30 text-red-100" : day.remaining < 50 ? "bg-yellow-500/30 text-yellow-100" : "bg-white/20"
                   )}>
-                    {day.remaining <= 0 ? "已額滿" : `剩 ${day.remaining} 名`}
+                    {day.remaining <= 0 ? "已額滿" : <>剩 <AnimatedNumber value={day.remaining} /> 名</>}
                   </span>
                 </div>
               ))}

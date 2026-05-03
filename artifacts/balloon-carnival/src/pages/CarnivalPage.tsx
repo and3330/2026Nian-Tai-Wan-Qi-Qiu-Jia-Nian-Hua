@@ -11,6 +11,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetRegistrationAvailabilityQueryKey } from "@workspace/api-client-react";
 import { PaymentMethodModal } from "@/components/PaymentMethodModal";
+import { AnimatedNumber } from "@/components/EventCountdown";
 
 type VisitorTicketType = "single" | "combo" | "";
 
@@ -552,7 +553,7 @@ export default function CarnivalPage() {
                             style={{ width: `${(day.registered / day.totalCapacity) * 100}%` }}
                           ></div>
                         </div>
-                        <div className="text-xs text-muted-foreground text-right mt-1">剩餘 {day.remaining} / {day.totalCapacity}</div>
+                        <div className="text-xs text-muted-foreground text-right mt-1">剩餘 <AnimatedNumber value={day.remaining} className="font-bold text-foreground" /> / {day.totalCapacity}</div>
                       </button>
                     );
                   })}
