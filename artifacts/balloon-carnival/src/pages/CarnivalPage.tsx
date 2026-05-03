@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Cpu, Baby, Sparkles, Eye, Calendar, Clock, MapPin, Ticket, Star, Users, Phone, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Cpu, Baby, Sparkles, Eye, Calendar, Clock, MapPin, Ticket, Star, Users, Phone, Mail, AlertCircle, CheckCircle2, QrCode } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGetRegistrationAvailability, useCreateRegistration, type Registration } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -75,6 +75,7 @@ export default function CarnivalPage() {
   const [formData, setFormData] = useState({
     parentName: "",
     phone: "",
+    email: "",
     ticketCount: 1,
     eventDate: ""
   });
@@ -84,6 +85,7 @@ export default function CarnivalPage() {
     amount: number;
     itemLabel: string;
   } | null>(null);
+  const [confirmedTokens, setConfirmedTokens] = useState<string[]>([]);
 
   const publicDates = availability?.filter(a => {
     const d = new Date(a.date);
@@ -98,12 +100,16 @@ export default function CarnivalPage() {
     if (!visitorTicketType) { alert("請選擇票種"); return; }
     if (visitorTicketType === "single" && !formData.eventDate) { alert("請選擇入場日期"); return; }
 
+    const tokens: string[] = [];
     const submitOne = (eventDate: string, ticketType: string | null, amount: number | null) =>
       new Promise<Registration>((resolve, reject) => {
         createMutation.mutate(
           { data: { ...formData, eventDate, ticketType, amount } },
           {
-            onSuccess: (data) => resolve(data),
+            onSuccess: (data) => {
+              if ((data as any)?.qrToken) tokens.push((data as any).qrToken);
+              resolve(data);
+            },
             onError: (err: unknown) => reject(err),
           },
         );
@@ -127,6 +133,7 @@ export default function CarnivalPage() {
         totalAmount = singleTotal;
         itemLabel = `單日票 × ${formData.ticketCount}（${formData.eventDate}）`;
       }
+      setConfirmedTokens(tokens);
       queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
       setPendingPayment({
         registrationIds: created.map((r) => r.id),
@@ -333,6 +340,10 @@ export default function CarnivalPage() {
                 <div className="font-bold text-right">{formData.parentName}</div>
                 <div className="text-muted-foreground">聯絡電話：</div>
                 <div className="font-bold text-right">{formData.phone}</div>
+                {formData.email && (<>
+                  <div className="text-muted-foreground">Email：</div>
+                  <div className="font-bold text-right break-all">{formData.email}</div>
+                </>)}
                 <div className="text-muted-foreground">票種：</div>
                 <div className="font-bold text-right text-primary">{visitorTicketType === "combo" ? "兩日套票 300 元" : "單日票 200 元"}</div>
                 <div className="text-muted-foreground">票數：</div>
@@ -341,8 +352,34 @@ export default function CarnivalPage() {
                 <div className="font-bold text-right text-primary">{visitorTicketType === "combo" ? "7/25 + 7/26" : formData.eventDate}</div>
               </div>
             </div>
+
+            {confirmedTokens.length > 0 && (
+              <div className="mt-8 bg-white rounded-2xl p-6 max-w-md mx-auto shadow-sm border border-green-100">
+                <h3 className="font-bold mb-2 flex items-center justify-center gap-2 text-green-700">
+                  <QrCode size={20} /> 您的入場 QR Code
+                </h3>
+                <p className="text-xs text-muted-foreground text-center mb-4">入場時請出示此 QR Code 進行報到。已寄送至您的 Email。</p>
+                <div className="grid gap-4" style={{ gridTemplateColumns: confirmedTokens.length > 1 ? "1fr 1fr" : "1fr" }}>
+                  {confirmedTokens.map((token, idx) => (
+                    <div key={token} className="text-center">
+                      <img
+                        src={`/api/qr/${encodeURIComponent(token)}`}
+                        alt={`報到 QR ${idx + 1}`}
+                        className="w-full max-w-[220px] mx-auto border rounded-lg p-2 bg-white"
+                      />
+                      {confirmedTokens.length > 1 && (
+                        <div className="text-xs text-muted-foreground mt-2">
+                          {idx === 0 ? "7/25" : "7/26"}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button
-              onClick={() => { setSuccess(false); setVisitorTicketType(""); setFormData({ parentName: "", phone: "", ticketCount: 1, eventDate: "" }); }}
+              onClick={() => { setSuccess(false); setVisitorTicketType(""); setConfirmedTokens([]); setFormData({ parentName: "", phone: "", email: "", ticketCount: 1, eventDate: "" }); }}
               className="mt-10 text-green-600 font-bold hover:underline"
             >
               繼續購票
@@ -440,6 +477,18 @@ export default function CarnivalPage() {
                       required type="tel" value={formData.phone}
                       onChange={e => setFormData({...formData, phone: e.target.value})}
                       placeholder="例如：0912345678"
+                      className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Mail size={16} className="text-primary" /> Email
+                      <span className="text-xs text-muted-foreground font-normal">(填寫後將寄送購票確認信與 QR Code)</span>
+                    </label>
+                    <input
+                      type="email" value={formData.email}
+                      onChange={e => setFormData({...formData, email: e.target.value})}
+                      placeholder="例如：name@example.com"
                       className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg"
                     />
                   </div>

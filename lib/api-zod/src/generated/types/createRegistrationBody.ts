@@ -11,6 +11,7 @@ export interface CreateRegistrationBody {
   parentName: string;
   /** @minLength 1 */
   phone: string;
+  email?: string;
   /**
    * @minimum 1
    * @maximum 10

@@ -10,6 +10,8 @@ import adminRouter from "./admin";
 import socialMarketingRouter from "./social-marketing";
 import storageRouter from "./storage";
 import paymentsRouter from "./payments";
+import checkinRouter from "./checkin";
+import emailTemplatesRouter from "./email-templates";
 
 const router: IRouter = Router();
 
@@ -24,5 +26,7 @@ router.use(adminRouter);
 router.use(socialMarketingRouter);
 router.use(storageRouter);
 router.use(paymentsRouter);
+router.use(checkinRouter);
+router.use(emailTemplatesRouter);
 
 export default router;

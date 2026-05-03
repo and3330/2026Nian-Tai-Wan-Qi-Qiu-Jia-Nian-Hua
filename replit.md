@@ -62,7 +62,15 @@ Each activity page has its own embedded registration form — no standalone regi
 首頁, 氣球嘉年華, 傳奇工匠研討會, 最新消息, 贊助廠商
 
 ### Admin Navigation
-報名監控總覽, 最新消息管理, 研討會管理, 贊助廠商管理, 社群帳號, 社群貼文, 自動化設定
+報名監控總覽, 現場報到, Email 模板, 最新消息管理, 研討會管理, 贊助廠商管理, 社群帳號, 社群貼文, 自動化設定
+
+### Email & Reminders (Task #6)
+- Registrations accept an optional `email`. When provided, a confirmation email with a personal QR code is sent immediately on registration.
+- Each registration is assigned a unique `qrToken` (32 hex chars). The PNG render is served at `GET /api/qr/:token` (public, generated on demand by `qrcode`).
+- A reminder scheduler (`services/reminder-scheduler.ts`) runs hourly inside the API server. It sends two reminders per registration: 7 days before the event (`weekReminderSentAt`) and 1 day before (`dayReminderSentAt`). Idempotent via timestamp columns.
+- Email delivery uses `RESEND_API_KEY` when set (Resend HTTP API). Without the key, emails are logged to the server console — useful for development.
+- Email templates are stored in `email_templates` (key, subject, body, updatedAt). Default templates for `confirmation`, `week_reminder`, `day_reminder` are seeded on boot. Admins can edit subject/body and send a test email from `/admin/email-templates`. Variables: `{{parentName}}`, `{{phone}}`, `{{eventDate}}`, `{{ticketCount}}`, `{{qrUrl}}`.
+- Admin check-in lives at `/admin/checkin` — supports both manual token entry and on-device camera scanning (via `html5-qrcode`). Calls `GET /api/admin/checkin/lookup/:token` to preview the ticket and `POST /api/admin/checkin/:token` to mark `checkedInAt`. Re-scanning a checked-in ticket returns HTTP 409 with the original check-in timestamp.
 
 ### Ad Guide Page (`/ad-guide`)
 Meta (Facebook/Instagram) advertising guide for the carnival. Contains 3 ad copy variants (溫馨家庭風, 限量緊迫風, 活動亮點風), step-by-step Meta Ads Manager setup tutorial, and user journey with UTM parameter examples. Print-friendly layout with copy-to-clipboard buttons.
@@ -79,9 +87,10 @@ Meta (Facebook/Instagram) advertising guide for the carnival. Contains 3 ad copy
 ### Database Tables
 - `sessions` - Admin auth sessions
 - `users` - Legacy user table (unused after auth migration)
-- `registrations` - Event registrations (parent_name, phone, ticket_count, event_date, ticket_type, amount, payment_method, payment_status, payment_ref)
+- `registrations` - Event registrations (parent_name, phone, email, ticket_count, event_date, ticket_type, amount, payment_method, payment_status, payment_ref, qr_token, checked_in_at, confirmation_email_sent_at, week_reminder_sent_at, day_reminder_sent_at)
 - `payment_transactions` - Payment orders (payment_ref, provider, amount, item_name, payer_email, status, provider_trade_no, paid_at, raw_result)
 - `invoices` - ECPay 電子發票 (payment_ref, invoice_type, carrier_type/num, tax_id, company_title, love_code, invoice_number, invoice_date, random_number, status, raw_response, issued_at, voided_at)
+- `email_templates` - Editable email templates (key: `confirmation` | `week_reminder` | `day_reminder`, subject, body)
 - `news` - News articles (title, content, summary)
 - `contestants` - Competition participants (name, description, image_url, score)
 - `sponsors` - Sponsor information (name, logo_url, website_url, tier)
@@ -92,8 +101,14 @@ Meta (Facebook/Instagram) advertising guide for the carnival. Contains 3 ad copy
 
 ### API Endpoints
 - `GET /api/exhibitions` - List exhibition zones
-- `POST /api/registrations` - Create registration (with capacity check)
+- `POST /api/registrations` - Create registration (with capacity check, optional email triggers confirmation send + QR generation)
 - `GET /api/registrations/availability` - Check remaining tickets per date
+- `GET /api/qr/:token` - Public PNG of a registration's QR code (used in confirmation emails and success screens)
+- `GET /api/admin/checkin/lookup/:token` - Admin: preview a ticket and its check-in status
+- `POST /api/admin/checkin/:token` - Admin: mark a ticket as checked-in (409 if already checked-in)
+- `GET /api/admin/email-templates` - Admin: list editable email templates
+- `PUT /api/admin/email-templates/:key` - Admin: update template subject/body
+- `POST /api/admin/email-templates/:key/test` - Admin: send a sample render of the template to a recipient
 - `GET /api/news` - List news articles
 - `GET /api/news/:id` - Get single news article
 - `GET /api/contestants` - List contestants

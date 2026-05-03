@@ -67,6 +67,7 @@ export interface CreateRegistrationBody {
   parentName: string;
   /** @minLength 1 */
   phone: string;
+  email?: string;
   /**
    * @minimum 1
    * @maximum 10
@@ -89,6 +90,8 @@ export interface Registration {
   id: number;
   parentName: string;
   phone: string;
+  /** @nullable */
+  email?: string | null;
   ticketCount: number;
   eventDate: string;
   /** @nullable */
@@ -100,6 +103,16 @@ export interface Registration {
   paymentStatus: string;
   /** @nullable */
   paymentRef?: string | null;
+  /** @nullable */
+  qrToken?: string | null;
+  /** @nullable */
+  checkedInAt?: string | null;
+  /** @nullable */
+  confirmationEmailSentAt?: string | null;
+  /** @nullable */
+  weekReminderSentAt?: string | null;
+  /** @nullable */
+  dayReminderSentAt?: string | null;
   createdAt: string;
 }
 
@@ -280,6 +293,44 @@ export interface Sponsor {
   logoUrl: string;
   websiteUrl: string;
   tier: SponsorTier;
+}
+
+export interface EmailTemplate {
+  id: number;
+  key: string;
+  subject: string;
+  body: string;
+  updatedAt: string;
+}
+
+export interface UpdateEmailTemplateBody {
+  /** @minLength 1 */
+  subject: string;
+  /** @minLength 1 */
+  body: string;
+}
+
+export interface SendTestEmailBody {
+  recipient: string;
+}
+
+export type SendTestEmailResponseMode =
+  (typeof SendTestEmailResponseMode)[keyof typeof SendTestEmailResponseMode];
+
+export const SendTestEmailResponseMode = {
+  resend: "resend",
+  console: "console",
+} as const;
+
+export interface SendTestEmailResponse {
+  delivered: boolean;
+  mode: SendTestEmailResponseMode;
+  message?: string;
+}
+
+export interface CheckinLookupResponse {
+  registration: Registration;
+  alreadyCheckedIn: boolean;
 }
 
 export interface UploadUrlRequest {

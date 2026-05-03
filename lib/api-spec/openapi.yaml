@@ -731,6 +731,189 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /admin/checkin/lookup/{token}:
+    get:
+      operationId: adminLookupCheckin
+      tags: [admin]
+      summary: Look up a registration by QR token (admin)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Registration found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckinLookupResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/checkin/{token}:
+    post:
+      operationId: adminPerformCheckin
+      tags: [admin]
+      summary: Mark a registration as checked-in (admin)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully checked in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckinLookupResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Already checked in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckinLookupResponse"
+
+  /admin/email-templates:
+    get:
+      operationId: adminListEmailTemplates
+      tags: [admin]
+      summary: List all email templates (admin)
+      responses:
+        "200":
+          description: Email templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmailTemplate"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/email-templates/{key}:
+    put:
+      operationId: adminUpdateEmailTemplate
+      tags: [admin]
+      summary: Update an email template (admin)
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEmailTemplateBody"
+      responses:
+        "200":
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailTemplate"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/email-templates/{key}/test:
+    post:
+      operationId: adminSendTestEmail
+      tags: [admin]
+      summary: Send a test email using the template (admin)
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendTestEmailBody"
+      responses:
+        "200":
+          description: Test email sent (or logged)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendTestEmailResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /qr/{token}:
+    get:
+      operationId: getQrCodeImage
+      tags: [registrations]
+      summary: Render QR code image for a registration token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   parameters:
     AuthorizationSessionHeader:
@@ -849,6 +1032,9 @@ components:
         phone:
           type: string
           minLength: 1
+        email:
+          type: string
+          format: email
         ticketCount:
           type: number
           minimum: 1
@@ -873,6 +1059,8 @@ components:
           type: string
         phone:
           type: string
+        email:
+          type: [string, 'null']
         ticketCount:
           type: number
         eventDate:
@@ -888,6 +1076,20 @@ components:
           type: string
         paymentRef:
           type: [string, 'null']
+        qrToken:
+          type: [string, 'null']
+        checkedInAt:
+          type: [string, 'null']
+          format: date-time
+        confirmationEmailSentAt:
+          type: [string, 'null']
+          format: date-time
+        weekReminderSentAt:
+          type: [string, 'null']
+          format: date-time
+        dayReminderSentAt:
+          type: [string, 'null']
+          format: date-time
         createdAt:
           type: string
           format: date-time
@@ -1107,6 +1309,62 @@ components:
         tier:
           type: string
           enum: [platinum, gold, silver, bronze]
+
+    EmailTemplate:
+      type: object
+      required: [id, key, subject, body, updatedAt]
+      properties:
+        id:
+          type: number
+        key:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdateEmailTemplateBody:
+      type: object
+      required: [subject, body]
+      properties:
+        subject:
+          type: string
+          minLength: 1
+        body:
+          type: string
+          minLength: 1
+
+    SendTestEmailBody:
+      type: object
+      required: [recipient]
+      properties:
+        recipient:
+          type: string
+          format: email
+
+    SendTestEmailResponse:
+      type: object
+      required: [delivered, mode]
+      properties:
+        delivered:
+          type: boolean
+        mode:
+          type: string
+          enum: [resend, console]
+        message:
+          type: string
+
+    CheckinLookupResponse:
+      type: object
+      required: [registration, alreadyCheckedIn]
+      properties:
+        registration:
+          $ref: "#/components/schemas/Registration"
+        alreadyCheckedIn:
+          type: boolean
 
     UploadUrlRequest:
       type: object

@@ -6,6 +6,8 @@ import { authMiddleware } from "./middlewares/authMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { handleStripeWebhook } from "./routes/payments";
+import { ensureDefaultTemplates } from "./services/email-service";
+import { startReminderScheduler } from "./services/reminder-scheduler";
 
 const app: Express = express();
 
@@ -54,5 +56,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(authMiddleware);
 
 app.use("/api", router);
+
+// Boot-time setup
+ensureDefaultTemplates()
+  .then(() => {
+    startReminderScheduler();
+  })
+  .catch((err) => {
+    logger.error({ err }, "[Startup] Failed to seed email templates / start reminders");
+  });
 
 export default app;

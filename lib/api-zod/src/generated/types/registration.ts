@@ -10,6 +10,8 @@ export interface Registration {
   id: number;
   parentName: string;
   phone: string;
+  /** @nullable */
+  email?: string | null;
   ticketCount: number;
   eventDate: Date;
   /** @nullable */
@@ -21,5 +23,15 @@ export interface Registration {
   paymentStatus: string;
   /** @nullable */
   paymentRef?: string | null;
+  /** @nullable */
+  qrToken?: string | null;
+  /** @nullable */
+  checkedInAt?: Date | null;
+  /** @nullable */
+  confirmationEmailSentAt?: Date | null;
+  /** @nullable */
+  weekReminderSentAt?: Date | null;
+  /** @nullable */
+  dayReminderSentAt?: Date | null;
   createdAt: Date;
 }

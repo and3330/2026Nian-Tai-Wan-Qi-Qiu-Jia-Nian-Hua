@@ -107,6 +107,7 @@ export const createRegistrationBodyTicketCountMax = 10;
 export const CreateRegistrationBody = zod.object({
   parentName: zod.string().min(1),
   phone: zod.string().min(1),
+  email: zod.string().email().optional(),
   ticketCount: zod.number().min(1).max(createRegistrationBodyTicketCountMax),
   eventDate: zod.date(),
   ticketType: zod
@@ -348,6 +349,7 @@ export const AdminListRegistrationsResponseItem = zod.object({
   id: zod.number(),
   parentName: zod.string(),
   phone: zod.string(),
+  email: zod.string().nullish(),
   ticketCount: zod.number(),
   eventDate: zod.date(),
   ticketType: zod.string().nullish(),
@@ -355,6 +357,11 @@ export const AdminListRegistrationsResponseItem = zod.object({
   paymentMethod: zod.string().nullish(),
   paymentStatus: zod.string(),
   paymentRef: zod.string().nullish(),
+  qrToken: zod.string().nullish(),
+  checkedInAt: zod.date().nullish(),
+  confirmationEmailSentAt: zod.date().nullish(),
+  weekReminderSentAt: zod.date().nullish(),
+  dayReminderSentAt: zod.date().nullish(),
   createdAt: zod.date(),
 });
 export const AdminListRegistrationsResponse = zod.array(
@@ -458,3 +465,121 @@ export const AdminGetStatsResponseItem = zod.object({
   remaining: zod.number(),
 });
 export const AdminGetStatsResponse = zod.array(AdminGetStatsResponseItem);
+
+/**
+ * @summary Look up a registration by QR token (admin)
+ */
+export const AdminLookupCheckinParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const AdminLookupCheckinResponse = zod.object({
+  registration: zod.object({
+    id: zod.number(),
+    parentName: zod.string(),
+    phone: zod.string(),
+    email: zod.string().nullish(),
+    ticketCount: zod.number(),
+    eventDate: zod.date(),
+    ticketType: zod.string().nullish(),
+    amount: zod.number().nullish(),
+    paymentMethod: zod.string().nullish(),
+    paymentStatus: zod.string(),
+    paymentRef: zod.string().nullish(),
+    qrToken: zod.string().nullish(),
+    checkedInAt: zod.date().nullish(),
+    confirmationEmailSentAt: zod.date().nullish(),
+    weekReminderSentAt: zod.date().nullish(),
+    dayReminderSentAt: zod.date().nullish(),
+    createdAt: zod.date(),
+  }),
+  alreadyCheckedIn: zod.boolean(),
+});
+
+/**
+ * @summary Mark a registration as checked-in (admin)
+ */
+export const AdminPerformCheckinParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const AdminPerformCheckinResponse = zod.object({
+  registration: zod.object({
+    id: zod.number(),
+    parentName: zod.string(),
+    phone: zod.string(),
+    email: zod.string().nullish(),
+    ticketCount: zod.number(),
+    eventDate: zod.date(),
+    ticketType: zod.string().nullish(),
+    amount: zod.number().nullish(),
+    paymentMethod: zod.string().nullish(),
+    paymentStatus: zod.string(),
+    paymentRef: zod.string().nullish(),
+    qrToken: zod.string().nullish(),
+    checkedInAt: zod.date().nullish(),
+    confirmationEmailSentAt: zod.date().nullish(),
+    weekReminderSentAt: zod.date().nullish(),
+    dayReminderSentAt: zod.date().nullish(),
+    createdAt: zod.date(),
+  }),
+  alreadyCheckedIn: zod.boolean(),
+});
+
+/**
+ * @summary List all email templates (admin)
+ */
+export const AdminListEmailTemplatesResponseItem = zod.object({
+  id: zod.number(),
+  key: zod.string(),
+  subject: zod.string(),
+  body: zod.string(),
+  updatedAt: zod.date(),
+});
+export const AdminListEmailTemplatesResponse = zod.array(
+  AdminListEmailTemplatesResponseItem,
+);
+
+/**
+ * @summary Update an email template (admin)
+ */
+export const AdminUpdateEmailTemplateParams = zod.object({
+  key: zod.coerce.string(),
+});
+
+export const AdminUpdateEmailTemplateBody = zod.object({
+  subject: zod.string().min(1),
+  body: zod.string().min(1),
+});
+
+export const AdminUpdateEmailTemplateResponse = zod.object({
+  id: zod.number(),
+  key: zod.string(),
+  subject: zod.string(),
+  body: zod.string(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Send a test email using the template (admin)
+ */
+export const AdminSendTestEmailParams = zod.object({
+  key: zod.coerce.string(),
+});
+
+export const AdminSendTestEmailBody = zod.object({
+  recipient: zod.string().email(),
+});
+
+export const AdminSendTestEmailResponse = zod.object({
+  delivered: zod.boolean(),
+  mode: zod.enum(["resend", "console"]),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Render QR code image for a registration token
+ */
+export const GetQrCodeImageParams = zod.object({
+  token: zod.coerce.string(),
+});

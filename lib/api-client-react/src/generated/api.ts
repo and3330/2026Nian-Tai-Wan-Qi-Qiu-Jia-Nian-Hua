@@ -21,6 +21,7 @@ import type {
   AdminListRegistrationsParams,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
+  CheckinLookupResponse,
   ConfirmStripePayment200,
   ConfirmStripePaymentBody,
   Contestant,
@@ -28,6 +29,7 @@ import type {
   CreateNewsBody,
   CreateRegistrationBody,
   DateAvailability,
+  EmailTemplate,
   ErrorEnvelope,
   Exhibition,
   HandleBrowserLoginCallbackParams,
@@ -41,7 +43,10 @@ import type {
   NewsArticle,
   PaymentStatus,
   Registration,
+  SendTestEmailBody,
+  SendTestEmailResponse,
   Sponsor,
+  UpdateEmailTemplateBody,
   UploadUrlRequest,
   UploadUrlResponse,
   VoidInvoiceForPayment200,
@@ -2683,6 +2688,518 @@ export function useAdminGetStats<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getAdminGetStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Look up a registration by QR token (admin)
+ */
+export const getAdminLookupCheckinUrl = (token: string) => {
+  return `/api/admin/checkin/lookup/${token}`;
+};
+
+export const adminLookupCheckin = async (
+  token: string,
+  options?: RequestInit,
+): Promise<CheckinLookupResponse> => {
+  return customFetch<CheckinLookupResponse>(getAdminLookupCheckinUrl(token), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAdminLookupCheckinQueryKey = (token: string) => {
+  return [`/api/admin/checkin/lookup/${token}`] as const;
+};
+
+export const getAdminLookupCheckinQueryOptions = <
+  TData = Awaited<ReturnType<typeof adminLookupCheckin>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof adminLookupCheckin>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getAdminLookupCheckinQueryKey(token);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof adminLookupCheckin>>
+  > = ({ signal }) => adminLookupCheckin(token, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!token,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof adminLookupCheckin>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AdminLookupCheckinQueryResult = NonNullable<
+  Awaited<ReturnType<typeof adminLookupCheckin>>
+>;
+export type AdminLookupCheckinQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Look up a registration by QR token (admin)
+ */
+
+export function useAdminLookupCheckin<
+  TData = Awaited<ReturnType<typeof adminLookupCheckin>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof adminLookupCheckin>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAdminLookupCheckinQueryOptions(token, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Mark a registration as checked-in (admin)
+ */
+export const getAdminPerformCheckinUrl = (token: string) => {
+  return `/api/admin/checkin/${token}`;
+};
+
+export const adminPerformCheckin = async (
+  token: string,
+  options?: RequestInit,
+): Promise<CheckinLookupResponse> => {
+  return customFetch<CheckinLookupResponse>(getAdminPerformCheckinUrl(token), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAdminPerformCheckinMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | CheckinLookupResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminPerformCheckin>>,
+    TError,
+    { token: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminPerformCheckin>>,
+  TError,
+  { token: string },
+  TContext
+> => {
+  const mutationKey = ["adminPerformCheckin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminPerformCheckin>>,
+    { token: string }
+  > = (props) => {
+    const { token } = props ?? {};
+
+    return adminPerformCheckin(token, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminPerformCheckinMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminPerformCheckin>>
+>;
+
+export type AdminPerformCheckinMutationError = ErrorType<
+  ErrorEnvelope | CheckinLookupResponse
+>;
+
+/**
+ * @summary Mark a registration as checked-in (admin)
+ */
+export const useAdminPerformCheckin = <
+  TError = ErrorType<ErrorEnvelope | CheckinLookupResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminPerformCheckin>>,
+    TError,
+    { token: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminPerformCheckin>>,
+  TError,
+  { token: string },
+  TContext
+> => {
+  return useMutation(getAdminPerformCheckinMutationOptions(options));
+};
+
+/**
+ * @summary List all email templates (admin)
+ */
+export const getAdminListEmailTemplatesUrl = () => {
+  return `/api/admin/email-templates`;
+};
+
+export const adminListEmailTemplates = async (
+  options?: RequestInit,
+): Promise<EmailTemplate[]> => {
+  return customFetch<EmailTemplate[]>(getAdminListEmailTemplatesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAdminListEmailTemplatesQueryKey = () => {
+  return [`/api/admin/email-templates`] as const;
+};
+
+export const getAdminListEmailTemplatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof adminListEmailTemplates>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListEmailTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getAdminListEmailTemplatesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof adminListEmailTemplates>>
+  > = ({ signal }) => adminListEmailTemplates({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof adminListEmailTemplates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AdminListEmailTemplatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof adminListEmailTemplates>>
+>;
+export type AdminListEmailTemplatesQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary List all email templates (admin)
+ */
+
+export function useAdminListEmailTemplates<
+  TData = Awaited<ReturnType<typeof adminListEmailTemplates>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListEmailTemplates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAdminListEmailTemplatesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update an email template (admin)
+ */
+export const getAdminUpdateEmailTemplateUrl = (key: string) => {
+  return `/api/admin/email-templates/${key}`;
+};
+
+export const adminUpdateEmailTemplate = async (
+  key: string,
+  updateEmailTemplateBody: UpdateEmailTemplateBody,
+  options?: RequestInit,
+): Promise<EmailTemplate> => {
+  return customFetch<EmailTemplate>(getAdminUpdateEmailTemplateUrl(key), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateEmailTemplateBody),
+  });
+};
+
+export const getAdminUpdateEmailTemplateMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUpdateEmailTemplate>>,
+    TError,
+    { key: string; data: BodyType<UpdateEmailTemplateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminUpdateEmailTemplate>>,
+  TError,
+  { key: string; data: BodyType<UpdateEmailTemplateBody> },
+  TContext
+> => {
+  const mutationKey = ["adminUpdateEmailTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminUpdateEmailTemplate>>,
+    { key: string; data: BodyType<UpdateEmailTemplateBody> }
+  > = (props) => {
+    const { key, data } = props ?? {};
+
+    return adminUpdateEmailTemplate(key, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminUpdateEmailTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminUpdateEmailTemplate>>
+>;
+export type AdminUpdateEmailTemplateMutationBody =
+  BodyType<UpdateEmailTemplateBody>;
+export type AdminUpdateEmailTemplateMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Update an email template (admin)
+ */
+export const useAdminUpdateEmailTemplate = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUpdateEmailTemplate>>,
+    TError,
+    { key: string; data: BodyType<UpdateEmailTemplateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminUpdateEmailTemplate>>,
+  TError,
+  { key: string; data: BodyType<UpdateEmailTemplateBody> },
+  TContext
+> => {
+  return useMutation(getAdminUpdateEmailTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Send a test email using the template (admin)
+ */
+export const getAdminSendTestEmailUrl = (key: string) => {
+  return `/api/admin/email-templates/${key}/test`;
+};
+
+export const adminSendTestEmail = async (
+  key: string,
+  sendTestEmailBody: SendTestEmailBody,
+  options?: RequestInit,
+): Promise<SendTestEmailResponse> => {
+  return customFetch<SendTestEmailResponse>(getAdminSendTestEmailUrl(key), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sendTestEmailBody),
+  });
+};
+
+export const getAdminSendTestEmailMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminSendTestEmail>>,
+    TError,
+    { key: string; data: BodyType<SendTestEmailBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminSendTestEmail>>,
+  TError,
+  { key: string; data: BodyType<SendTestEmailBody> },
+  TContext
+> => {
+  const mutationKey = ["adminSendTestEmail"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminSendTestEmail>>,
+    { key: string; data: BodyType<SendTestEmailBody> }
+  > = (props) => {
+    const { key, data } = props ?? {};
+
+    return adminSendTestEmail(key, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminSendTestEmailMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminSendTestEmail>>
+>;
+export type AdminSendTestEmailMutationBody = BodyType<SendTestEmailBody>;
+export type AdminSendTestEmailMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Send a test email using the template (admin)
+ */
+export const useAdminSendTestEmail = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminSendTestEmail>>,
+    TError,
+    { key: string; data: BodyType<SendTestEmailBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminSendTestEmail>>,
+  TError,
+  { key: string; data: BodyType<SendTestEmailBody> },
+  TContext
+> => {
+  return useMutation(getAdminSendTestEmailMutationOptions(options));
+};
+
+/**
+ * @summary Render QR code image for a registration token
+ */
+export const getGetQrCodeImageUrl = (token: string) => {
+  return `/api/qr/${token}`;
+};
+
+export const getQrCodeImage = async (
+  token: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetQrCodeImageUrl(token), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetQrCodeImageQueryKey = (token: string) => {
+  return [`/api/qr/${token}`] as const;
+};
+
+export const getGetQrCodeImageQueryOptions = <
+  TData = Awaited<ReturnType<typeof getQrCodeImage>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getQrCodeImage>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetQrCodeImageQueryKey(token);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getQrCodeImage>>> = ({
+    signal,
+  }) => getQrCodeImage(token, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!token,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getQrCodeImage>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetQrCodeImageQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getQrCodeImage>>
+>;
+export type GetQrCodeImageQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Render QR code image for a registration token
+ */
+
+export function useGetQrCodeImage<
+  TData = Awaited<ReturnType<typeof getQrCodeImage>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getQrCodeImage>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetQrCodeImageQueryOptions(token, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

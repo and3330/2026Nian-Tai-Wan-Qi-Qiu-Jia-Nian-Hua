@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useListContestants, useCreateRegistration } from "@workspace/api-client-react";
 import { PaymentMethodModal } from "@/components/PaymentMethodModal";
-import { Users, Handshake, Clock, Heart, MessageCircle, Lightbulb, BookOpen, ArrowRight, Sparkles, ChevronDown, Trophy, Palette, Zap, Shirt, Flower2, Eye, Lock, Ticket, GraduationCap, Phone, CheckCircle2 } from "lucide-react";
+import { Users, Handshake, Clock, Heart, MessageCircle, Lightbulb, BookOpen, ArrowRight, Sparkles, ChevronDown, Trophy, Palette, Zap, Shirt, Flower2, Eye, Lock, Ticket, GraduationCap, Phone, Mail, CheckCircle2, QrCode } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -221,13 +221,14 @@ export default function ContestantsPage() {
   const [activeDay, setActiveDay] = useState(0);
 
   const [proTicketType, setProTicketType] = useState("");
-  const [proFormData, setProFormData] = useState({ parentName: "", phone: "" });
+  const [proFormData, setProFormData] = useState({ parentName: "", phone: "", email: "" });
   const [proSuccess, setProSuccess] = useState(false);
   const [proPendingPayment, setProPendingPayment] = useState<{
     registrationIds: number[];
     amount: number;
     itemLabel: string;
   } | null>(null);
+  const [proConfirmedToken, setProConfirmedToken] = useState<string | null>(null);
 
   const ticketCatalog: Record<string, { eventDate: string; price: number; ticketType: string; label: string }> = {
     "四天通行票": { eventDate: "2026-07-23", price: 12000, ticketType: "four-day-pass", label: "四天通行票" },
@@ -243,13 +244,15 @@ export default function ContestantsPage() {
       data: {
         parentName: proFormData.parentName,
         phone: proFormData.phone,
+        email: proFormData.email || undefined,
         ticketCount: 1,
         eventDate: ticket.eventDate,
         ticketType: ticket.ticketType,
         amount: ticket.price,
       }
     }, {
-      onSuccess: (data) => {
+      onSuccess: (data: any) => {
+        if (data?.qrToken) setProConfirmedToken(data.qrToken);
         queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
         setProPendingPayment({
           registrationIds: [data.id],
@@ -573,13 +576,30 @@ export default function ContestantsPage() {
                   <div className="font-bold text-right">{proFormData.parentName}</div>
                   <div className="text-muted-foreground">聯絡電話：</div>
                   <div className="font-bold text-right">{proFormData.phone}</div>
+                  {proFormData.email && (<>
+                    <div className="text-muted-foreground">Email：</div>
+                    <div className="font-bold text-right break-all">{proFormData.email}</div>
+                  </>)}
                   <div className="text-muted-foreground">票種：</div>
                   <div className="font-bold text-right text-amber-600">{proTicketType}</div>
                 </div>
               </div>
+              {proConfirmedToken && (
+                <div className="bg-white rounded-2xl p-6 max-w-sm mx-auto shadow-sm border border-amber-100 mb-6">
+                  <h3 className="font-bold mb-2 flex items-center justify-center gap-2 text-amber-700">
+                    <QrCode size={20} /> 您的入場 QR Code
+                  </h3>
+                  <p className="text-xs text-muted-foreground text-center mb-4">入場時請出示此 QR Code 進行報到。{proFormData.email ? "已寄送至您的 Email。" : ""}</p>
+                  <img
+                    src={`/api/qr/${encodeURIComponent(proConfirmedToken)}`}
+                    alt="報到 QR"
+                    className="w-full max-w-[220px] mx-auto border rounded-lg p-2 bg-white"
+                  />
+                </div>
+              )}
               <p className="text-amber-600 text-sm mb-6">主辦單位將於收到報名後，以電話或簡訊通知繳費方式。</p>
               <button
-                onClick={() => { setProSuccess(false); setProFormData({ parentName: "", phone: "" }); setProTicketType(""); }}
+                onClick={() => { setProSuccess(false); setProFormData({ parentName: "", phone: "", email: "" }); setProTicketType(""); setProConfirmedToken(null); }}
                 className="text-amber-600 font-bold hover:underline"
               >
                 繼續報名
@@ -610,6 +630,18 @@ export default function ContestantsPage() {
                       required type="tel" value={proFormData.phone}
                       onChange={e => setProFormData({...proFormData, phone: e.target.value})}
                       placeholder="例如：0912345678"
+                      className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all text-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Mail size={16} className="text-amber-500" /> Email
+                      <span className="text-xs text-muted-foreground font-normal">(填寫後將寄送報名確認信與 QR Code)</span>
+                    </label>
+                    <input
+                      type="email" value={proFormData.email}
+                      onChange={e => setProFormData({...proFormData, email: e.target.value})}
+                      placeholder="例如：name@example.com"
                       className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all text-lg"
                     />
                   </div>

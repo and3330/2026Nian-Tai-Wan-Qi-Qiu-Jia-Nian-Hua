@@ -26,6 +26,8 @@ import AdminSponsorsManage from "@/pages/Admin/SponsorsManage";
 import AdminSocialAccounts from "@/pages/Admin/SocialAccountsManage";
 import AdminSocialPosts from "@/pages/Admin/SocialPostsManage";
 import AdminAutomation from "@/pages/Admin/AutomationSettings";
+import AdminCheckin from "@/pages/Admin/CheckinPage";
+import AdminEmailTemplates from "@/pages/Admin/EmailTemplatesPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,6 +72,12 @@ function Router() {
         </Route>
         <Route path="/admin/automation">
           {() => <AdminLayout><AdminAutomation /></AdminLayout>}
+        </Route>
+        <Route path="/admin/checkin">
+          {() => <AdminLayout><AdminCheckin /></AdminLayout>}
+        </Route>
+        <Route path="/admin/email-templates">
+          {() => <AdminLayout><AdminEmailTemplates /></AdminLayout>}
         </Route>
 
         <Route component={NotFound} />

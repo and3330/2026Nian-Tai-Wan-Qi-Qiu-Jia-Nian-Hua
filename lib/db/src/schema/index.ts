@@ -7,3 +7,4 @@ export * from "./exhibitions";
 export * from "./social-marketing";
 export * from "./payments";
 export * from "./invoices";
+export * from "./email-templates";
