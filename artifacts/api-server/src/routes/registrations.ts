@@ -48,12 +48,14 @@ const EVENT_DATES = ["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"];
 const DAILY_CAPACITY = 500;
 
 async function getDateCounts(): Promise<Record<string, number>> {
+  // Refunded registrations release their seats back to inventory.
   const rows = await db
     .select({
       eventDate: registrationsTable.eventDate,
       total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)`,
     })
     .from(registrationsTable)
+    .where(sql`${registrationsTable.paymentStatus} <> 'refunded'`)
     .groupBy(registrationsTable.eventDate);
 
   const counts: Record<string, number> = {};
@@ -116,7 +118,7 @@ async function countForDate(tx: DbExecutor, date: string): Promise<number> {
   const [row] = await tx
     .select({ total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)` })
     .from(registrationsTable)
-    .where(eq(registrationsTable.eventDate, date));
+    .where(sql`${registrationsTable.eventDate} = ${date} AND ${registrationsTable.paymentStatus} <> 'refunded'`);
   return Number(row?.total ?? 0);
 }
 

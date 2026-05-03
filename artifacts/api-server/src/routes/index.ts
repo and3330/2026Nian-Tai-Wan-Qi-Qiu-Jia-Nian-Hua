@@ -14,6 +14,7 @@ import checkinRouter from "./checkin";
 import emailTemplatesRouter from "./email-templates";
 import adminUsersRouter from "./admin-users";
 import promoCodesRouter from "./promo-codes";
+import refundRequestsRouter from "./refund-requests";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(checkinRouter);
 router.use(emailTemplatesRouter);
 router.use(adminUsersRouter);
 router.use(promoCodesRouter);
+router.use(refundRequestsRouter);
 
 export default router;

@@ -51,7 +51,7 @@ User chose option 3 ("一路做"). Phased plan:
 
 ### 第二波 — 行銷檔期前
 - [x] **#5** 優惠碼系統 — `promo_codes` table (percent/fixed, applies_to, max_uses, valid date range), `applyPromoInTx` uses `SELECT ... FOR UPDATE` to prevent over-redemption. Public `POST /promo-codes/validate` for live preview; admin CRUD `/admin/promo-codes` (editor+). Stored on registration as `promo_code` + `discount_amount`. Combo only stores promo on first leg.
-- [ ] **#1** 退票 / 改票流程
+- [x] **#1** 退票 / 改票流程 — `refund_requests` table (status: pending|approved|rejected|rescheduled). Buyer self-service: `POST /refund-requests` from `/lookup` page (verifies contact like /payments/lookup, blocks if checked-in or already refunded, prevents duplicate active requests). Admin queue at `/admin/refund-requests` (viewer+ read, editor+ act): approve marks regs `payment_status='refunded'` inside a tx and releases capacity (getDateCounts/countForDate now filter `<>'refunded'`); reject requires admin note; 改票 = `PUT /admin/registrations/:id/event-date` with advisory lock + capacity check, auto-closes the refund request as `rescheduled`.
 - [ ] **#12** 倒數 + 即時剩餘票數動畫
 - [ ] **#13** 一鍵分享社群
 
