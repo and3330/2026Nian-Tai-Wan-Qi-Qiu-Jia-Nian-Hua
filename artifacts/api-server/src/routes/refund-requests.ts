@@ -313,11 +313,12 @@ router.put(
           .set({ eventDate: newDate })
           .where(eq(registrationsTable.id, id));
 
-        if (closeRefundId) {
+        if (closeRefundId && reg.paymentRef) {
           // Guard: the refund request being closed MUST belong to the same
           // order as the registration we just rescheduled. Without this check
           // an admin could close an unrelated pending request from a different
           // order by passing a mismatched id pair.
+          const regPaymentRef = reg.paymentRef;
           await tx
             .update(refundRequestsTable)
             .set({
@@ -329,7 +330,7 @@ router.put(
             .where(
               and(
                 eq(refundRequestsTable.id, closeRefundId),
-                eq(refundRequestsTable.paymentRef, reg.paymentRef),
+                eq(refundRequestsTable.paymentRef, regPaymentRef),
                 eq(refundRequestsTable.status, "pending"),
               ),
             );
