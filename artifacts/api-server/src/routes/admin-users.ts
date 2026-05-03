@@ -70,7 +70,7 @@ router.post("/admin/users", ownerOnly, async (req, res) => {
 });
 
 router.put("/admin/users/:id", ownerOnly, async (req, res) => {
-  const id = req.params.id;
+  const id = String(req.params.id);
   const body = (req.body ?? {}) as Record<string, unknown>;
   const updates: Partial<typeof adminUsersTable.$inferInsert> = {};
 
@@ -110,7 +110,7 @@ router.put("/admin/users/:id", ownerOnly, async (req, res) => {
 });
 
 router.delete("/admin/users/:id", ownerOnly, async (req, res) => {
-  const id = req.params.id;
+  const id = String(req.params.id);
   const [row] = await db.delete(adminUsersTable).where(eq(adminUsersTable.id, id)).returning();
   if (!row) {
     res.status(404).json({ error: "使用者不存在" });
