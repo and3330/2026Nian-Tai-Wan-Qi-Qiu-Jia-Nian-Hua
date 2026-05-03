@@ -60,97 +60,98 @@ export default function HomePage() {
   return (
     <div className="flex flex-col">
       {/* HERO — 純粹聚焦氣球嘉年華售票 */}
-      <section className="relative w-full py-20 lg:py-28 flex items-center justify-center overflow-hidden">
+      <section className="relative w-full py-16 md:py-24 flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img
             src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
             alt="繽紛氣球嘉年華"
             className="w-full h-full object-cover opacity-90"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/60 to-background"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background"></div>
         </div>
 
-        <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
-          <div className="inline-block mb-6 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur border border-primary/20 text-primary font-bold text-sm tracking-widest uppercase shadow-sm">
+        <div className="relative z-10 max-w-3xl mx-auto px-4 text-center">
+          <div className="inline-block mb-6 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur border border-primary/20 text-primary font-bold text-xs tracking-widest uppercase shadow-sm">
             售票中 ・ SUMMER 2026
           </div>
-          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-foreground mb-6 drop-shadow-sm">
+          <h1 className="font-display text-5xl md:text-7xl text-foreground mb-5 drop-shadow-sm leading-tight">
             2026 臺灣氣球<span className="text-carnival">嘉年華</span>
           </h1>
-          <p className="text-xl md:text-2xl text-foreground/80 mb-10 max-w-2xl mx-auto font-medium leading-relaxed">
-            亞洲最大室內氣球藝術盛典！7/25-26 兩日對外開放，巨型氣球展覽、舞臺表演、親子手作，全家共度奇幻夏日。
+          <p className="text-lg md:text-xl text-foreground/75 mb-8 max-w-xl mx-auto leading-relaxed">
+            亞洲最大室內氣球藝術盛典・7/25–26 對外開放
           </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-12">
-            <div className="flex items-center gap-3 bg-white/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white shadow-sm">
-              <Calendar className="text-primary w-6 h-6" />
-              <div className="text-left">
-                <div className="text-xs text-muted-foreground font-bold">公開場次</div>
-                <div className="font-bold text-foreground">7/25 (六) - 7/26 (日)</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 bg-white/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white shadow-sm">
-              <MapPin className="text-secondary w-6 h-6" />
-              <div className="text-left">
-                <div className="text-xs text-muted-foreground font-bold">活動地點</div>
-                <div className="font-bold text-foreground">臺北瓶蓋工廠 (南港)</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 bg-white/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-white shadow-sm">
-              <Clock className="text-accent-foreground w-6 h-6" />
-              <div className="text-left">
-                <div className="text-xs text-muted-foreground font-bold">開放時間</div>
-                <div className="font-bold text-foreground">10:00 - 18:00</div>
-              </div>
-            </div>
-          </div>
 
           <div className="flex justify-center mb-8">
             <EventCountdown />
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/carnival#register"
-              className="px-10 py-5 rounded-full font-bold text-xl bg-gradient-to-r from-primary to-secondary text-white shadow-xl shadow-primary/40 hover:shadow-2xl hover:shadow-primary/50 hover:-translate-y-1 transition-all flex items-center gap-2"
+              className="px-8 py-4 rounded-full font-bold text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
+              data-testid="hero-cta-buy"
             >
-              <Ticket size={22} /> 立即購票入場
+              <Ticket size={20} /> 立即購票入場
             </Link>
             <Link
               href="/carnival"
-              className="px-8 py-4 rounded-full font-bold text-base text-foreground bg-white/80 backdrop-blur border border-white hover:bg-white shadow-sm hover:shadow-md transition-all flex items-center gap-2"
+              className="px-6 py-3.5 rounded-full font-medium text-base text-foreground bg-white/80 backdrop-blur border border-white hover:bg-white transition-all flex items-center gap-2"
             >
-              查看活動詳情 <ArrowRight size={18} />
+              查看活動詳情 <ArrowRight size={16} />
             </Link>
           </div>
-          <p className="text-sm text-muted-foreground mt-4">每日限量 500 名・線上預約購票更便利</p>
         </div>
       </section>
 
-      {/* 即時剩餘票數 */}
-      <section className="py-6 bg-gradient-to-r from-primary via-secondary to-accent relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="max-w-7xl mx-auto px-4 relative z-10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-white">
-            <div className="flex items-center gap-3">
-              <PartyPopper className="w-6 h-6" />
-              <span className="font-bold text-lg">即時剩餘名額</span>
+      {/* 活動資訊 + 即時剩餘票數 — 統一資訊條 */}
+      <section className="border-y bg-white">
+        <div className="max-w-6xl mx-auto px-4 py-5 grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4 items-stretch">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Calendar className="text-primary w-5 h-5" />
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6">
-              {publicAvailability?.map(day => (
-                <div key={day.date} className="flex items-center gap-2 text-sm">
-                  <span className="font-medium">{new Date(day.date).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}</span>
-                  <span className={cn(
-                    "px-2 py-0.5 rounded-full text-xs font-bold",
-                    day.remaining <= 0 ? "bg-red-500/30 text-red-100" : day.remaining < 50 ? "bg-yellow-500/30 text-yellow-100" : "bg-white/20"
-                  )}>
-                    {day.remaining <= 0 ? "已額滿" : <>剩 <AnimatedNumber value={day.remaining} /> 名</>}
+            <div className="min-w-0">
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">公開場次</div>
+              <div className="font-bold text-foreground text-sm">7/25 (六) – 7/26 (日)</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
+              <MapPin className="text-secondary w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">活動地點</div>
+              <div className="font-bold text-foreground text-sm">臺北瓶蓋工廠 (南港)</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent/30 flex items-center justify-center shrink-0">
+              <Clock className="text-accent-foreground w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">開放時間</div>
+              <div className="font-bold text-foreground text-sm">10:00 – 18:00</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 md:border-l md:pl-6">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+              <PartyPopper className="text-rose-500 w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">即時剩餘名額</div>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-0.5">
+                {publicAvailability?.map(day => (
+                  <span key={day.date} className="text-sm" data-testid={`home-remaining-${day.date}`}>
+                    <span className="text-muted-foreground mr-1">{new Date(day.date).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}</span>
+                    <span className={cn(
+                      "font-bold",
+                      day.remaining <= 0 ? "text-destructive" : day.remaining < 50 ? "text-amber-600" : "text-emerald-600"
+                    )}>
+                      {day.remaining <= 0 ? "已額滿" : <>剩 <AnimatedNumber value={day.remaining} /></>}
+                    </span>
                   </span>
-                </div>
-              ))}
-              <Link href="/carnival#register" className="px-4 py-1.5 bg-white text-primary rounded-full text-sm font-bold hover:bg-white/90 transition-colors">
-                馬上購票
-              </Link>
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useListContestants, useCreateRegistration } from "@workspace/api-client-react";
 import { PaymentMethodModal } from "@/components/PaymentMethodModal";
+import { ContestantVoteButton, useContestantVoteData } from "@/components/ContestantVoteButton";
 import { Users, Handshake, Clock, Heart, MessageCircle, Lightbulb, BookOpen, ArrowRight, Sparkles, ChevronDown, Trophy, Palette, Zap, Shirt, Flower2, Eye, Lock, Ticket, GraduationCap, Phone, Mail, CheckCircle2, QrCode } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
@@ -217,6 +218,7 @@ function CompetitionCard({ cat }: { cat: typeof competitionCategories[0] }) {
 export default function ContestantsPage() {
   const queryClient = useQueryClient();
   const { data: members, isLoading } = useListContestants();
+  const voteData = useContestantVoteData();
   const createMutation = useCreateRegistration();
   const [activeDay, setActiveDay] = useState(0);
 
@@ -684,7 +686,7 @@ export default function ContestantsPage() {
         </div>
       </section>
 
-      <section className="py-20 px-4 max-w-7xl mx-auto w-full bg-muted/30 rounded-3xl my-4">
+      <section id="contestants" className="py-20 px-4 max-w-7xl mx-auto w-full bg-muted/30 rounded-3xl my-4 scroll-mt-24">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 text-amber-700 font-bold text-sm mb-4">
             <Users size={16} /> 交流夥伴
@@ -727,6 +729,14 @@ export default function ContestantsPage() {
                   <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap line-clamp-5">
                     {member.description}
                   </p>
+                </div>
+                <div className="px-6 pb-6">
+                  <ContestantVoteButton
+                    contestantId={member.id}
+                    count={voteData.countFor(member.id)}
+                    voted={voteData.didVote(member.id)}
+                    token={voteData.token}
+                  />
                 </div>
               </div>
             ))}
