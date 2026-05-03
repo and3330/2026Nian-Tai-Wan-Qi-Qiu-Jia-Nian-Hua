@@ -2,7 +2,12 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, Cpu, Baby, Sparkles, Eye, Calendar, Clock, MapPin, Ticket, Star, Users, Phone, Mail, AlertCircle, CheckCircle2, QrCode } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useGetRegistrationAvailability, useCreateRegistration, type Registration } from "@workspace/api-client-react";
+import {
+  useGetRegistrationAvailability,
+  useCreateRegistration,
+  useCreateComboRegistration,
+  type Registration,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetRegistrationAvailabilityQueryKey } from "@workspace/api-client-react";
 import { PaymentMethodModal } from "@/components/PaymentMethodModal";
@@ -68,8 +73,15 @@ const publicSchedule = [
 
 export default function CarnivalPage() {
   const queryClient = useQueryClient();
-  const { data: availability, isLoading: isAvailabilityLoading } = useGetRegistrationAvailability();
+  const { data: availability, isLoading: isAvailabilityLoading } = useGetRegistrationAvailability({
+    query: {
+      queryKey: ["getRegistrationAvailability"],
+      refetchInterval: 30000,
+      refetchOnWindowFocus: true,
+    },
+  });
   const createMutation = useCreateRegistration();
+  const createComboMutation = useCreateComboRegistration();
 
   const [visitorTicketType, setVisitorTicketType] = useState<VisitorTicketType>("");
   const [formData, setFormData] = useState({
@@ -94,45 +106,81 @@ export default function CarnivalPage() {
 
   const selectedDateInfo = publicDates?.find(a => a.date === formData.eventDate);
   const isSelectedDateFull = selectedDateInfo ? selectedDateInfo.remaining <= 0 : false;
+  const isSelectedDateInsufficient = selectedDateInfo
+    ? selectedDateInfo.remaining < formData.ticketCount
+    : false;
+
+  // For combo tickets, both 7/25 and 7/26 must each have enough remaining seats.
+  const day25 = publicDates?.find(a => a.date === "2026-07-25");
+  const day26 = publicDates?.find(a => a.date === "2026-07-26");
+  const comboInsufficientDate =
+    visitorTicketType === "combo"
+      ? day25 && day25.remaining < formData.ticketCount
+        ? day25
+        : day26 && day26.remaining < formData.ticketCount
+          ? day26
+          : null
+      : null;
+  const comboBlocked = !!comboInsufficientDate;
+
+  const extractApiError = (err: unknown): { message: string; code?: string } => {
+    const e = err as { data?: { error?: string; code?: string }; status?: number };
+    if (e?.data?.code === "SOLD_OUT") {
+      return { message: e.data.error || "票券已售完", code: "SOLD_OUT" };
+    }
+    if (e?.data?.error) return { message: e.data.error };
+    return { message: "報名失敗，請重試或聯絡客服" };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!visitorTicketType) { alert("請選擇票種"); return; }
     if (visitorTicketType === "single" && !formData.eventDate) { alert("請選擇入場日期"); return; }
 
-    const tokens: string[] = [];
-    const submitOne = (eventDate: string, ticketType: string | null, amount: number | null) =>
-      new Promise<Registration>((resolve, reject) => {
-        createMutation.mutate(
-          { data: { ...formData, eventDate, ticketType, amount } },
-          {
-            onSuccess: (data) => {
-              if ((data as any)?.qrToken) tokens.push((data as any).qrToken);
-              resolve(data);
-            },
-            onError: (err: unknown) => reject(err),
-          },
-        );
-      });
-
     try {
       const created: Registration[] = [];
+      const tokens: string[] = [];
       let totalAmount = 0;
       let itemLabel = "";
+
       if (visitorTicketType === "combo") {
         const comboTotal = 300 * formData.ticketCount;
-        const r1 = await submitOne("2026-07-25", "combo", comboTotal);
-        const r2 = await submitOne("2026-07-26", null, null);
-        created.push(r1, r2);
+        const result = await createComboMutation.mutateAsync({
+          data: {
+            parentName: formData.parentName,
+            phone: formData.phone,
+            email: formData.email || undefined,
+            ticketCount: formData.ticketCount,
+            eventDates: ["2026-07-25", "2026-07-26"],
+            ticketType: "combo",
+            amount: comboTotal,
+          },
+        });
+        for (const r of result.registrations) {
+          created.push(r);
+          if (r.qrToken) tokens.push(r.qrToken);
+        }
         totalAmount = comboTotal;
         itemLabel = `兩日套票 × ${formData.ticketCount}（7/25 + 7/26）`;
       } else {
         const singleTotal = 200 * formData.ticketCount;
-        const r = await submitOne(formData.eventDate, "single", singleTotal);
+        const r = await createMutation.mutateAsync({
+          data: {
+            parentName: formData.parentName,
+            phone: formData.phone,
+            email: formData.email || undefined,
+            ticketCount: formData.ticketCount,
+            eventDate: formData.eventDate,
+            ticketType: "single",
+            amount: singleTotal,
+          },
+        });
         created.push(r);
+        if (r.qrToken) tokens.push(r.qrToken);
         totalAmount = singleTotal;
         itemLabel = `單日票 × ${formData.ticketCount}（${formData.eventDate}）`;
       }
+
       setConfirmedTokens(tokens);
       queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
       setPendingPayment({
@@ -140,8 +188,11 @@ export default function CarnivalPage() {
         amount: totalAmount,
         itemLabel,
       });
-    } catch {
-      alert("報名失敗，請重試或聯絡客服");
+    } catch (err) {
+      // Always refetch availability — user may have been racing other buyers.
+      queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
+      const { message } = extractApiError(err);
+      alert(message);
     }
   };
 
@@ -290,7 +341,7 @@ export default function CarnivalPage() {
           </p>
         </div>
 
-        <div className="flex justify-center gap-6 mb-10">
+        <div className="flex flex-col sm:flex-row sm:justify-center gap-4 sm:gap-6 mb-10 max-w-md sm:max-w-none mx-auto">
           <button
             type="button"
             onClick={() => { setVisitorTicketType("single"); setFormData({...formData, eventDate: ""}); }}
@@ -404,19 +455,22 @@ export default function CarnivalPage() {
                 <div className="space-y-4">
                   {publicDates?.map((day) => {
                     const isFull = day.remaining <= 0;
+                    const isInsufficient = !isFull && day.remaining < formData.ticketCount;
                     const isLow = day.remaining > 0 && day.remaining < 50;
                     const isSelected = formData.eventDate === day.date;
                     return (
                       <button
                         key={day.date}
                         type="button"
-                        disabled={isFull}
+                        disabled={isFull || isInsufficient}
                         onClick={() => setFormData({...formData, eventDate: day.date})}
                         className={cn(
                           "w-full text-left p-5 rounded-2xl border-2 transition-all flex flex-col gap-2 relative overflow-hidden",
                           isFull ? "bg-muted border-border opacity-60 cursor-not-allowed" :
+                          isInsufficient ? "bg-amber-50 border-amber-200 opacity-70 cursor-not-allowed" :
                           isSelected ? "bg-primary/5 border-primary shadow-md" : "bg-card border-border hover:border-primary/50 hover:shadow-sm",
                         )}
+                        data-testid={`date-${day.date}`}
                       >
                         {isSelected && <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-bl-full -z-10"></div>}
                         <div className="flex justify-between items-center w-full">
@@ -425,6 +479,8 @@ export default function CarnivalPage() {
                           </span>
                           {isFull ? (
                             <span className="px-3 py-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full">已額滿</span>
+                          ) : isInsufficient ? (
+                            <span className="px-3 py-1 bg-amber-200 text-amber-900 text-xs font-bold rounded-full">剩餘不足</span>
                           ) : isLow ? (
                             <span className="px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">即將額滿</span>
                           ) : (
@@ -506,15 +562,38 @@ export default function CarnivalPage() {
                       ))}
                     </select>
                   </div>
+                  {comboBlocked && comboInsufficientDate && (
+                    <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 text-sm text-amber-900 flex gap-3">
+                      <AlertCircle className="shrink-0 mt-0.5" size={18} />
+                      <p data-testid="combo-blocked-warning">
+                        {comboInsufficientDate.date} 僅剩 {comboInsufficientDate.remaining} 張，
+                        無法滿足兩日套票 × {formData.ticketCount} 的數量。請改選單日票或減少張數。
+                      </p>
+                    </div>
+                  )}
+                  {visitorTicketType === "single" && isSelectedDateInsufficient && !isSelectedDateFull && (
+                    <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 text-sm text-amber-900 flex gap-3">
+                      <AlertCircle className="shrink-0 mt-0.5" size={18} />
+                      <p>該日僅剩 {selectedDateInfo?.remaining} 張，請減少張數。</p>
+                    </div>
+                  )}
                   <div className="pt-6">
                     <button
                       type="submit"
-                      disabled={createMutation.isPending || (visitorTicketType === "single" && (isSelectedDateFull || !formData.eventDate))}
+                      disabled={
+                        createMutation.isPending ||
+                        createComboMutation.isPending ||
+                        (visitorTicketType === "single" && (isSelectedDateFull || isSelectedDateInsufficient || !formData.eventDate)) ||
+                        (visitorTicketType === "combo" && comboBlocked)
+                      }
                       className="w-full py-5 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-primary to-primary/90 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2"
+                      data-testid="button-submit-purchase"
                     >
-                      {createMutation.isPending ? "處理中..." :
+                      {(createMutation.isPending || createComboMutation.isPending) ? "處理中..." :
                        visitorTicketType === "single" && !formData.eventDate ? "請選擇入場日期" :
                        visitorTicketType === "single" && isSelectedDateFull ? "選定日期已額滿" :
+                       visitorTicketType === "single" && isSelectedDateInsufficient ? `該日僅剩 ${selectedDateInfo?.remaining} 張` :
+                       visitorTicketType === "combo" && comboBlocked ? "兩日套票剩餘不足" :
                        "確認送出購票"}
                     </button>
                   </div>

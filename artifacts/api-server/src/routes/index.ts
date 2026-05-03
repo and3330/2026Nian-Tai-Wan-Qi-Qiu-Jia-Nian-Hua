@@ -12,6 +12,7 @@ import storageRouter from "./storage";
 import paymentsRouter from "./payments";
 import checkinRouter from "./checkin";
 import emailTemplatesRouter from "./email-templates";
+import adminUsersRouter from "./admin-users";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(storageRouter);
 router.use(paymentsRouter);
 router.use(checkinRouter);
 router.use(emailTemplatesRouter);
+router.use(adminUsersRouter);
 
 export default router;

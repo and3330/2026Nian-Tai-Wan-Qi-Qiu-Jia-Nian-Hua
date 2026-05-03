@@ -16,7 +16,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 - **Frontend**: React + Vite + Tailwind CSS + shadcn/ui
-- **Auth**: Custom username/password admin login (session-based)
+- **Auth**: Custom username/password admin login (session-based, multi-role)
 
 ## Structure
 
@@ -56,7 +56,7 @@ Each activity page has its own embedded registration form — no standalone regi
 - **Sponsors**: Tiered sponsor display with external links
 - **Admin Dashboard** (`/admin`): Protected by username/password login. 票務營運總覽 with KPIs (今日售票數, 累計收入, 累計售票, 剩餘名額), 每日售票趨勢 line chart (last 14 days), 各票種佔比 pie chart (per session date), 各日剩餘名額 stacked bar chart, 最新報名名單 table, and CSV export (with 票種, 入場日期, 單價, 小計, 付款狀態 columns). Plus news/contestant/sponsor CRUD.
 - **Social Media Marketing** (admin): FB/IG/Threads OAuth binding, post creation/scheduling/publishing, calendar view, automation settings
-- **Admin Auth**: Custom login system (username: 1, password: aa3210). No Replit Auth / OIDC.
+- **Admin Auth**: Custom login system (env super-admin = `1`/`aa3210`, always role=`owner`). Multi-role: `owner` | `editor` | `checkin` | `viewer`. Owner manages sub-accounts at `/admin/users` (stored in `admin_users` table, scrypt-hashed passwords). Backend gating via `requireRole(...roles)` middleware (owner always passes); frontend nav filtered by `useAuth().hasRole()`. Role matrix: stats/sales-overview = viewer+; registrations & PII export = editor+; news/contestants/sponsors/email/social/automation mutations = editor+; checkin lookup/scan = checkin+; invoice retry/void = editor+; user CRUD = owner-only. No Replit Auth / OIDC. Session role is snapshotted at login (changes take effect on re-login or after 7-day expiry).
 
 ### Navigation
 首頁, 氣球嘉年華, 傳奇工匠研討會, 最新消息, 贊助廠商
@@ -85,8 +85,9 @@ Meta (Facebook/Instagram) advertising guide for the carnival. Contains 3 ad copy
 - **Admin endpoints** (cookie auth): `POST /api/payments/invoices/:ref/retry` re-issues failed/pending invoices; `POST /api/payments/invoices/:ref/void` calls B2CInvoice/Invalid (auto-strips `+HH:MM:SS` from invoiceDate).
 
 ### Database Tables
-- `sessions` - Admin auth sessions
+- `sessions` - Admin auth sessions (sess JSON includes `{ user: { id, username, role, displayName } }`)
 - `users` - Legacy user table (unused after auth migration)
+- `admin_users` - Multi-role admin sub-accounts (id, username UNIQUE, password_hash [scrypt$salt$hex], role [`owner`|`editor`|`checkin`|`viewer`], display_name, created_by, timestamps). Env super-admin is NOT stored here — it always logs in as `owner`.
 - `registrations` - Event registrations (parent_name, phone, email, ticket_count, event_date, ticket_type, amount, payment_method, payment_status, payment_ref, qr_token, checked_in_at, confirmation_email_sent_at, week_reminder_sent_at, day_reminder_sent_at)
 - `payment_transactions` - Payment orders (payment_ref, provider, amount, item_name, payer_email, status, provider_trade_no, paid_at, raw_result)
 - `invoices` - ECPay 電子發票 (payment_ref, invoice_type, carrier_type/num, tax_id, company_title, love_code, invoice_number, invoice_date, random_number, status, raw_response, issued_at, voided_at)

@@ -248,6 +248,7 @@ export function Layout({ children }: LayoutProps) {
               <li><Link href="/news" className="hover:text-primary transition-colors">大會公告</Link></li>
               <li><Link href="/sponsors" className="hover:text-primary transition-colors">贊助夥伴</Link></li>
               <li><Link href="/conference" className="hover:text-amber-300 transition-colors">業內同行・傳奇工匠研討會</Link></li>
+              <li><Link href="/lookup" className="hover:text-primary transition-colors">查詢我的訂單</Link></li>
             </ul>
           </div>
           <div>

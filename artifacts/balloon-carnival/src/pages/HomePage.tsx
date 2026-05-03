@@ -129,7 +129,7 @@ export default function HomePage() {
               <PartyPopper className="w-6 h-6" />
               <span className="font-bold text-lg">即時剩餘名額</span>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6">
               {publicAvailability?.map(day => (
                 <div key={day.date} className="flex items-center gap-2 text-sm">
                   <span className="font-medium">{new Date(day.date).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}</span>

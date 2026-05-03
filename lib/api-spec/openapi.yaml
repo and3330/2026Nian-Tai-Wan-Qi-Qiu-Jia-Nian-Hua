@@ -198,6 +198,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /registrations/combo:
+    post:
+      operationId: createComboRegistration
+      tags: [registrations]
+      summary: Atomically create combo registrations across multiple dates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateComboRegistrationBody"
+      responses:
+        "201":
+          description: Combo registrations created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComboRegistrationResult"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: One of the dates sold out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoldOutError"
+
   /registrations/availability:
     get:
       operationId: getRegistrationAvailability
@@ -233,6 +264,45 @@ paths:
                 $ref: "#/components/schemas/InitiatePaymentResponse"
         "400":
           description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /payments/lookup:
+    post:
+      operationId: lookupOrder
+      tags: [payments]
+      summary: Public self-service order lookup (ref + contact)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ref, contact]
+              properties:
+                ref:
+                  type: string
+                  description: Payment reference shown on the result page
+                contact:
+                  type: string
+                  description: Email or phone (digits only) used at checkout
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderLookupResult"
+        "400":
+          description: Missing fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found or contact mismatch
           content:
             application/json:
               schema:
@@ -1068,6 +1138,57 @@ components:
           type: [number, 'null']
           description: Total amount in TWD; verified server-side against the price book.
 
+    CreateComboRegistrationBody:
+      type: object
+      required: [parentName, phone, ticketCount, eventDates]
+      properties:
+        parentName:
+          type: string
+          minLength: 1
+        phone:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        ticketCount:
+          type: number
+          minimum: 1
+          maximum: 10
+        eventDates:
+          type: array
+          minItems: 2
+          items:
+            type: string
+            format: date
+        ticketType:
+          type: [string, 'null']
+        amount:
+          type: [number, 'null']
+
+    ComboRegistrationResult:
+      type: object
+      required: [registrations]
+      properties:
+        registrations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Registration"
+
+    SoldOutError:
+      type: object
+      required: [error, code, eventDate, remaining]
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        eventDate:
+          type: string
+          format: date
+        remaining:
+          type: number
+
     Registration:
       type: object
       required: [id, parentName, phone, ticketCount, eventDate, paymentStatus, createdAt]
@@ -1229,6 +1350,70 @@ components:
               type: string
             accountNumber:
               type: string
+        invoice:
+          oneOf:
+            - $ref: "#/components/schemas/InvoiceStatus"
+            - type: 'null'
+
+    OrderLookupRegistration:
+      type: object
+      required: [id, parentName, ticketCount, eventDate, paymentStatus]
+      properties:
+        id:
+          type: number
+        parentName:
+          type: string
+        phone:
+          type: [string, 'null']
+        email:
+          type: [string, 'null']
+        ticketCount:
+          type: number
+        ticketType:
+          type: [string, 'null']
+        eventDate:
+          type: string
+          format: date
+        amount:
+          type: [number, 'null']
+        paymentStatus:
+          type: string
+        qrToken:
+          type: [string, 'null']
+        checkedInAt:
+          type: [string, 'null']
+          format: date-time
+
+    OrderLookupResult:
+      type: object
+      required: [paymentRef, provider, amount, status, itemName, registrations]
+      properties:
+        paymentRef:
+          type: string
+        provider:
+          type: string
+        amount:
+          type: number
+        status:
+          type: string
+        itemName:
+          type: string
+        paidAt:
+          type: [string, 'null']
+          format: date-time
+        bankInfo:
+          type: [object, 'null']
+          properties:
+            bankName:
+              type: string
+            accountName:
+              type: string
+            accountNumber:
+              type: string
+        registrations:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderLookupRegistration"
         invoice:
           oneOf:
             - $ref: "#/components/schemas/InvoiceStatus"

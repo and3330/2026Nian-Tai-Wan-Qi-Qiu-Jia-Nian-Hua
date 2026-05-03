@@ -66,16 +66,24 @@ function toTaipeiDateString(d: Date): string {
   return taipei.toISOString().split("T")[0];
 }
 
-function requireAuth(req: any, res: any): boolean {
+// Auth helper that optionally enforces a set of allowed roles. The owner role
+// always passes (granted by req.hasRole). When no roles are provided the helper
+// only requires the caller to be authenticated (≈ viewer+).
+function requireAuth(req: any, res: any, ...roles: string[]): boolean {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  if (roles.length > 0 && !req.hasRole(...roles)) {
+    res.status(403).json({ error: "權限不足", code: "FORBIDDEN" });
     return false;
   }
   return true;
 }
 
 router.get("/admin/registrations", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  // Contains PII (parent name/phone/email). Restrict to editor+ (owner allowed via hasRole).
+  if (!requireAuth(req, res, "editor")) return;
 
   const query = AdminListRegistrationsQueryParams.safeParse(req.query);
   let rows;
@@ -96,7 +104,8 @@ router.get("/admin/registrations", async (req, res): Promise<void> => {
 });
 
 router.get("/admin/registrations/export", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  // Bulk PII export — editor+ only.
+  if (!requireAuth(req, res, "editor")) return;
 
   const query = AdminExportRegistrationsQueryParams.safeParse(req.query);
   let rows;
@@ -299,7 +308,7 @@ router.get("/admin/sales-overview", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/news", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
 
   const parsed = AdminCreateNewsBody.safeParse(req.body);
   if (!parsed.success) {
@@ -312,7 +321,7 @@ router.post("/admin/news", async (req, res): Promise<void> => {
 });
 
 router.put("/admin/news/:id", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
 
   const params = AdminUpdateNewsParams.safeParse(req.params);
   if (!params.success) {
@@ -341,7 +350,7 @@ router.put("/admin/news/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/admin/news/:id", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
 
   const params = AdminDeleteNewsParams.safeParse(req.params);
   if (!params.success) {
@@ -363,7 +372,7 @@ router.delete("/admin/news/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/contestants", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
 
   const parsed = AdminCreateContestantBody.safeParse(req.body);
   if (!parsed.success) {
@@ -376,7 +385,7 @@ router.post("/admin/contestants", async (req, res): Promise<void> => {
 });
 
 router.put("/admin/contestants/:id", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
 
   const params = AdminUpdateContestantParams.safeParse(req.params);
   if (!params.success) {
@@ -405,7 +414,7 @@ router.put("/admin/contestants/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/admin/contestants/:id", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
 
   const params = AdminDeleteContestantParams.safeParse(req.params);
   if (!params.success) {
@@ -438,7 +447,7 @@ router.get("/admin/sponsors", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/sponsors", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
 
   const { name, logoUrl, websiteUrl, tier } = req.body || {};
   if (!name || !logoUrl || !websiteUrl || !tier) {
@@ -457,7 +466,7 @@ router.post("/admin/sponsors", async (req, res): Promise<void> => {
 });
 
 router.put("/admin/sponsors/:id", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
 
   const id = Number(req.params.id);
   if (!id || isNaN(id)) {
@@ -499,7 +508,7 @@ router.put("/admin/sponsors/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/admin/sponsors/:id", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
 
   const id = Number(req.params.id);
   if (!id || isNaN(id)) {

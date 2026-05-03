@@ -273,6 +273,110 @@ router.post("/payments/initiate", async (req, res): Promise<void> => {
   }
 });
 
+// Public order lookup — used by the customer self-service page.
+// Requires BOTH the payment ref AND a matching contact (email or phone)
+// so a leaked ref alone cannot reveal personal information.
+router.post("/payments/lookup", async (req, res): Promise<void> => {
+  try {
+    const refRaw = typeof req.body?.ref === "string" ? req.body.ref.trim() : "";
+    const contactRaw = typeof req.body?.contact === "string" ? req.body.contact.trim() : "";
+    if (!refRaw || !contactRaw) {
+      res.status(400).json({ error: "請輸入訂單編號與 Email 或手機號碼" });
+      return;
+    }
+    const [tx] = await db
+      .select()
+      .from(paymentTransactionsTable)
+      .where(eq(paymentTransactionsTable.paymentRef, refRaw));
+    if (!tx) {
+      res.status(404).json({ error: "查無此訂單，請確認訂單編號是否正確" });
+      return;
+    }
+    const regs = await db
+      .select()
+      .from(registrationsTable)
+      .where(eq(registrationsTable.paymentRef, refRaw));
+    if (!regs.length) {
+      res.status(404).json({ error: "查無此訂單，請確認訂單編號是否正確" });
+      return;
+    }
+
+    const contactNorm = contactRaw.toLowerCase();
+    const contactIsEmail = contactNorm.includes("@");
+    const contactDigits = contactRaw.replace(/\D/g, "");
+    const matched = regs.some((r) => {
+      if (contactIsEmail) {
+        return (r.email || "").toLowerCase() === contactNorm;
+      }
+      return contactDigits.length >= 8 && (r.phone || "").replace(/\D/g, "") === contactDigits;
+    });
+    if (!matched) {
+      // Identical message to the not-found case so attackers can't probe
+      // whether a payment ref exists.
+      res.status(404).json({ error: "查無此訂單，請確認訂單編號與聯絡方式是否正確" });
+      return;
+    }
+
+    const [invoice] = await db
+      .select()
+      .from(invoicesTable)
+      .where(eq(invoicesTable.paymentRef, refRaw))
+      .orderBy(desc(invoicesTable.id))
+      .limit(1);
+
+    res.json({
+      paymentRef: tx.paymentRef,
+      provider: tx.provider,
+      amount: tx.amount,
+      status: tx.status,
+      itemName: tx.itemName,
+      paidAt: tx.paidAt,
+      bankInfo: tx.provider === "bank" ? BANK_INFO : null,
+      registrations: regs.map((r) => ({
+        id: r.id,
+        parentName: r.parentName,
+        phone: maskPhone(r.phone),
+        email: maskEmail(r.email),
+        ticketCount: r.ticketCount,
+        ticketType: r.ticketType,
+        eventDate: r.eventDate,
+        amount: r.amount,
+        paymentStatus: r.paymentStatus,
+        qrToken: r.paymentStatus === "paid" ? r.qrToken : null,
+        checkedInAt: r.checkedInAt,
+      })),
+      invoice: invoice
+        ? {
+            status: invoice.status,
+            invoiceType: invoice.invoiceType,
+            invoiceNumber: invoice.invoiceNumber,
+            invoiceDate: invoice.invoiceDate,
+            randomNumber: invoice.randomNumber,
+            errorMessage: invoice.errorMessage,
+          }
+        : null,
+    });
+  } catch (err) {
+    logger.error({ err }, "[payments/lookup] error");
+    res.status(500).json({ error: "查詢失敗，請稍後再試" });
+  }
+});
+
+function maskEmail(email: string | null | undefined): string | null {
+  if (!email) return null;
+  const [local, domain] = email.split("@");
+  if (!domain) return email;
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}${"*".repeat(Math.max(1, local.length - visible.length))}@${domain}`;
+}
+
+function maskPhone(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 4) return phone;
+  return `${digits.slice(0, 4)}***${digits.slice(-3)}`;
+}
+
 router.get("/payments/status/:ref", async (req, res): Promise<void> => {
   const ref = req.params.ref;
   const [tx] = await db
@@ -424,16 +528,20 @@ async function issueInvoiceForPayment(paymentRef: string): Promise<void> {
   }
 }
 
-function requireAdmin(req: Request, res: Response): boolean {
+function requireAdmin(req: Request, res: Response, ...roles: string[]): boolean {
   if (typeof req.isAuthenticated !== "function" || !req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  if (roles.length > 0 && !req.hasRole(...(roles as Array<"owner" | "editor" | "checkin" | "viewer">))) {
+    res.status(403).json({ error: "權限不足", code: "FORBIDDEN" });
     return false;
   }
   return true;
 }
 
 router.post("/payments/invoices/:ref/retry", async (req, res): Promise<void> => {
-  if (!requireAdmin(req, res)) return;
+  if (!requireAdmin(req, res, "editor")) return;
   try {
     const ref = req.params.ref;
     const [payment] = await db
@@ -467,7 +575,7 @@ router.post("/payments/invoices/:ref/retry", async (req, res): Promise<void> => 
 });
 
 router.post("/payments/invoices/:ref/void", async (req, res): Promise<void> => {
-  if (!requireAdmin(req, res)) return;
+  if (!requireAdmin(req, res, "editor")) return;
   try {
     const ref = req.params.ref;
     const reason = String(req.body?.reason || "訂單取消");

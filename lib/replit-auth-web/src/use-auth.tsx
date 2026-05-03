@@ -1,14 +1,20 @@
 import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from "react";
 
+export type AdminRole = "owner" | "editor" | "checkin" | "viewer";
+
 export interface AdminUser {
   id: string;
   username: string;
+  role?: AdminRole;
+  displayName?: string | null;
 }
 
 interface AuthState {
   user: AdminUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  role: AdminRole | null;
+  hasRole: (...roles: AdminRole[]) => boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
@@ -74,10 +80,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const role = (user?.role ?? null) as AdminRole | null;
+  const hasRole = useCallback(
+    (...roles: AdminRole[]) => {
+      if (!role) return false;
+      if (role === "owner") return true;
+      return roles.includes(role);
+    },
+    [role],
+  );
+
   const value: AuthState = {
     user,
     isLoading,
     isAuthenticated: !!user,
+    role,
+    hasRole,
     login,
     logout,
   };

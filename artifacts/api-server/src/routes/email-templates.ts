@@ -13,16 +13,20 @@ import {
 
 const router: IRouter = Router();
 
-function requireAuth(req: any, res: any): boolean {
+function requireAuth(req: any, res: any, ...roles: string[]): boolean {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  if (roles.length > 0 && !req.hasRole(...roles)) {
+    res.status(403).json({ error: "權限不足", code: "FORBIDDEN" });
     return false;
   }
   return true;
 }
 
 router.get("/admin/email-templates", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const rows = await db.select().from(emailTemplatesTable);
   // Sort in canonical order
   const order = new Map<string, number>(EMAIL_TEMPLATE_KEYS.map((k, i) => [k, i]));
@@ -31,7 +35,7 @@ router.get("/admin/email-templates", async (req, res): Promise<void> => {
 });
 
 router.put("/admin/email-templates/:key", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const key = req.params.key;
   if (!EMAIL_TEMPLATE_KEYS.includes(key as EmailTemplateKey)) {
     res.status(404).json({ error: "Unknown template key" });
@@ -55,7 +59,7 @@ router.put("/admin/email-templates/:key", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/email-templates/:key/test", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const key = req.params.key;
   if (!EMAIL_TEMPLATE_KEYS.includes(key as EmailTemplateKey)) {
     res.status(404).json({ error: "Unknown template key" });

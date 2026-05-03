@@ -86,6 +86,25 @@ export interface CreateRegistrationBody {
   amount?: number | null;
 }
 
+export interface CreateComboRegistrationBody {
+  /** @minLength 1 */
+  parentName: string;
+  /** @minLength 1 */
+  phone: string;
+  email?: string;
+  /**
+   * @minimum 1
+   * @maximum 10
+   */
+  ticketCount: number;
+  /** @minItems 2 */
+  eventDates: string[];
+  /** @nullable */
+  ticketType?: string | null;
+  /** @nullable */
+  amount?: number | null;
+}
+
 export interface Registration {
   id: number;
   parentName: string;
@@ -114,6 +133,17 @@ export interface Registration {
   /** @nullable */
   dayReminderSentAt?: string | null;
   createdAt: string;
+}
+
+export interface ComboRegistrationResult {
+  registrations: Registration[];
+}
+
+export interface SoldOutError {
+  error: string;
+  code: string;
+  eventDate: string;
+  remaining: number;
 }
 
 export type InitiatePaymentBodyMethod =
@@ -230,6 +260,49 @@ export interface PaymentStatus {
   paidAt?: string | null;
   /** @nullable */
   bankInfo?: PaymentStatusBankInfo;
+  invoice?: InvoiceStatus | null;
+}
+
+export interface OrderLookupRegistration {
+  id: number;
+  parentName: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  ticketCount: number;
+  /** @nullable */
+  ticketType?: string | null;
+  eventDate: string;
+  /** @nullable */
+  amount?: number | null;
+  paymentStatus: string;
+  /** @nullable */
+  qrToken?: string | null;
+  /** @nullable */
+  checkedInAt?: string | null;
+}
+
+/**
+ * @nullable
+ */
+export type OrderLookupResultBankInfo = {
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+} | null;
+
+export interface OrderLookupResult {
+  paymentRef: string;
+  provider: string;
+  amount: number;
+  status: string;
+  itemName: string;
+  /** @nullable */
+  paidAt?: string | null;
+  /** @nullable */
+  bankInfo?: OrderLookupResultBankInfo;
+  registrations: OrderLookupRegistration[];
   invoice?: InvoiceStatus | null;
 }
 
@@ -407,6 +480,13 @@ export type HandleBrowserLoginCallbackParams = {
   code?: string;
   state?: string;
   iss?: string;
+};
+
+export type LookupOrderBody = {
+  /** Payment reference shown on the result page */
+  ref: string;
+  /** Email or phone (digits only) used at checkout */
+  contact: string;
 };
 
 export type ConfirmStripePaymentBody = {

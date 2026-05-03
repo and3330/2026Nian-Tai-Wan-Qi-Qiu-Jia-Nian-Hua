@@ -22,9 +22,11 @@ import type {
   AuthUserEnvelope,
   BeginBrowserLoginParams,
   CheckinLookupResponse,
+  ComboRegistrationResult,
   ConfirmStripePayment200,
   ConfirmStripePaymentBody,
   Contestant,
+  CreateComboRegistrationBody,
   CreateContestantBody,
   CreateNewsBody,
   CreateRegistrationBody,
@@ -38,14 +40,17 @@ import type {
   InitiatePaymentResponse,
   InvoiceStatus,
   LogoutSuccess,
+  LookupOrderBody,
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
   NewsArticle,
+  OrderLookupResult,
   PaymentStatus,
   Registration,
   SalesOverview,
   SendTestEmailBody,
   SendTestEmailResponse,
+  SoldOutError,
   Sponsor,
   UpdateEmailTemplateBody,
   UploadUrlRequest,
@@ -824,6 +829,95 @@ export const useCreateRegistration = <
 };
 
 /**
+ * @summary Atomically create combo registrations across multiple dates
+ */
+export const getCreateComboRegistrationUrl = () => {
+  return `/api/registrations/combo`;
+};
+
+export const createComboRegistration = async (
+  createComboRegistrationBody: CreateComboRegistrationBody,
+  options?: RequestInit,
+): Promise<ComboRegistrationResult> => {
+  return customFetch<ComboRegistrationResult>(getCreateComboRegistrationUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createComboRegistrationBody),
+  });
+};
+
+export const getCreateComboRegistrationMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | SoldOutError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createComboRegistration>>,
+    TError,
+    { data: BodyType<CreateComboRegistrationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createComboRegistration>>,
+  TError,
+  { data: BodyType<CreateComboRegistrationBody> },
+  TContext
+> => {
+  const mutationKey = ["createComboRegistration"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createComboRegistration>>,
+    { data: BodyType<CreateComboRegistrationBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createComboRegistration(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateComboRegistrationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createComboRegistration>>
+>;
+export type CreateComboRegistrationMutationBody =
+  BodyType<CreateComboRegistrationBody>;
+export type CreateComboRegistrationMutationError = ErrorType<
+  ErrorEnvelope | SoldOutError
+>;
+
+/**
+ * @summary Atomically create combo registrations across multiple dates
+ */
+export const useCreateComboRegistration = <
+  TError = ErrorType<ErrorEnvelope | SoldOutError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createComboRegistration>>,
+    TError,
+    { data: BodyType<CreateComboRegistrationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createComboRegistration>>,
+  TError,
+  { data: BodyType<CreateComboRegistrationBody> },
+  TContext
+> => {
+  return useMutation(getCreateComboRegistrationMutationOptions(options));
+};
+
+/**
  * @summary Get remaining tickets for each event date
  */
 export const getGetRegistrationAvailabilityUrl = () => {
@@ -984,6 +1078,92 @@ export const useInitiatePayment = <
   TContext
 > => {
   return useMutation(getInitiatePaymentMutationOptions(options));
+};
+
+/**
+ * @summary Public self-service order lookup (ref + contact)
+ */
+export const getLookupOrderUrl = () => {
+  return `/api/payments/lookup`;
+};
+
+export const lookupOrder = async (
+  lookupOrderBody: LookupOrderBody,
+  options?: RequestInit,
+): Promise<OrderLookupResult> => {
+  return customFetch<OrderLookupResult>(getLookupOrderUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(lookupOrderBody),
+  });
+};
+
+export const getLookupOrderMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof lookupOrder>>,
+    TError,
+    { data: BodyType<LookupOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof lookupOrder>>,
+  TError,
+  { data: BodyType<LookupOrderBody> },
+  TContext
+> => {
+  const mutationKey = ["lookupOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof lookupOrder>>,
+    { data: BodyType<LookupOrderBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return lookupOrder(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LookupOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof lookupOrder>>
+>;
+export type LookupOrderMutationBody = BodyType<LookupOrderBody>;
+export type LookupOrderMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Public self-service order lookup (ref + contact)
+ */
+export const useLookupOrder = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof lookupOrder>>,
+    TError,
+    { data: BodyType<LookupOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof lookupOrder>>,
+  TError,
+  { data: BodyType<LookupOrderBody> },
+  TContext
+> => {
+  return useMutation(getLookupOrderMutationOptions(options));
 };
 
 /**

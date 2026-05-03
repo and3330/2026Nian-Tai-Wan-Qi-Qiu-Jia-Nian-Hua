@@ -14,16 +14,20 @@ import {
 
 const router: IRouter = Router();
 
-function requireAuth(req: any, res: any): boolean {
+function requireAuth(req: any, res: any, ...roles: string[]): boolean {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  if (roles.length > 0 && !req.hasRole(...roles)) {
+    res.status(403).json({ error: "權限不足", code: "FORBIDDEN" });
     return false;
   }
   return true;
 }
 
 router.get("/admin/social-accounts", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const accounts = await db.select({
     id: socialMarketingAccounts.id,
     platform: socialMarketingAccounts.platform,
@@ -39,7 +43,7 @@ router.get("/admin/social-accounts", async (req, res): Promise<void> => {
 });
 
 router.get("/admin/social-accounts/oauth-url/:platform", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   try {
     const { platform } = req.params;
     const protocol = req.headers["x-forwarded-proto"] || "https";
@@ -102,7 +106,7 @@ router.get("/admin/social-accounts/oauth-callback/:platform", async (req, res): 
 });
 
 router.delete("/admin/social-accounts/:id", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const { id } = req.params;
   const [deleted] = await db.delete(socialMarketingAccounts).where(eq(socialMarketingAccounts.id, id)).returning();
   if (!deleted) { res.status(404).json({ error: "Account not found" }); return; }
@@ -110,7 +114,7 @@ router.delete("/admin/social-accounts/:id", async (req, res): Promise<void> => {
 });
 
 router.patch("/admin/social-accounts/:id/toggle", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const { id } = req.params;
   const [account] = await db.select().from(socialMarketingAccounts).where(eq(socialMarketingAccounts.id, id)).limit(1);
   if (!account) { res.status(404).json({ error: "Account not found" }); return; }
@@ -121,13 +125,13 @@ router.patch("/admin/social-accounts/:id/toggle", async (req, res): Promise<void
 });
 
 router.get("/admin/social-posts", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const posts = await db.select().from(socialPosts).orderBy(desc(socialPosts.createdAt));
   res.json(posts);
 });
 
 router.post("/admin/social-posts", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const { content, platforms, hashtags, imageUrls, scheduledAt, status } = req.body;
   if (!content || !platforms?.length) {
     res.status(400).json({ error: "content and platforms are required" });
@@ -146,7 +150,7 @@ router.post("/admin/social-posts", async (req, res): Promise<void> => {
 });
 
 router.patch("/admin/social-posts/:id", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const { id } = req.params;
   const { content, platforms, hashtags, imageUrls, scheduledAt, status } = req.body;
   const updateData: Record<string, any> = { updatedAt: new Date() };
@@ -163,7 +167,7 @@ router.patch("/admin/social-posts/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/admin/social-posts/:id", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const { id } = req.params;
   const [deleted] = await db.delete(socialPosts).where(eq(socialPosts.id, id)).returning();
   if (!deleted) { res.status(404).json({ error: "Post not found" }); return; }
@@ -171,7 +175,7 @@ router.delete("/admin/social-posts/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/social-posts/:id/publish", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const { id } = req.params;
   try {
     const result = await publishPost(id);
@@ -182,7 +186,7 @@ router.post("/admin/social-posts/:id/publish", async (req, res): Promise<void> =
 });
 
 router.post("/admin/social-posts/preview", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const { content, platforms, hashtags } = req.body;
   if (!content || !platforms?.length) {
     res.status(400).json({ error: "content and platforms are required" });
@@ -201,13 +205,13 @@ router.post("/admin/social-posts/preview", async (req, res): Promise<void> => {
 });
 
 router.get("/admin/automation-settings", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const settings = await db.select().from(marketingAutomationSettings);
   res.json(settings);
 });
 
 router.put("/admin/automation-settings/:key", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "editor")) return;
   const { key } = req.params;
   const { enabled, config } = req.body;
 

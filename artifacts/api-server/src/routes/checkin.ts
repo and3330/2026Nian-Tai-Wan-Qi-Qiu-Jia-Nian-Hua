@@ -4,16 +4,20 @@ import { db, registrationsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
-function requireAuth(req: any, res: any): boolean {
+function requireAuth(req: any, res: any, ...roles: string[]): boolean {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
+    return false;
+  }
+  if (roles.length > 0 && !req.hasRole(...roles)) {
+    res.status(403).json({ error: "權限不足", code: "FORBIDDEN" });
     return false;
   }
   return true;
 }
 
 router.get("/admin/checkin/lookup/:token", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "checkin")) return;
   const token = req.params.token;
   const [reg] = await db
     .select()
@@ -31,7 +35,7 @@ router.get("/admin/checkin/lookup/:token", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/checkin/:token", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "checkin")) return;
   const token = req.params.token;
   const [reg] = await db
     .select()

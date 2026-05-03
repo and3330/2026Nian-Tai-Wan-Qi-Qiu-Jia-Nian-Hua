@@ -15,6 +15,7 @@ import CarnivalPage from "@/pages/CarnivalPage";
 import SponsorsPage from "@/pages/SponsorsPage";
 import AdGuidePage from "@/pages/AdGuidePage";
 import PaymentResultPage from "@/pages/PaymentResultPage";
+import OrderLookupPage from "@/pages/OrderLookupPage";
 
 // Admin Pages
 import AdminLayout from "@/pages/AdminLayout";
@@ -28,6 +29,7 @@ import AdminSocialPosts from "@/pages/Admin/SocialPostsManage";
 import AdminAutomation from "@/pages/Admin/AutomationSettings";
 import AdminCheckin from "@/pages/Admin/CheckinPage";
 import AdminEmailTemplates from "@/pages/Admin/EmailTemplatesPage";
+import AdminUsersManage from "@/pages/Admin/UsersManage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +52,7 @@ function Router() {
         <Route path="/sponsors" component={SponsorsPage} />
         <Route path="/ad-guide" component={AdGuidePage} />
         <Route path="/payment/result" component={PaymentResultPage} />
+        <Route path="/lookup" component={OrderLookupPage} />
 
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route path="/admin">
@@ -78,6 +81,9 @@ function Router() {
         </Route>
         <Route path="/admin/email-templates">
           {() => <AdminLayout><AdminEmailTemplates /></AdminLayout>}
+        </Route>
+        <Route path="/admin/users">
+          {() => <AdminLayout><AdminUsersManage /></AdminLayout>}
         </Route>
 
         <Route component={NotFound} />
