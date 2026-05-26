@@ -325,6 +325,41 @@ export default function HomePage() {
         </section>
       )}
 
+      {/* 主辦・協辦單位 */}
+      <section className="py-16 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">Organizers</h3>
+            <h2 className="font-display text-3xl">主辦・協辦單位</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+            {[
+              { role: "主辦單位", name: "摸氣球的毛", logo: "images/sponsors/organizer.png" },
+              { role: "協辦單位", name: "ICTA 社團法人國際兒童才藝協會", logo: "images/sponsors/coorganizer.png" },
+            ].map(o => (
+              <div
+                key={o.role}
+                className="glass-card rounded-3xl p-6 md:p-8 flex items-center gap-5 md:gap-6 hover-lift transition-all"
+              >
+                <div className="w-24 h-24 md:w-28 md:h-28 shrink-0 rounded-2xl bg-white flex items-center justify-center p-2 border border-border/60">
+                  <img
+                    src={`${import.meta.env.BASE_URL}${o.logo}`}
+                    alt={o.name}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="inline-block px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold mb-2">
+                    {o.role}
+                  </div>
+                  <h4 className="font-display text-lg md:text-xl leading-tight">{o.name}</h4>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 贊助廠商 */}
       <section className="py-16 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4">
