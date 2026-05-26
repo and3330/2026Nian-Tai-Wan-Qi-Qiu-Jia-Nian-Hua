@@ -334,14 +334,18 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
             {[
-              { role: "主辦單位", name: "摸氣球的毛", logo: "images/sponsors/organizer.png", accent: "from-primary/15 to-primary/5", badge: "bg-primary/15 text-primary" },
-              { role: "協辦單位", name: "ICTA 社團法人國際兒童才藝協會", logo: "images/sponsors/coorganizer.png", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
-              { role: "協辦單位", name: "育邦文化教育科技股份有限公司", logo: "images/sponsors/coorganizer2.png", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
-              { role: "協辦單位", name: "波波繪本屋", logo: "images/sponsors/coorganizer3.jpg", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
+              { role: "主辦單位", name: "摸氣球的毛", logo: "images/sponsors/organizer.png", url: "https://www.facebook.com/Momoballoon/", accent: "from-primary/15 to-primary/5", badge: "bg-primary/15 text-primary" },
+              { role: "協辦單位", name: "ICTA 社團法人國際兒童才藝協會", logo: "images/sponsors/coorganizer.png", url: "http://www.ictaorg.org/", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
+              { role: "協辦單位", name: "育邦文化教育科技股份有限公司", logo: "images/sponsors/coorganizer2.png", url: "https://cmsedu-life.com/", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
+              { role: "協辦單位", name: "波波繪本屋", logo: "images/sponsors/coorganizer3.jpg", url: "https://www.instagram.com/bobo.storyhouse/", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
             ].map(o => (
-              <div
+              <a
                 key={o.name}
-                className="relative glass-card rounded-3xl overflow-hidden hover-lift transition-all"
+                href={o.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${o.role}：${o.name}（開新分頁）`}
+                className="relative glass-card rounded-3xl overflow-hidden hover-lift transition-all block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", o.accent)} />
                 <div className="relative z-10 p-8 md:p-10 flex flex-col items-center text-center">
