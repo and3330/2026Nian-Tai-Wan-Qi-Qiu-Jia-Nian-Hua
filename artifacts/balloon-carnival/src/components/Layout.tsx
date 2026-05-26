@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Ticket, Tent, MapPin, Info, Crown, LogOut, LayoutDashboard, Menu, X, Shield, Calendar, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { LineChatBubble } from "@/components/LineChatBubble";
 
 interface LayoutProps {
   children: ReactNode;
@@ -256,6 +257,7 @@ export function Layout({ children }: LayoutProps) {
           &copy; 2026 臺灣氣球嘉年華 Taiwan Balloon Carnival. All rights reserved.
         </div>
       </footer>
+      <LineChatBubble />
     </div>
   );
 }
