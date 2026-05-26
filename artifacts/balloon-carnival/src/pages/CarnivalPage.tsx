@@ -276,8 +276,8 @@ export default function CarnivalPage() {
       )}
       {/* HERO — 活動主視覺 */}
       <section className="relative w-full bg-gradient-to-b from-sky-50 via-rose-50/40 to-background overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 pt-8 md:pt-12 pb-8 md:pb-12">
-          <div className="relative rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-white">
+        <div className="max-w-6xl mx-auto px-0 md:px-4 pt-0 md:pt-12 pb-6 md:pb-12">
+          <div className="relative md:rounded-3xl overflow-hidden md:shadow-xl md:shadow-primary/10 md:border md:border-white/60 bg-white">
             <img
               src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
               alt="2026 臺灣氣球嘉年華"
