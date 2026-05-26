@@ -417,37 +417,6 @@ export default function CarnivalPage() {
         </div>
       </section>
 
-      {/* 展覽精彩內容 — 圖片展示 */}
-      <section className="py-14 md:py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-10 md:mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 text-amber-600 font-bold text-sm mb-4">
-              <Eye size={16} /> 現場直擊
-            </div>
-            <h2 className="font-display text-3xl md:text-5xl mb-3">展覽精彩內容</h2>
-            <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto">
-              中型氣球雕塑、人偶造型、花束作品等業界精品，全場開放近距離欣賞與拍照
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            <div className="rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-white">
-              <img
-                src={`${import.meta.env.BASE_URL}images/exhibition-1.png`}
-                alt="氣球展覽作品一"
-                className="w-full h-auto block"
-              />
-            </div>
-            <div className="rounded-3xl overflow-hidden shadow-xl shadow-secondary/10 border border-white/60 bg-white">
-              <img
-                src={`${import.meta.env.BASE_URL}images/exhibition-2.png`}
-                alt="氣球展覽作品二"
-                className="w-full h-auto block"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section id="register" className="py-16 md:py-20 px-4 max-w-4xl mx-auto w-full scroll-mt-24 border-t">
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-50 text-green-600 font-bold text-sm mb-4">
