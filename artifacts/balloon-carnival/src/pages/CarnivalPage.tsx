@@ -795,23 +795,6 @@ export default function CarnivalPage() {
             ))}
           </div>
 
-          {/* 聯絡資訊 */}
-          <div className="mt-8 md:mt-10 bg-gradient-to-r from-primary/5 to-secondary/5 border-2 border-primary/15 rounded-2xl p-6 md:p-7">
-            <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 justify-between">
-              <div>
-                <h3 className="font-display text-xl md:text-2xl mb-1">還有其他問題？</h3>
-                <p className="text-sm md:text-base text-muted-foreground">主辦單位將盡快為您回覆，感謝您的耐心</p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <a href="tel:02-2720-8889" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-border font-bold text-foreground hover:border-primary/40 hover:shadow-sm transition-all">
-                  <Phone size={18} className="text-primary" /> 02-2720-8889
-                </a>
-                <a href="mailto:contact@balloon-carnival.tw" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-border font-bold text-foreground hover:border-primary/40 hover:shadow-sm transition-all">
-                  <Mail size={18} className="text-secondary" /> 來信洽詢
-                </a>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
