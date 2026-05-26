@@ -32,8 +32,12 @@ export function Layout({ children }: LayoutProps) {
       <header className="sticky top-0 z-40 w-full glass-card border-b border-white/50 px-4 sm:px-6 lg:px-8 mt-2">
         <div className="max-w-7xl mx-auto h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform rotate-3">
-              <Tent size={24} />
+            <div className="w-11 h-11 rounded-xl overflow-hidden bg-white shadow-md group-hover:scale-110 transition-transform">
+              <img
+                src={`${import.meta.env.BASE_URL}images/logo.png`}
+                alt="2026 臺灣氣球嘉年華 Logo"
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
               <h1 className="font-display text-xl sm:text-2xl text-foreground group-hover:text-primary transition-colors">
