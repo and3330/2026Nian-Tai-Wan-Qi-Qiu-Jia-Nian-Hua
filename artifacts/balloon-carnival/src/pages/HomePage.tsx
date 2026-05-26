@@ -345,21 +345,21 @@ export default function HomePage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`${o.role}：${o.name}（開新分頁）`}
-                className="relative glass-card rounded-3xl overflow-hidden hover-lift transition-all block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className="group relative glass-card rounded-2xl overflow-hidden hover-lift transition-all block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
-                <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", o.accent)} />
-                <div className="relative z-10 p-8 md:p-10 flex flex-col items-center text-center">
-                  <span className={cn("inline-block px-3 py-1 rounded-full text-xs font-bold mb-6 tracking-wider", o.badge)}>
-                    {o.role}
-                  </span>
-                  <div className="w-full h-56 md:h-64 rounded-2xl bg-white shadow-sm border border-white/80 flex items-center justify-center p-6 md:p-8 mb-6">
+                <div className={cn("absolute inset-0 bg-gradient-to-br opacity-50 pointer-events-none", o.accent)} />
+                <span className={cn("absolute top-3 right-3 z-20 inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider", o.badge)}>
+                  {o.role}
+                </span>
+                <div className="relative z-10 p-5 flex flex-col items-center text-center">
+                  <div className="w-full aspect-[5/3] rounded-xl bg-white shadow-sm border border-white/80 flex items-center justify-center p-5 mb-4 group-hover:shadow-md transition-shadow">
                     <img
                       src={`${import.meta.env.BASE_URL}${o.logo}`}
                       alt={o.name}
                       className="max-w-full max-h-full object-contain"
                     />
                   </div>
-                  <h4 className="font-display text-2xl md:text-3xl leading-tight">{o.name}</h4>
+                  <h4 className="font-display text-base md:text-lg leading-snug min-h-[2.6em] flex items-center">{o.name}</h4>
                 </div>
               </a>
             ))}
