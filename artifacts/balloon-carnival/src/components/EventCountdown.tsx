@@ -32,7 +32,6 @@ export function EventCountdown({ className, compact = false }: { className?: str
     { v: t.d, label: "天" },
     { v: t.h, label: "時" },
     { v: t.m, label: "分" },
-    { v: t.s, label: "秒" },
   ];
 
   if (compact) {
@@ -52,10 +51,7 @@ export function EventCountdown({ className, compact = false }: { className?: str
       <div className="flex items-stretch gap-2">
         {cells.map((c, i) => (
           <div key={c.label} className="flex flex-col items-center gap-1">
-            <div
-              key={`${c.label}-${c.v}`}
-              className="min-w-[3.5rem] md:min-w-[4.5rem] px-2 py-3 rounded-xl bg-white/95 shadow-md border border-primary/10 font-display text-3xl md:text-4xl text-primary tabular-nums leading-none animate-[countdown-pop_300ms_ease-out]"
-            >
+            <div className="min-w-[3.5rem] md:min-w-[4.5rem] px-2 py-3 rounded-xl bg-white/95 shadow-md border border-primary/10 font-display text-3xl md:text-4xl text-primary tabular-nums leading-none">
               {String(c.v).padStart(i === 0 ? 1 : 2, "0")}
             </div>
             <div className="text-[10px] md:text-xs font-bold text-foreground/60">{c.label}</div>
