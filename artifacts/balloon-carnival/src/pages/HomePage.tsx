@@ -1,6 +1,7 @@
 import { useListNews, useListSponsors, useGetRegistrationAvailability } from "@workspace/api-client-react";
-import { Calendar, MapPin, Clock, ArrowRight, Ticket, Users, Sparkles, Heart, ChevronRight, PartyPopper, Baby, Eye, Cpu, ShieldCheck, Star } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowRight, Ticket, Users, Sparkles, Heart, ChevronRight, PartyPopper, Baby, Eye, Cpu, ShieldCheck, Star, ZoomIn, X } from "lucide-react";
 import { Link } from "wouter";
+import { useEffect, useState } from "react";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/EventCountdown";
@@ -11,6 +12,19 @@ export default function HomePage() {
   const { data: availability } = useGetRegistrationAvailability({
     query: { queryKey: ["getRegistrationAvailability"], refetchInterval: 30000 },
   });
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!zoomedImage) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setZoomedImage(null); };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [zoomedImage]);
 
   const latestNews = news?.slice(0, 3);
 
@@ -199,13 +213,21 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="max-w-3xl mx-auto mb-8 rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-white">
+        <button
+          type="button"
+          onClick={() => setZoomedImage(`${import.meta.env.BASE_URL}images/tickets-banner.png`)}
+          className="group block w-full max-w-3xl mx-auto mb-8 rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-white relative cursor-zoom-in focus:outline-none focus:ring-4 focus:ring-primary/30"
+          aria-label="放大查看購票圖片"
+        >
           <img
             src={`${import.meta.env.BASE_URL}images/tickets-banner.png`}
             alt="2026 臺灣氣球嘉年華購票"
-            className="w-full h-auto block"
+            className="w-full h-auto block transition-transform duration-300 group-hover:scale-[1.02]"
           />
-        </div>
+          <span className="absolute top-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 text-white text-xs font-bold backdrop-blur opacity-0 group-hover:opacity-100 transition-opacity">
+            <ZoomIn size={14} /> 點擊放大
+          </span>
+        </button>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto pt-4">
           <Link href="/carnival#register" className="group glass-card rounded-3xl p-8 hover-lift border-2 border-transparent hover:border-primary/40 transition-all relative block">
@@ -487,6 +509,32 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* 圖片放大檢視 Lightbox */}
+      {zoomedImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 cursor-zoom-out animate-in fade-in duration-200"
+          onClick={() => setZoomedImage(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="放大檢視圖片"
+        >
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }}
+            className="absolute top-4 right-4 md:top-6 md:right-6 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur text-white flex items-center justify-center transition-colors"
+            aria-label="關閉"
+          >
+            <X size={22} />
+          </button>
+          <img
+            src={zoomedImage}
+            alt="放大檢視"
+            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
