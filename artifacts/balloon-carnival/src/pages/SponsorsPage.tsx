@@ -4,7 +4,7 @@ const sponsors = [
   { name: "台北氣球派對", logo: "images/sponsors/taipei-balloon.jpg" },
   { name: "曄達氣球", logo: "images/sponsors/yeda.jpg" },
   { name: "彩飛屋", logo: "images/sponsors/caifeiwu.svg" },
-  { name: "藝人有限公司", logo: null },
+  { name: "藝仁有限公司", logo: null },
   { name: "氣球屋", logo: "images/sponsors/balloon-house.png" },
 ];
 
