@@ -326,33 +326,34 @@ export default function HomePage() {
       )}
 
       {/* 主辦・協辦單位 */}
-      <section className="py-16 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10">
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">Organizers</h3>
-            <h2 className="font-display text-3xl">主辦・協辦單位</h2>
+            <h2 className="font-display text-4xl">主辦・協辦單位</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             {[
-              { role: "主辦單位", name: "摸氣球的毛", logo: "images/sponsors/organizer.png" },
-              { role: "協辦單位", name: "ICTA 社團法人國際兒童才藝協會", logo: "images/sponsors/coorganizer.png" },
+              { role: "主辦單位", name: "摸氣球的毛", logo: "images/sponsors/organizer.png", accent: "from-primary/15 to-primary/5", badge: "bg-primary/15 text-primary" },
+              { role: "協辦單位", name: "ICTA 社團法人國際兒童才藝協會", logo: "images/sponsors/coorganizer.png", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
             ].map(o => (
               <div
                 key={o.role}
-                className="glass-card rounded-3xl p-6 md:p-8 flex items-center gap-5 md:gap-6 hover-lift transition-all"
+                className="relative glass-card rounded-3xl overflow-hidden hover-lift transition-all"
               >
-                <div className="w-24 h-24 md:w-28 md:h-28 shrink-0 rounded-2xl bg-white flex items-center justify-center p-2 border border-border/60">
-                  <img
-                    src={`${import.meta.env.BASE_URL}${o.logo}`}
-                    alt={o.name}
-                    className="max-w-full max-h-full object-contain"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="inline-block px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold mb-2">
+                <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", o.accent)} />
+                <div className="relative z-10 p-8 md:p-10 flex flex-col items-center text-center">
+                  <span className={cn("inline-block px-3 py-1 rounded-full text-xs font-bold mb-6 tracking-wider", o.badge)}>
                     {o.role}
+                  </span>
+                  <div className="w-full h-56 md:h-64 rounded-2xl bg-white shadow-sm border border-white/80 flex items-center justify-center p-6 md:p-8 mb-6">
+                    <img
+                      src={`${import.meta.env.BASE_URL}${o.logo}`}
+                      alt={o.name}
+                      className="max-w-full max-h-full object-contain"
+                    />
                   </div>
-                  <h4 className="font-display text-lg md:text-xl leading-tight">{o.name}</h4>
+                  <h4 className="font-display text-2xl md:text-3xl leading-tight">{o.name}</h4>
                 </div>
               </div>
             ))}
