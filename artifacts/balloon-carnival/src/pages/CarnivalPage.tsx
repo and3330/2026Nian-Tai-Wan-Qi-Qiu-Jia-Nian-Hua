@@ -274,7 +274,181 @@ export default function CarnivalPage() {
           }}
         />
       )}
-      <section id="register" className="py-20 px-4 max-w-4xl mx-auto w-full scroll-mt-24">
+      {/* HERO — 活動主視覺 */}
+      <section className="relative w-full bg-gradient-to-b from-sky-50 via-rose-50/40 to-background overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4 pt-8 md:pt-12 pb-8 md:pb-12">
+          <div className="relative rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-white">
+            <img
+              src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
+              alt="2026 臺灣氣球嘉年華"
+              className="w-full h-auto block"
+            />
+            <div className="absolute inset-x-0 bottom-0 pointer-events-none bg-gradient-to-t from-black/55 via-black/15 to-transparent pt-16 pb-5 md:pb-8 px-4">
+              <div className="pointer-events-auto flex flex-col sm:flex-row items-center justify-center gap-3">
+                <a
+                  href="#register"
+                  className="px-6 md:px-8 py-3 md:py-4 rounded-full font-bold text-base md:text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-black/30 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                  data-testid="carnival-hero-cta-buy"
+                >
+                  <Ticket size={20} /> 立即購票入場
+                </a>
+                <a
+                  href="#schedule"
+                  className="px-5 md:px-6 py-2.5 md:py-3.5 rounded-full font-medium text-sm md:text-base text-foreground bg-white/95 backdrop-blur border border-white hover:bg-white transition-all flex items-center gap-2"
+                >
+                  查看節目時間表 <ArrowRight size={16} />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 活動資訊條 */}
+      <section className="border-y bg-white">
+        <div className="max-w-6xl mx-auto px-4 py-4 md:py-5 grid grid-cols-2 md:grid-cols-4 gap-x-3 md:gap-x-6 gap-y-4 items-stretch">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Calendar className="text-primary w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">公開場次</div>
+              <div className="font-bold text-foreground text-sm">7/25 (六) – 7/26 (日)</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
+              <MapPin className="text-secondary w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">活動地點</div>
+              <div className="font-bold text-foreground text-sm">臺北瓶蓋工廠 (南港)</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent/30 flex items-center justify-center shrink-0">
+              <Clock className="text-accent-foreground w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">開放時間</div>
+              <div className="font-bold text-foreground text-sm">10:00 – 18:00</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+              <Users className="text-rose-500 w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">每日名額</div>
+              <div className="font-bold text-foreground text-sm">限量 500 名</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 四大主題活動介紹 */}
+      <section className="py-14 md:py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10 md:mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-4">
+              <Sparkles size={16} /> 活動內容
+            </div>
+            <h2 className="font-display text-3xl md:text-5xl mb-3">嘉年華四大主題活動</h2>
+            <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto">
+              展覽、表演、手作、科技 — 一票暢遊全展區
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+            {carnivalActivities.map((a) => (
+              <div key={a.title} className="glass-card rounded-2xl p-6 md:p-7 hover-lift transition-all flex gap-4 md:gap-5">
+                <div className={cn("w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shrink-0", a.bg)}>
+                  <a.icon className={cn("w-7 h-7 md:w-8 md:h-8", a.color)} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <h3 className="font-display text-xl md:text-2xl">{a.title}</h3>
+                    {a.price && (
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-green-100 text-green-700">{a.price}</span>
+                    )}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{a.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 兩日節目時間表 */}
+      <section id="schedule" className="py-14 md:py-20 px-4 bg-muted/30 scroll-mt-24">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10 md:mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/10 text-secondary font-bold text-sm mb-4">
+              <Clock size={16} /> 節目時間表
+            </div>
+            <h2 className="font-display text-3xl md:text-5xl mb-3">兩日精彩節目排程</h2>
+            <p className="text-muted-foreground text-base md:text-lg">表演內容如遇天候或現場狀況調整，以現場公告為準</p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+            {publicSchedule.map((day) => (
+              <div key={day.date} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden">
+                <div className="px-6 py-4 bg-gradient-to-r from-primary/10 to-secondary/10 border-b">
+                  <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                    <h3 className="font-display text-2xl md:text-3xl text-foreground">{day.date}</h3>
+                    <span className="text-sm font-bold text-muted-foreground">{day.hours}</span>
+                  </div>
+                </div>
+                <ul className="divide-y divide-border">
+                  {day.items.map((it, idx) => (
+                    <li key={idx} className="px-5 md:px-6 py-4 flex gap-4">
+                      <div className="shrink-0 w-16 md:w-20">
+                        <div className="font-bold text-primary text-lg md:text-xl tabular-nums">{it.time}</div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-foreground text-sm md:text-base leading-tight">{it.event}</div>
+                        <div className="text-xs md:text-sm text-muted-foreground mt-1">{it.desc}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 展覽精彩內容 — 圖片展示 */}
+      <section className="py-14 md:py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10 md:mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 text-amber-600 font-bold text-sm mb-4">
+              <Eye size={16} /> 現場直擊
+            </div>
+            <h2 className="font-display text-3xl md:text-5xl mb-3">展覽精彩內容</h2>
+            <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto">
+              中型氣球雕塑、人偶造型、花束作品等業界精品，全場開放近距離欣賞與拍照
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div className="rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-white">
+              <img
+                src={`${import.meta.env.BASE_URL}images/exhibition-1.png`}
+                alt="氣球展覽作品一"
+                className="w-full h-auto block"
+              />
+            </div>
+            <div className="rounded-3xl overflow-hidden shadow-xl shadow-secondary/10 border border-white/60 bg-white">
+              <img
+                src={`${import.meta.env.BASE_URL}images/exhibition-2.png`}
+                alt="氣球展覽作品二"
+                className="w-full h-auto block"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="register" className="py-16 md:py-20 px-4 max-w-4xl mx-auto w-full scroll-mt-24 border-t">
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-50 text-green-600 font-bold text-sm mb-4">
             <Ticket size={16} /> 立即購票

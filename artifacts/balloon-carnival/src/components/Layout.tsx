@@ -29,7 +29,6 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
       <div className="h-2 w-full carnival-gradient absolute top-0 left-0 z-50"></div>
-
       <header className="sticky top-0 z-40 w-full glass-card border-b border-white/50 px-4 sm:px-6 lg:px-8 mt-2">
         <div className="max-w-7xl mx-auto h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
@@ -116,7 +115,6 @@ export function Layout({ children }: LayoutProps) {
           </button>
         </div>
       </header>
-
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
@@ -186,7 +184,6 @@ export function Layout({ children }: LayoutProps) {
           </motion.div>
         )}
       </AnimatePresence>
-
       <main className="flex-1">
         <AnimatePresence mode="wait">
           <motion.div
@@ -201,7 +198,6 @@ export function Layout({ children }: LayoutProps) {
           </motion.div>
         </AnimatePresence>
       </main>
-
       <footer className="bg-foreground text-white/70 py-12 mt-20 relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-5 pointer-events-none"
@@ -224,7 +220,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
           <div>
             <h3 className="font-bold text-white mb-4">聯絡我們</h3>
-            <p className="mb-2">服務專線：02-2720-8889</p>
+            <p className="mb-2">服務專線：02-23680623 分機4</p>
             <p>Email：contact@balloon-carnival.tw</p>
           </div>
         </div>
