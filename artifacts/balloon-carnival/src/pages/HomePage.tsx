@@ -167,51 +167,22 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 嘉年華精彩內容 — 主視覺＋四大亮點 */}
-      <section className="py-16 md:py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-10 md:mb-12">
+      {/* 嘉年華精彩內容 — 純圖片展示 */}
+      <section className="py-12 md:py-16 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8 md:mb-10">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-4">
               <Sparkles size={16} /> 活動亮點
             </div>
-            <h2 className="font-display text-3xl md:text-5xl mb-3">繽紛氣球．療癒登場</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-base md:text-lg">
-              一張門票，走進夢幻氣球世界，盡享四大主題體驗
-            </p>
+            <h2 className="font-display text-3xl md:text-5xl">嘉年華精彩內容</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8 items-stretch">
-            {/* 主視覺 — 直式插畫 */}
-            <div className="md:col-span-2 relative rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-gradient-to-br from-sky-100 via-rose-50 to-amber-50 min-h-[420px] md:min-h-0">
-              <img
-                src={`${import.meta.env.BASE_URL}images/highlights.png`}
-                alt="2026 臺灣氣球嘉年華精彩內容"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 via-black/25 to-transparent pt-20 pb-5 px-5">
-                <div className="text-white">
-                  <div className="text-[11px] font-bold tracking-widest uppercase opacity-80 mb-1">Taiwan Balloon Carnival</div>
-                  <div className="font-display text-2xl md:text-3xl leading-tight drop-shadow">夢想升空・氣球無限</div>
-                </div>
-              </div>
-            </div>
-
-            {/* 四大亮點 */}
-            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
-              {highlights.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="group relative rounded-2xl p-5 md:p-6 border border-transparent bg-white hover:-translate-y-1 transition-all shadow-sm hover:shadow-xl hover:shadow-black/5 overflow-hidden"
-                >
-                  <div className={cn("absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-60 group-hover:opacity-90 transition-opacity", item.bg)} />
-                  <div className={cn("relative w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center mb-3 md:mb-4", item.bg)}>
-                    <item.icon size={26} className={item.color} />
-                  </div>
-                  <h3 className="relative text-base md:text-lg font-bold mb-1.5 md:mb-2">{item.title}</h3>
-                  <p className="relative text-xs md:text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-                </div>
-              ))}
-            </div>
+          <div className="rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-white">
+            <img
+              src={`${import.meta.env.BASE_URL}images/highlights.png`}
+              alt="2026 臺灣氣球嘉年華精彩內容"
+              className="w-full h-auto block"
+            />
           </div>
         </div>
       </section>
