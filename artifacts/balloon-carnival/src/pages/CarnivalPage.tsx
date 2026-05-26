@@ -346,39 +346,6 @@ export default function CarnivalPage() {
         </div>
       </section>
 
-      {/* 四大主題活動介紹 */}
-      <section className="py-14 md:py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-10 md:mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-4">
-              <Sparkles size={16} /> 活動內容
-            </div>
-            <h2 className="font-display text-3xl md:text-5xl mb-3">嘉年華四大主題活動</h2>
-            <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto">
-              展覽、表演、手作、科技 — 一票暢遊全展區
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-            {carnivalActivities.map((a) => (
-              <div key={a.title} className="glass-card rounded-2xl p-6 md:p-7 hover-lift transition-all flex gap-4 md:gap-5">
-                <div className={cn("w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shrink-0", a.bg)}>
-                  <a.icon className={cn("w-7 h-7 md:w-8 md:h-8", a.color)} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <h3 className="font-display text-xl md:text-2xl">{a.title}</h3>
-                    {a.price && (
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-green-100 text-green-700">{a.price}</span>
-                    )}
-                  </div>
-                  <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{a.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* 兩日節目時間表 */}
       <section id="schedule" className="py-14 md:py-20 px-4 bg-muted/30 scroll-mt-24">
         <div className="max-w-5xl mx-auto">
