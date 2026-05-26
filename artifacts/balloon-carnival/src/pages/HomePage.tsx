@@ -132,12 +132,6 @@ export default function HomePage() {
             >
               <Ticket size={20} /> 立即購票入場
             </Link>
-            <Link
-              href="/carnival"
-              className="px-5 py-3 rounded-full font-medium text-sm text-foreground bg-white border border-border transition-all flex items-center justify-center gap-2"
-            >
-              查看活動詳情 <ArrowRight size={16} />
-            </Link>
           </div>
         </div>
       </section>
