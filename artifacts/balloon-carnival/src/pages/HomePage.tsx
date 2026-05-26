@@ -1,4 +1,4 @@
-import { useListNews, useListSponsors, useGetRegistrationAvailability } from "@workspace/api-client-react";
+import { useListNews, useGetRegistrationAvailability } from "@workspace/api-client-react";
 import { Calendar, MapPin, Clock, ArrowRight, Ticket, Users, Sparkles, Heart, ChevronRight, PartyPopper, Baby, Eye, Cpu, ShieldCheck, Star, ZoomIn, X } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useState } from "react";
@@ -8,7 +8,6 @@ import { AnimatedNumber } from "@/components/EventCountdown";
 
 export default function HomePage() {
   const { data: news } = useListNews();
-  const { data: sponsors } = useListSponsors();
   const { data: availability } = useGetRegistrationAvailability({
     query: { queryKey: ["getRegistrationAvailability"], refetchInterval: 30000 },
   });
@@ -392,38 +391,45 @@ export default function HomePage() {
       </section>
 
       {/* 贊助廠商 */}
-      {sponsors && sponsors.length > 0 && (
-        <section className="py-16 bg-muted/30">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center mb-10">
-              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">感謝贊助</h3>
-              <h2 className="font-display text-2xl">合作夥伴</h2>
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-              {sponsors.map(s => (
-                <div key={s.id} className="group">
-                  {s.logoUrl ? (
-                    <img
-                      src={s.logoUrl}
-                      alt={s.name}
-                      className="h-10 md:h-12 object-contain opacity-50 group-hover:opacity-100 transition-opacity grayscale group-hover:grayscale-0"
-                    />
-                  ) : (
-                    <div className="px-6 py-3 bg-white rounded-xl border text-muted-foreground font-bold text-sm opacity-60 group-hover:opacity-100 transition-opacity">
-                      {s.name}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="text-center mt-8">
-              <Link href="/sponsors" className="text-sm text-muted-foreground hover:text-primary font-medium flex items-center gap-1 justify-center">
-                查看完整贊助名單 <ChevronRight size={14} />
-              </Link>
-            </div>
+      <section className="py-16 bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-10">
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">感謝贊助</h3>
+            <h2 className="font-display text-3xl">合作夥伴</h2>
           </div>
-        </section>
-      )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6 max-w-6xl mx-auto">
+            {[
+              { name: "台北氣球派對", logo: "images/sponsors/taipei-balloon.jpg" },
+              { name: "曄達氣球", logo: "images/sponsors/yeda.jpg" },
+              { name: "彩飛屋", logo: "images/sponsors/caifeiwu.svg" },
+              { name: "藝人有限公司", logo: null },
+              { name: "氣球屋", logo: "images/sponsors/balloon-house.png" },
+            ].map(s => (
+              <div
+                key={s.name}
+                className="glass-card rounded-2xl p-5 md:p-6 flex flex-col items-center justify-center gap-3 aspect-square hover-lift transition-all"
+              >
+                {s.logo ? (
+                  <div className="flex-1 w-full flex items-center justify-center min-h-0">
+                    <img
+                      src={`${import.meta.env.BASE_URL}${s.logo}`}
+                      alt={s.name}
+                      className="max-h-20 md:max-h-24 max-w-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1 w-full flex items-center justify-center">
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-primary/15 to-secondary/15 flex items-center justify-center">
+                      <Sparkles size={28} className="text-primary/70" />
+                    </div>
+                  </div>
+                )}
+                <p className="text-sm md:text-base font-bold text-center text-foreground/85 leading-tight">{s.name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* 常見問題 */}
       <section className="py-16 px-4">
