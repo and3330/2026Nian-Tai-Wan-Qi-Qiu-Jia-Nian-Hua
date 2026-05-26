@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ticket, Tent, MapPin, Info, Crown, LogOut, LayoutDashboard, Menu, X, Shield, Calendar } from "lucide-react";
+import { Ticket, Tent, MapPin, Info, Crown, LogOut, LayoutDashboard, Menu, X, Shield, Calendar, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
@@ -184,7 +184,7 @@ export function Layout({ children }: LayoutProps) {
           </motion.div>
         )}
       </AnimatePresence>
-      <main className="flex-1">
+      <main className={cn("flex-1", !location.startsWith("/admin") && !location.startsWith("/carnival") && "pb-20 lg:pb-0")}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location}
@@ -198,6 +198,30 @@ export function Layout({ children }: LayoutProps) {
           </motion.div>
         </AnimatePresence>
       </main>
+      {/* 手機版底部固定導航列 — 購票頁與後臺自動隱藏 */}
+      {!location.startsWith("/admin") && !location.startsWith("/carnival") && (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-border shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Calendar size={20} className="text-primary" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide leading-tight">公開場次</div>
+                <div className="font-bold text-foreground text-sm leading-tight">7/25 – 7/26</div>
+              </div>
+            </div>
+            <Link
+              href="/carnival"
+              className="shrink-0 px-5 py-3 rounded-full font-bold text-sm text-white bg-gradient-to-r from-primary to-secondary shadow-md shadow-primary/30 flex items-center gap-1.5 active:scale-95 transition-transform"
+              data-testid="mobile-bottom-cta-buy"
+            >
+              <Ticket size={16} /> 前往搶票 <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
+      )}
+
       <footer className="bg-foreground text-white/70 py-12 mt-20 relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-5 pointer-events-none"
