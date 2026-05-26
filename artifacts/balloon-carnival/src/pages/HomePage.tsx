@@ -3,7 +3,7 @@ import { Calendar, MapPin, Clock, ArrowRight, Ticket, Users, Sparkles, Heart, Ch
 import { Link } from "wouter";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { EventCountdown, AnimatedNumber } from "@/components/EventCountdown";
+import { AnimatedNumber } from "@/components/EventCountdown";
 
 export default function HomePage() {
   const { data: news } = useListNews();
@@ -71,10 +71,6 @@ export default function HomePage() {
           </div>
 
           <div className="max-w-3xl mx-auto text-center mt-8 md:mt-10">
-            <div className="flex justify-center mb-6">
-              <EventCountdown />
-            </div>
-
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 href="/carnival#register"
