@@ -283,23 +283,6 @@ export default function CarnivalPage() {
               alt="2026 臺灣氣球嘉年華"
               className="w-full h-auto block"
             />
-            <div className="absolute inset-x-0 bottom-0 pointer-events-none bg-gradient-to-t from-black/55 via-black/15 to-transparent pt-16 pb-5 md:pb-8 px-4">
-              <div className="pointer-events-auto flex flex-col sm:flex-row items-center justify-center gap-3">
-                <a
-                  href="#register"
-                  className="px-6 md:px-8 py-3 md:py-4 rounded-full font-bold text-base md:text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-black/30 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
-                  data-testid="carnival-hero-cta-buy"
-                >
-                  <Ticket size={20} /> 立即購票入場
-                </a>
-                <a
-                  href="#schedule"
-                  className="px-5 md:px-6 py-2.5 md:py-3.5 rounded-full font-medium text-sm md:text-base text-foreground bg-white/95 backdrop-blur border border-white hover:bg-white transition-all flex items-center gap-2"
-                >
-                  查看節目時間表 <ArrowRight size={16} />
-                </a>
-              </div>
-            </div>
           </div>
         </div>
       </section>
