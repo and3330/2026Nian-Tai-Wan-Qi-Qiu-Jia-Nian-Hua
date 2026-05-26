@@ -346,44 +346,6 @@ export default function CarnivalPage() {
         </div>
       </section>
 
-      {/* 兩日節目時間表 */}
-      <section id="schedule" className="py-14 md:py-20 px-4 bg-muted/30 scroll-mt-24">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10 md:mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/10 text-secondary font-bold text-sm mb-4">
-              <Clock size={16} /> 節目時間表
-            </div>
-            <h2 className="font-display text-3xl md:text-5xl mb-3">兩日精彩節目排程</h2>
-            <p className="text-muted-foreground text-base md:text-lg">表演內容如遇天候或現場狀況調整，以現場公告為準</p>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-            {publicSchedule.map((day) => (
-              <div key={day.date} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden">
-                <div className="px-6 py-4 bg-gradient-to-r from-primary/10 to-secondary/10 border-b">
-                  <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                    <h3 className="font-display text-2xl md:text-3xl text-foreground">{day.date}</h3>
-                    <span className="text-sm font-bold text-muted-foreground">{day.hours}</span>
-                  </div>
-                </div>
-                <ul className="divide-y divide-border">
-                  {day.items.map((it, idx) => (
-                    <li key={idx} className="px-5 md:px-6 py-4 flex gap-4">
-                      <div className="shrink-0 w-16 md:w-20">
-                        <div className="font-bold text-primary text-lg md:text-xl tabular-nums">{it.time}</div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-bold text-foreground text-sm md:text-base leading-tight">{it.event}</div>
-                        <div className="text-xs md:text-sm text-muted-foreground mt-1">{it.desc}</div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section id="register" className="py-16 md:py-20 px-4 max-w-4xl mx-auto w-full scroll-mt-24 border-t">
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-50 text-green-600 font-bold text-sm mb-4">
