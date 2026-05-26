@@ -1,5 +1,5 @@
 import { useListNews, useGetRegistrationAvailability } from "@workspace/api-client-react";
-import { Calendar, MapPin, Clock, ArrowRight, Ticket, Users, Sparkles, Heart, ChevronRight, PartyPopper, Baby, Eye, Cpu, ShieldCheck, Star, ZoomIn, X } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowRight, Ticket, Sparkles, ChevronRight, PartyPopper, Baby, Eye, Cpu, ShieldCheck, Star, ZoomIn, X } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useState } from "react";
 import { formatDate } from "@/lib/utils";
@@ -282,42 +282,6 @@ export default function HomePage() {
           <p className="text-sm text-muted-foreground">
             親子手作坊另需現場購票 <span className="font-bold text-foreground">150 元/組</span>　・　6 歲以下兒童免票隨大人入場
           </p>
-        </div>
-      </section>
-
-      {/* 入場須知 */}
-      <section className="py-20 px-4 bg-muted/30">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 font-bold text-sm mb-4">
-              <ShieldCheck size={16} /> 安心入場
-            </div>
-            <h2 className="font-display text-4xl mb-4">購票須知</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="glass-card rounded-2xl p-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
-                <Ticket size={28} className="text-green-500" />
-              </div>
-              <h4 className="font-bold text-lg mb-2">線上預約購票</h4>
-              <p className="text-muted-foreground text-sm">免註冊・填寫基本資料即可完成購票，當日憑姓名與電話入場</p>
-            </div>
-            <div className="glass-card rounded-2xl p-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
-                <Users size={28} className="text-blue-500" />
-              </div>
-              <h4 className="font-bold text-lg mb-2">每日限量 500 名</h4>
-              <p className="text-muted-foreground text-sm">為維護參觀品質，每日限量入場，建議提前線上預約以免向隅</p>
-            </div>
-            <div className="glass-card rounded-2xl p-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-violet-50 flex items-center justify-center mx-auto mb-4">
-                <Heart size={28} className="text-violet-500" />
-              </div>
-              <h4 className="font-bold text-lg mb-2">老少咸宜</h4>
-              <p className="text-muted-foreground text-sm">適合全家大小一同參與，6 歲以下兒童可免預約隨大人入場</p>
-            </div>
-          </div>
         </div>
       </section>
 
