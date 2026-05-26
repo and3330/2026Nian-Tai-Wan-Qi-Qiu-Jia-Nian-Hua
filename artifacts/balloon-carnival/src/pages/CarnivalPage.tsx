@@ -792,13 +792,106 @@ export default function CarnivalPage() {
           </div>
         )}
 
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-sm text-blue-700 max-w-xl mx-auto mt-10">
-          <p className="font-bold mb-1">入場須知</p>
-          <ul className="space-y-1 text-blue-600">
-            <li>・每日限量 500 名，建議提前線上購票</li>
-            <li>・6 歲以下兒童可免票隨大人入場</li>
-            <li>・如有疑問請洽服務專線 02-2720-8889</li>
-          </ul>
+      </section>
+
+      {/* 完整入場須知 */}
+      <section className="py-14 md:py-20 px-4 bg-muted/30 border-t">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10 md:mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 font-bold text-sm mb-4">
+              <AlertCircle size={16} /> 重要資訊
+            </div>
+            <h2 className="font-display text-3xl md:text-5xl mb-3">入場須知</h2>
+            <p className="text-muted-foreground text-base md:text-lg">為確保活動順利進行，請參加民眾配合下列規定</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+            {[
+              {
+                icon: Ticket,
+                title: "購票與入場",
+                color: "text-primary",
+                bg: "bg-primary/10",
+                items: [
+                  "每日限量 500 名，建議提前線上購票以確保入場",
+                  "入場請出示購票確認 QR Code（電子或紙本皆可）",
+                  "6 歲（含）以下兒童可免票隨大人入場",
+                  "兩日套票須完成兩次報到（7/25 + 7/26 各一次）",
+                ],
+              },
+              {
+                icon: MapPin,
+                title: "場地與交通",
+                color: "text-secondary",
+                bg: "bg-secondary/10",
+                items: [
+                  "活動地點：臺北瓶蓋工廠（台北市南港區南港路二段 13 號）",
+                  "搭乘捷運至板南線「南港站」1 號出口，步行約 5 分鐘",
+                  "現場停車位有限，建議搭乘大眾運輸前往",
+                  "活動期間提供免費接駁車，往返捷運南港站",
+                ],
+              },
+              {
+                icon: Clock,
+                title: "開放時間",
+                color: "text-amber-600",
+                bg: "bg-amber-50",
+                items: [
+                  "7/25（六）10:00 – 19:00",
+                  "7/26（日）10:00 – 17:00",
+                  "建議下午 13:00 前入場，可完整觀賞主舞臺表演",
+                  "入場後可自由進出，重新入場請保留手環識別",
+                ],
+              },
+              {
+                icon: CheckCircle2,
+                title: "現場注意事項",
+                color: "text-green-600",
+                bg: "bg-green-50",
+                items: [
+                  "親子手作坊另需現場購票 150 元/組（依小朋友人數計算）",
+                  "禁止攜帶外食、寵物、危險物品及自備氣球進入會場",
+                  "歡迎拍照留念，請勿使用閃光燈與腳架避免影響他人",
+                  "活動如遇天候異常，將於官網與粉絲頁公告調整資訊",
+                ],
+              },
+            ].map((g) => (
+              <div key={g.title} className="bg-white rounded-2xl p-6 md:p-7 border border-border shadow-sm hover-lift transition-all">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0", g.bg)}>
+                    <g.icon className={cn("w-5 h-5", g.color)} />
+                  </div>
+                  <h3 className="font-display text-xl md:text-2xl">{g.title}</h3>
+                </div>
+                <ul className="space-y-2.5 text-sm md:text-base text-muted-foreground">
+                  {g.items.map((it, i) => (
+                    <li key={i} className="flex gap-2 leading-relaxed">
+                      <span className={cn("shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full", g.bg.replace("/10", "/40").replace("bg-amber-50", "bg-amber-400").replace("bg-green-50", "bg-green-500"))} />
+                      <span>{it}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          {/* 聯絡資訊 */}
+          <div className="mt-8 md:mt-10 bg-gradient-to-r from-primary/5 to-secondary/5 border-2 border-primary/15 rounded-2xl p-6 md:p-7">
+            <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 justify-between">
+              <div>
+                <h3 className="font-display text-xl md:text-2xl mb-1">還有其他問題？</h3>
+                <p className="text-sm md:text-base text-muted-foreground">主辦單位將盡快為您回覆，感謝您的耐心</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <a href="tel:02-2720-8889" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-border font-bold text-foreground hover:border-primary/40 hover:shadow-sm transition-all">
+                  <Phone size={18} className="text-primary" /> 02-2720-8889
+                </a>
+                <a href="mailto:contact@balloon-carnival.tw" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-border font-bold text-foreground hover:border-primary/40 hover:shadow-sm transition-all">
+                  <Mail size={18} className="text-secondary" /> 來信洽詢
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

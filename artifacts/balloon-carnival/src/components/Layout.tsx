@@ -221,7 +221,7 @@ export function Layout({ children }: LayoutProps) {
           <div>
             <h3 className="font-bold text-white mb-4">聯絡我們</h3>
             <p className="mb-2">服務專線：02-23680623 分機4</p>
-            <p>Email：contact@balloon-carnival.tw</p>
+            <p>Email：service@cms-edu.com</p>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 mt-12 pt-8 border-t border-white/10 text-sm text-center">
