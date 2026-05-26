@@ -279,41 +279,6 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* 當日節目對照 — 讓客人知道買哪天會看到什麼 */}
-        <div className="mt-10 max-w-4xl mx-auto">
-          <div className="text-center mb-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-foreground/5 text-foreground/70 text-xs font-bold">
-              <Calendar size={12} /> 你的票，當天會看到什麼
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {dayPrograms.map(day => (
-              <div key={day.date} className={cn("rounded-2xl border p-5", day.tint)}>
-                <div className="flex items-center justify-between mb-3 pb-3 border-b border-current/10">
-                  <div>
-                    <div className="font-display text-2xl leading-tight">{day.date} <span className="text-base text-foreground/60">({day.weekday})</span></div>
-                    <div className={cn("inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-bold", day.chip)}>{day.label}</div>
-                  </div>
-                  <div className={cn("text-xs font-bold text-white px-3 py-1.5 rounded-full bg-gradient-to-r shadow-sm", day.accent)}>
-                    入場 NT$200
-                  </div>
-                </div>
-                <ul className="space-y-2">
-                  {day.items.map((it, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm">
-                      <span className="font-mono font-bold text-foreground/80 tabular-nums shrink-0 mt-0.5">{it.time}</span>
-                      <span className={cn("flex-1 leading-snug", it.hl ? "text-foreground font-bold" : "text-foreground/75")}>
-                        {it.title}
-                        {it.note && <span className="ml-1.5 text-[11px] text-foreground/50 font-normal">（{it.note}）</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground">
             親子手作坊另需現場購票 <span className="font-bold text-foreground">150 元/組</span>　・　6 歲以下兒童免票隨大人入場
