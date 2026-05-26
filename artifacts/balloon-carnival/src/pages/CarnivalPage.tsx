@@ -279,7 +279,7 @@ export default function CarnivalPage() {
         <div className="max-w-6xl mx-auto px-0 md:px-4 pt-0 md:pt-12 pb-6 md:pb-12">
           <div className="relative md:rounded-3xl overflow-hidden md:shadow-xl md:shadow-primary/10 md:border md:border-white/60 bg-white">
             <img
-              src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
+              src={`${import.meta.env.BASE_URL}images/hero-bg-v2.png`}
               alt="2026 臺灣氣球嘉年華"
               className="w-full h-auto block"
             />
