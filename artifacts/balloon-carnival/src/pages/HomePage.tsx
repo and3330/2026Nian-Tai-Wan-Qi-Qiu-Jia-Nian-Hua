@@ -312,7 +312,7 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="hidden md:grid md:grid-cols-3 gap-6">
               {latestNews.map(article => (
                 <Link key={article.id} href={`/news/${article.id}`} className="glass-card rounded-2xl p-6 hover-lift group block">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
@@ -330,6 +330,35 @@ export default function HomePage() {
                   </span>
                 </Link>
               ))}
+            </div>
+
+            {/* 手機版橫向滑動卡片 */}
+            <div className="md:hidden -mx-4">
+              <div className="flex overflow-x-auto snap-x snap-mandatory scroll-px-4 px-4 gap-4 pb-4 scrollbar-none [-webkit-overflow-scrolling:touch]">
+                {latestNews.map(article => (
+                  <Link
+                    key={article.id}
+                    href={`/news/${article.id}`}
+                    className="glass-card rounded-2xl p-5 group block snap-start shrink-0 w-[78%] max-w-[320px]"
+                  >
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                      <Calendar size={12} />
+                      {article.createdAt ? formatDate(String(article.createdAt)) : '最新'}
+                    </div>
+                    <h3 className="text-base font-bold mb-2 line-clamp-2">{article.title}</h3>
+                    <p className="text-muted-foreground text-sm line-clamp-3 mb-3">
+                      {article.summary || article.content?.substring(0, 100)}
+                    </p>
+                    <span className="text-primary text-sm font-medium flex items-center gap-1">
+                      閱讀全文 <ArrowRight size={14} />
+                    </span>
+                  </Link>
+                ))}
+                <div className="shrink-0 w-1" aria-hidden="true" />
+              </div>
+              <p className="text-center text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                <ArrowRight size={12} /> 左右滑動查看更多
+              </p>
             </div>
           </div>
         </section>
