@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Cpu, Baby, Sparkles, Eye, Calendar, Clock, MapPin, Ticket, Star, Users, Phone, Mail, AlertCircle, CheckCircle2, QrCode, Tag, X as XIcon } from "lucide-react";
+import { ArrowRight, Cpu, Baby, Sparkles, Eye, Calendar, Clock, MapPin, Ticket, Star, Users, Phone, Mail, AlertCircle, CheckCircle2, QrCode, Tag, ZoomIn, X as XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useGetRegistrationAvailability,
@@ -111,6 +111,7 @@ export default function CarnivalPage() {
   } | null>(null);
   const [promoChecking, setPromoChecking] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const baseTotal =
     visitorTicketType === "combo"
@@ -277,13 +278,21 @@ export default function CarnivalPage() {
       {/* HERO — 活動主視覺 */}
       <section className="relative w-full bg-gradient-to-b from-sky-50 via-rose-50/40 to-background overflow-hidden">
         <div className="max-w-6xl mx-auto px-0 md:px-4 pt-0 md:pt-12 pb-6 md:pb-12">
-          <div className="relative md:rounded-3xl overflow-hidden md:shadow-xl md:shadow-primary/10 md:border md:border-white/60 bg-white">
+          <button
+            type="button"
+            onClick={() => setZoomedImage(`${import.meta.env.BASE_URL}images/hero-bg-v2.png`)}
+            className="group relative md:rounded-3xl overflow-hidden md:shadow-xl md:shadow-primary/10 md:border md:border-white/60 bg-white block w-full cursor-zoom-in focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30"
+            aria-label="放大查看活動主視覺"
+          >
             <img
               src={`${import.meta.env.BASE_URL}images/hero-bg-v2.png`}
               alt="2026 臺灣氣球嘉年華"
-              className="w-full h-auto block"
+              className="w-full h-auto block transition-transform duration-300 group-hover:scale-[1.02]"
             />
-          </div>
+            <span className="absolute top-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 text-white text-xs font-bold backdrop-blur opacity-90 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+              <ZoomIn size={14} /> 點擊放大
+            </span>
+          </button>
         </div>
       </section>
 
@@ -781,6 +790,31 @@ export default function CarnivalPage() {
         </div>
       </section>
 
+      {/* 圖片放大檢視 Lightbox */}
+      {zoomedImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 cursor-zoom-out animate-in fade-in duration-200"
+          onClick={() => setZoomedImage(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="放大檢視圖片"
+        >
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }}
+            className="absolute top-4 right-4 md:top-6 md:right-6 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur text-white flex items-center justify-center transition-colors"
+            aria-label="關閉"
+          >
+            <XIcon size={22} />
+          </button>
+          <img
+            src={zoomedImage}
+            alt="放大檢視"
+            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
