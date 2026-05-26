@@ -332,13 +332,14 @@ export default function HomePage() {
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">Organizers</h3>
             <h2 className="font-display text-4xl">主辦・協辦單位</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             {[
               { role: "主辦單位", name: "摸氣球的毛", logo: "images/sponsors/organizer.png", accent: "from-primary/15 to-primary/5", badge: "bg-primary/15 text-primary" },
               { role: "協辦單位", name: "ICTA 社團法人國際兒童才藝協會", logo: "images/sponsors/coorganizer.png", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
+              { role: "協辦單位", name: "育邦文化教育科技股份有限公司", logo: "images/sponsors/coorganizer2.png", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
             ].map(o => (
               <div
-                key={o.role}
+                key={o.name}
                 className="relative glass-card rounded-3xl overflow-hidden hover-lift transition-all"
               >
                 <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", o.accent)} />
