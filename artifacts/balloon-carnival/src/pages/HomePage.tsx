@@ -361,7 +361,7 @@ export default function HomePage() {
                   </div>
                   <h4 className="font-display text-2xl md:text-3xl leading-tight">{o.name}</h4>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         </div>
