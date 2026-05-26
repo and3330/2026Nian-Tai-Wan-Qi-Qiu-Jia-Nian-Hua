@@ -216,7 +216,7 @@ export default function HomePage() {
         <button
           type="button"
           onClick={() => setZoomedImage(`${import.meta.env.BASE_URL}images/tickets-banner.png`)}
-          className="group block w-full max-w-3xl mx-auto mb-8 rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-white relative cursor-zoom-in focus:outline-none focus:ring-4 focus:ring-primary/30"
+          className="group block w-full max-w-5xl mx-auto mb-10 rounded-3xl overflow-hidden shadow-2xl shadow-primary/15 border border-white/60 bg-white relative cursor-zoom-in focus:outline-none focus:ring-4 focus:ring-primary/30"
           aria-label="放大查看購票圖片"
         >
           <img
