@@ -68,23 +68,22 @@ export default function HomePage() {
               alt="2026 臺灣氣球嘉年華 ・ 夢想升空・氣球無限"
               className="w-full h-auto block"
             />
-          </div>
-
-          <div className="max-w-3xl mx-auto text-center mt-8 md:mt-10">
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link
-                href="/carnival#register"
-                className="px-8 py-4 rounded-full font-bold text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
-                data-testid="hero-cta-buy"
-              >
-                <Ticket size={20} /> 立即購票入場
-              </Link>
-              <Link
-                href="/carnival"
-                className="px-6 py-3.5 rounded-full font-medium text-base text-foreground bg-white border border-border hover:border-primary/40 hover:text-primary transition-all flex items-center gap-2"
-              >
-                查看活動詳情 <ArrowRight size={16} />
-              </Link>
+            <div className="absolute inset-x-0 bottom-0 pointer-events-none bg-gradient-to-t from-black/45 via-black/15 to-transparent pt-16 pb-5 md:pb-8 px-4">
+              <div className="pointer-events-auto flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link
+                  href="/carnival#register"
+                  className="px-6 md:px-8 py-3 md:py-4 rounded-full font-bold text-base md:text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-black/30 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                  data-testid="hero-cta-buy"
+                >
+                  <Ticket size={20} /> 立即購票入場
+                </Link>
+                <Link
+                  href="/carnival"
+                  className="px-5 md:px-6 py-2.5 md:py-3.5 rounded-full font-medium text-sm md:text-base text-foreground bg-white/95 backdrop-blur border border-white hover:bg-white transition-all flex items-center gap-2"
+                >
+                  查看活動詳情 <ArrowRight size={16} />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
