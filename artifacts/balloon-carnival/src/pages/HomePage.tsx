@@ -60,45 +60,36 @@ export default function HomePage() {
   return (
     <div className="flex flex-col">
       {/* HERO — 純粹聚焦氣球嘉年華售票 */}
-      <section className="relative w-full py-16 md:py-24 flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <img
-            src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
-            alt="繽紛氣球嘉年華"
-            className="w-full h-full object-cover opacity-90"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background"></div>
-        </div>
-
-        <div className="relative z-10 max-w-3xl mx-auto px-4 text-center">
-          <div className="inline-block mb-6 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur border border-primary/20 text-primary font-bold text-xs tracking-widest uppercase shadow-sm">
-            售票中 ・ SUMMER 2026
-          </div>
-          <h1 className="font-display text-5xl md:text-7xl text-foreground mb-5 drop-shadow-sm leading-tight">
-            2026 臺灣氣球<span className="text-carnival">嘉年華</span>
-          </h1>
-          <p className="text-lg md:text-xl text-foreground/75 mb-8 max-w-xl mx-auto leading-relaxed">
-            亞洲最大室內氣球藝術盛典・7/25–26 對外開放
-          </p>
-
-          <div className="flex justify-center mb-8">
-            <EventCountdown />
+      <section className="relative w-full bg-gradient-to-b from-sky-50 via-rose-50/40 to-background overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4 pt-8 md:pt-12 pb-10 md:pb-14">
+          <div className="relative rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-white">
+            <img
+              src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
+              alt="2026 臺灣氣球嘉年華 ・ 夢想升空・氣球無限"
+              className="w-full h-auto block"
+            />
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              href="/carnival#register"
-              className="px-8 py-4 rounded-full font-bold text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
-              data-testid="hero-cta-buy"
-            >
-              <Ticket size={20} /> 立即購票入場
-            </Link>
-            <Link
-              href="/carnival"
-              className="px-6 py-3.5 rounded-full font-medium text-base text-foreground bg-white/80 backdrop-blur border border-white hover:bg-white transition-all flex items-center gap-2"
-            >
-              查看活動詳情 <ArrowRight size={16} />
-            </Link>
+          <div className="max-w-3xl mx-auto text-center mt-8 md:mt-10">
+            <div className="flex justify-center mb-6">
+              <EventCountdown />
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/carnival#register"
+                className="px-8 py-4 rounded-full font-bold text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                data-testid="hero-cta-buy"
+              >
+                <Ticket size={20} /> 立即購票入場
+              </Link>
+              <Link
+                href="/carnival"
+                className="px-6 py-3.5 rounded-full font-medium text-base text-foreground bg-white border border-border hover:border-primary/40 hover:text-primary transition-all flex items-center gap-2"
+              >
+                查看活動詳情 <ArrowRight size={16} />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
