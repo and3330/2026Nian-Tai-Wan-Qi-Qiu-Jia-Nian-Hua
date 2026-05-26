@@ -17,7 +17,7 @@ const ALL_NAVS: NavItem[] = [
   { href: "/admin/checkin", label: "現場報到", icon: ScanLine, roles: ["checkin"] },
   { href: "/admin/email-templates", label: "Email 模板", icon: Mail, roles: ["editor"] },
   { href: "/admin/news", label: "最新消息管理", icon: Newspaper, roles: ["editor"] },
-  { href: "/admin/contestants", label: "研討會管理", icon: Users, roles: ["editor"] },
+  { href: "/admin/contestants", label: "選手管理", icon: Users, roles: ["editor"] },
   { href: "/admin/sponsors", label: "贊助廠商管理", icon: Handshake, roles: ["editor"] },
   { href: "/admin/social-accounts", label: "社群帳號", icon: Share2, roles: ["editor"] },
   { href: "/admin/social-posts", label: "社群貼文", icon: FileText, roles: ["editor"] },

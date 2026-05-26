@@ -1,5 +1,5 @@
 import { useListNews, useListSponsors, useGetRegistrationAvailability } from "@workspace/api-client-react";
-import { Calendar, MapPin, Clock, ArrowRight, Ticket, Users, Sparkles, Heart, ChevronRight, PartyPopper, Handshake, Baby, Eye, Cpu, ShieldCheck, Star } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowRight, Ticket, Users, Sparkles, Heart, ChevronRight, PartyPopper, Baby, Eye, Cpu, ShieldCheck, Star } from "lucide-react";
 import { Link } from "wouter";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -358,29 +358,29 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* 業界同行專區入口 — 較小、低調但清楚 */}
+      {/* 人氣選手投票入口 */}
       <section className="py-12 px-4">
         <div className="max-w-4xl mx-auto">
           <Link
-            href="/conference"
-            className="block group bg-gradient-to-r from-amber-50 via-amber-50/80 to-orange-50 border border-amber-200 hover:border-amber-300 rounded-3xl p-6 md:p-8 hover-lift transition-all"
+            href="/contestants"
+            className="block group bg-gradient-to-r from-rose-50 via-pink-50/80 to-orange-50 border border-rose-200 hover:border-rose-300 rounded-3xl p-6 md:p-8 hover-lift transition-all"
           >
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6 justify-between">
               <div className="flex items-start gap-5 flex-1">
                 <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0">
-                  <Handshake size={28} className="text-amber-600" />
+                  <Heart size={28} className="text-rose-500 fill-rose-100" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">業內同行專區</div>
-                  <h3 className="text-xl md:text-2xl font-bold mb-2">傳奇工匠研討會</h3>
+                  <div className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">觀眾投票</div>
+                  <h3 className="text-xl md:text-2xl font-bold mb-2">為你最愛的氣球藝術家投一票</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">
-                    7/23-24 業內封閉場次：研習會、大師工作坊、五大交流賽、總獎金 12 萬元。
-                    氣球師、教學者、業界同行請點此進入。
+                    認識本屆參展藝術家，看看他們的作品介紹，
+                    把手中那一票投給最打動你的那一位。
                   </p>
                 </div>
               </div>
-              <span className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-amber-500 text-white font-bold shadow-md group-hover:bg-amber-600 group-hover:shadow-lg transition-all shrink-0">
-                進入研討會專區 <ArrowRight size={18} />
+              <span className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-rose-500 text-white font-bold shadow-md group-hover:bg-rose-600 group-hover:shadow-lg transition-all shrink-0">
+                查看選手與投票 <ArrowRight size={18} />
               </span>
             </div>
           </Link>
@@ -434,7 +434,7 @@ export default function HomePage() {
               { q: "小朋友適合參加嗎？", a: "非常適合！嘉年華特別設有親子區、DIY 工作坊和兒童遊戲區。6 歲以下兒童可免預約隨大人入場。" },
               { q: "可以現場報名嗎？", a: "建議提前線上預約，確保有入場名額。若當日尚有餘額，也可現場排隊候補入場。" },
               { q: "活動有提供停車場嗎？", a: "臺北瓶蓋工廠設有地下停車場，也可利用南港車站周邊停車場。建議搭乘大眾交通工具前往。" },
-              { q: "我是業界同行，有專屬票種嗎？", a: "有的，請至「業內同行・傳奇工匠研討會」專區查看，提供研習會、四天通行、交流比賽等專業票種。" },
+              { q: "可以為喜歡的氣球藝術家投票嗎？", a: "可以！請前往「人氣選手」專區，瀏覽本屆參展藝術家後投下你的一票，每位觀眾每位選手限投一次。" },
             ].map((item, idx) => (
               <details key={idx} className="glass-card rounded-2xl group">
                 <summary className="p-5 font-bold cursor-pointer flex items-center justify-between hover:text-primary transition-colors list-none">

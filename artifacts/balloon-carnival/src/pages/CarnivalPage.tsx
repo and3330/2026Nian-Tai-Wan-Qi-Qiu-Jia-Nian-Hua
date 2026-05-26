@@ -41,7 +41,7 @@ const carnivalActivities = [
   {
     icon: Eye,
     title: "比賽展件參觀",
-    desc: "業內同行在前兩日完成的精美作品 — 中型氣球雕塑、氣球人偶、外送花束等，全部公開展覽，供遊客近距離欣賞與拍照。",
+    desc: "氣球藝術家現場創作的精美作品 — 中型氣球雕塑、氣球人偶、花束造型等，全部公開展覽，供遊客近距離欣賞與拍照。",
     color: "text-amber-600",
     bg: "bg-amber-50",
   },
@@ -628,20 +628,6 @@ export default function CarnivalPage() {
         </div>
       </section>
 
-      <section className="py-16 bg-gradient-to-b from-amber-50/50 to-background">
-        <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="font-display text-3xl mb-4">你是氣球業界同行嗎？</h2>
-          <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-            如果你是氣球業界人士，想參加研習會、交流活動或比賽，請前往傳奇工匠研討會頁面瞭解詳情與報名。
-          </p>
-          <Link
-            href="/conference"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg bg-amber-500 text-white shadow-lg shadow-amber-500/30 hover:shadow-xl hover:-translate-y-1 transition-all"
-          >
-            前往傳奇工匠研討會 <ArrowRight size={20} />
-          </Link>
-        </div>
-      </section>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ticket, Tent, MapPin, Info, Crown, LogOut, LayoutDashboard, Menu, X, Shield, Handshake, Calendar } from "lucide-react";
+import { Ticket, Tent, MapPin, Info, Crown, LogOut, LayoutDashboard, Menu, X, Shield, Heart, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,7 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { href: "/", label: "首頁", icon: Tent },
     { href: "/carnival", label: "購票入場", icon: Ticket },
+    { href: "/contestants", label: "人氣選手", icon: Heart },
     { href: "/news", label: "最新消息", icon: Info },
     { href: "/sponsors", label: "贊助夥伴", icon: Crown },
   ];
@@ -71,21 +72,6 @@ export function Layout({ children }: LayoutProps) {
                 </Link>
               );
             })}
-
-            <div className="w-px h-8 bg-border mx-2"></div>
-            <Link
-              href="/conference"
-              className={cn(
-                "px-3 py-2 rounded-full font-medium text-xs flex items-center gap-1.5 transition-all border",
-                location.startsWith("/conference")
-                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                  : "text-muted-foreground border-transparent hover:bg-amber-50/60 hover:text-amber-700 hover:border-amber-200"
-              )}
-              title="業內同行專區 — 傳奇工匠研討會"
-            >
-              <Handshake size={14} />
-              業內同行 · 研討會
-            </Link>
 
             {isAuthenticated && (
               <>
@@ -163,19 +149,6 @@ export function Layout({ children }: LayoutProps) {
                 );
               })}
 
-              <Link
-                href="/conference"
-                className={cn(
-                  "p-4 rounded-xl font-medium flex items-center gap-3 text-base border",
-                  location.startsWith("/conference")
-                    ? "bg-amber-50 text-amber-700 border-amber-200"
-                    : "text-amber-700 border-amber-200 bg-amber-50/40"
-                )}
-              >
-                <Handshake size={18} />
-                業內同行 · 傳奇工匠研討會
-              </Link>
-
               {isAuthenticated && (
                 <Link
                   href="/admin"
@@ -247,7 +220,7 @@ export function Layout({ children }: LayoutProps) {
               <li><Link href="/carnival" className="hover:text-primary transition-colors">嘉年華購票</Link></li>
               <li><Link href="/news" className="hover:text-primary transition-colors">大會公告</Link></li>
               <li><Link href="/sponsors" className="hover:text-primary transition-colors">贊助夥伴</Link></li>
-              <li><Link href="/conference" className="hover:text-amber-300 transition-colors">業內同行・傳奇工匠研討會</Link></li>
+              <li><Link href="/contestants" className="hover:text-primary transition-colors">人氣選手投票</Link></li>
               <li><Link href="/lookup" className="hover:text-primary transition-colors">查詢我的訂單</Link></li>
             </ul>
           </div>

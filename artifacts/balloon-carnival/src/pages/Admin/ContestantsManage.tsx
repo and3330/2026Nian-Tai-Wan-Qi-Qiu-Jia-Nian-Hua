@@ -29,7 +29,7 @@ export default function AdminContestantsManage() {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("確定要移除這位同行嗎？")) {
+    if (confirm("確定要移除這位選手嗎？")) {
       deleteMutation.mutate({ id }, {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: getListContestantsQueryKey() })
       });
@@ -61,14 +61,14 @@ export default function AdminContestantsManage() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-display">同行管理</h1>
-          <p className="text-muted-foreground mt-1">管理傳奇工匠研討會的參與者資訊</p>
+          <h1 className="text-3xl font-display">選手管理</h1>
+          <p className="text-muted-foreground mt-1">管理本屆參展氣球藝術家資訊（首頁人氣投票來源）</p>
         </div>
         <button
           onClick={openCreate}
           className="bg-accent text-accent-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:bg-accent/90 transition-all shadow-md"
         >
-          <Plus size={18} /> 新增同行
+          <Plus size={18} /> 新增選手
         </button>
       </div>
 
@@ -77,8 +77,8 @@ export default function AdminContestantsManage() {
           <div className="col-span-full text-center py-10">載入中...</div>
         ) : members?.length === 0 ? (
           <div className="col-span-full text-center py-16 bg-white rounded-3xl border">
-            <p className="text-muted-foreground text-lg">尚無同行資料</p>
-            <p className="text-muted-foreground text-sm mt-1">點擊「新增同行」開始新增</p>
+            <p className="text-muted-foreground text-lg">尚無選手資料</p>
+            <p className="text-muted-foreground text-sm mt-1">點擊「新增選手」開始新增</p>
           </div>
         ) : members?.map((c) => (
           <div key={c.id} className="bg-white rounded-3xl border shadow-sm overflow-hidden flex flex-col">
@@ -116,7 +116,7 @@ export default function AdminContestantsManage() {
             </button>
             
             <div className="p-8">
-              <h2 className="text-2xl font-bold mb-6">{editingId ? "編輯同行資訊" : "新增同行"}</h2>
+              <h2 className="text-2xl font-bold mb-6">{editingId ? "編輯選手資訊" : "新增選手"}</h2>
               
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
