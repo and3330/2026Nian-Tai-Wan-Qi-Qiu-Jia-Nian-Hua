@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ticket, Tent, MapPin, Info, Crown, LogOut, LayoutDashboard, Menu, X, Shield, Heart, Calendar } from "lucide-react";
+import { Ticket, Tent, MapPin, Info, Crown, LogOut, LayoutDashboard, Menu, X, Shield, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +22,6 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { href: "/", label: "首頁", icon: Tent },
     { href: "/carnival", label: "購票入場", icon: Ticket },
-    { href: "/contestants", label: "人氣選手", icon: Heart },
     { href: "/news", label: "最新消息", icon: Info },
     { href: "/sponsors", label: "贊助夥伴", icon: Crown },
   ];
@@ -220,7 +219,6 @@ export function Layout({ children }: LayoutProps) {
               <li><Link href="/carnival" className="hover:text-primary transition-colors">嘉年華購票</Link></li>
               <li><Link href="/news" className="hover:text-primary transition-colors">大會公告</Link></li>
               <li><Link href="/sponsors" className="hover:text-primary transition-colors">贊助夥伴</Link></li>
-              <li><Link href="/contestants" className="hover:text-primary transition-colors">人氣選手投票</Link></li>
               <li><Link href="/lookup" className="hover:text-primary transition-colors">查詢我的訂單</Link></li>
             </ul>
           </div>

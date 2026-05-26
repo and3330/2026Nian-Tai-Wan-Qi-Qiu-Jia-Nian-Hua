@@ -361,35 +361,6 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* 人氣選手投票入口 */}
-      <section className="py-12 px-4">
-        <div className="max-w-4xl mx-auto">
-          <Link
-            href="/contestants"
-            className="block group bg-gradient-to-r from-rose-50 via-pink-50/80 to-orange-50 border border-rose-200 hover:border-rose-300 rounded-3xl p-6 md:p-8 hover-lift transition-all"
-          >
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-6 justify-between">
-              <div className="flex items-start gap-5 flex-1">
-                <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0">
-                  <Heart size={28} className="text-rose-500 fill-rose-100" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">觀眾投票</div>
-                  <h3 className="text-xl md:text-2xl font-bold mb-2">為你最愛的氣球藝術家投一票</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">
-                    認識本屆參展藝術家，看看他們的作品介紹，
-                    把手中那一票投給最打動你的那一位。
-                  </p>
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-rose-500 text-white font-bold shadow-md group-hover:bg-rose-600 group-hover:shadow-lg transition-all shrink-0">
-                查看選手與投票 <ArrowRight size={18} />
-              </span>
-            </div>
-          </Link>
-        </div>
-      </section>
-
       {/* 贊助廠商 */}
       <section className="py-16 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4">
@@ -444,7 +415,6 @@ export default function HomePage() {
               { q: "小朋友適合參加嗎？", a: "非常適合！嘉年華特別設有親子區、DIY 工作坊和兒童遊戲區。6 歲以下兒童可免預約隨大人入場。" },
               { q: "可以現場報名嗎？", a: "建議提前線上預約，確保有入場名額。若當日尚有餘額，也可現場排隊候補入場。" },
               { q: "活動有提供停車場嗎？", a: "臺北瓶蓋工廠設有地下停車場，也可利用南港車站周邊停車場。建議搭乘大眾交通工具前往。" },
-              { q: "可以為喜歡的氣球藝術家投票嗎？", a: "可以！請前往「人氣選手」專區，瀏覽本屆參展藝術家後投下你的一票，每位觀眾每位選手限投一次。" },
             ].map((item, idx) => (
               <details key={idx} className="glass-card rounded-2xl group">
                 <summary className="p-5 font-bold cursor-pointer flex items-center justify-between hover:text-primary transition-colors list-none">
