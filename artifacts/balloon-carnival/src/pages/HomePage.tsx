@@ -50,11 +50,35 @@ export default function HomePage() {
     },
   ];
 
-  const stageProgram = [
-    { time: "13:00", title: "12 分鐘快手比賽", note: "舞臺競速 ・ 7/25" },
-    { time: "13:30", title: "親子氣球表演", note: "舞臺區 ・ 兩日皆有" },
-    { time: "14:30", title: "氣球藝術表演", note: "舞臺區 ・ 兩日皆有" },
-    { time: "15:30", title: "藝術服裝走秀遊行", note: "全場唯一場 ・ 7/25" },
+  const dayPrograms = [
+    {
+      date: "7/25",
+      weekday: "六",
+      label: "嘉年華表演日",
+      accent: "from-amber-400 to-orange-500",
+      tint: "bg-amber-50/70 border-amber-200",
+      chip: "bg-amber-100 text-amber-700",
+      items: [
+        { time: "11:00", title: "12 分鐘氣球快手表演", hl: true },
+        { time: "13:00", title: "嘉年華親子表演（魔術・個人技）" },
+        { time: "15:00", title: "藝術服裝遊行", hl: true },
+        { time: "16:00", title: "親子表演與頒獎" },
+        { time: "18:00", title: "波波繪本親子劇場", note: "另需報名" },
+      ],
+    },
+    {
+      date: "7/26",
+      weekday: "日",
+      label: "全國氣球比賽日",
+      accent: "from-rose-400 to-pink-500",
+      tint: "bg-rose-50/70 border-rose-200",
+      chip: "bg-rose-100 text-rose-700",
+      items: [
+        { time: "11:00", title: "嘉年華親子劇場" },
+        { time: "13:00", title: "兒童組比賽（32 人）", hl: true },
+        { time: "15:00", title: "成人組比賽（64 人）", hl: true },
+      ],
+    },
   ];
 
   return (
@@ -170,7 +194,7 @@ export default function HomePage() {
               <span className="text-lg text-muted-foreground">元 / 人</span>
             </div>
             <div className="space-y-2 text-sm text-muted-foreground mb-6">
-              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 全展區 ・ 舞臺表演</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 全展區 ・ 舞臺表演 ・ 比賽展件</p>
               <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 6 歲以下兒童免票隨行</p>
             </div>
             <span className="inline-flex items-center gap-2 text-primary font-bold text-sm group-hover:gap-3 transition-all">
@@ -196,13 +220,48 @@ export default function HomePage() {
               <span className="text-sm text-muted-foreground line-through ml-2">原價 400</span>
             </div>
             <div className="space-y-2 text-sm text-muted-foreground mb-6">
-              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 兩日無限暢遊</p>
-              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 不錯過任何舞臺場次</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 兩日無限暢遊・所有節目通通看</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 含全國氣球比賽完整觀賽</p>
             </div>
             <span className="inline-flex items-center gap-2 text-secondary font-bold text-sm group-hover:gap-3 transition-all">
               選擇兩日套票 <ArrowRight size={16} />
             </span>
           </Link>
+        </div>
+
+        {/* 當日節目對照 — 讓客人知道買哪天會看到什麼 */}
+        <div className="mt-10 max-w-4xl mx-auto">
+          <div className="text-center mb-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-foreground/5 text-foreground/70 text-xs font-bold">
+              <Calendar size={12} /> 你的票，當天會看到什麼
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {dayPrograms.map(day => (
+              <div key={day.date} className={cn("rounded-2xl border p-5", day.tint)}>
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-current/10">
+                  <div>
+                    <div className="font-display text-2xl leading-tight">{day.date} <span className="text-base text-foreground/60">({day.weekday})</span></div>
+                    <div className={cn("inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-bold", day.chip)}>{day.label}</div>
+                  </div>
+                  <div className={cn("text-xs font-bold text-white px-3 py-1.5 rounded-full bg-gradient-to-r shadow-sm", day.accent)}>
+                    入場 NT$200
+                  </div>
+                </div>
+                <ul className="space-y-2">
+                  {day.items.map((it, i) => (
+                    <li key={i} className="flex items-start gap-3 text-sm">
+                      <span className="font-mono font-bold text-foreground/80 tabular-nums shrink-0 mt-0.5">{it.time}</span>
+                      <span className={cn("flex-1 leading-snug", it.hl ? "text-foreground font-bold" : "text-foreground/75")}>
+                        {it.title}
+                        {it.note && <span className="ml-1.5 text-[11px] text-foreground/50 font-normal">（{it.note}）</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="text-center mt-8">
@@ -236,35 +295,6 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* 舞臺節目時程 */}
-      <section className="py-20 px-4 max-w-5xl mx-auto w-full">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/20 text-accent-foreground font-bold text-sm mb-4">
-            <Clock size={16} /> 舞臺時程
-          </div>
-          <h2 className="font-display text-4xl mb-4">不可錯過的精彩場次</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            7/25-26 兩日的重點舞臺節目
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stageProgram.map((p, idx) => (
-            <div key={idx} className="glass-card rounded-2xl p-5 hover-lift relative overflow-hidden">
-              <div className="text-3xl font-bold text-primary mb-1">{p.time}</div>
-              <h4 className="font-bold mb-1">{p.title}</h4>
-              <p className="text-xs text-muted-foreground">{p.note}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="text-center mt-10">
-          <Link href="/carnival#schedule" className="inline-flex items-center gap-1 text-primary font-bold hover:underline">
-            查看完整活動時程 <ChevronRight size={18} />
-          </Link>
         </div>
       </section>
 
