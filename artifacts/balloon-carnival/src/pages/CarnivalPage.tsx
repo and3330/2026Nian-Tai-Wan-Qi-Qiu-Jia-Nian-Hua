@@ -357,39 +357,61 @@ export default function CarnivalPage() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:justify-center gap-4 sm:gap-6 mb-10 max-w-md sm:max-w-none mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-10 max-w-2xl mx-auto">
           <button
             type="button"
             onClick={() => { setVisitorTicketType("single"); setFormData({...formData, eventDate: ""}); clearPromo(); }}
             className={cn(
-              "glass-card rounded-2xl p-6 text-center hover-lift transition-all border-2",
-              visitorTicketType === "single" ? "border-primary shadow-md" : "border-transparent"
+              "group relative rounded-3xl p-7 md:p-8 text-center transition-all border-[3px] overflow-hidden",
+              visitorTicketType === "single"
+                ? "bg-gradient-to-br from-primary/10 via-white to-primary/5 border-primary shadow-2xl shadow-primary/30 scale-[1.02]"
+                : "bg-white border-border hover:border-primary/50 hover:shadow-xl hover:-translate-y-1"
             )}
+            data-testid="ticket-type-single"
           >
-            <h3 className="text-lg font-bold mb-1">單日票</h3>
-            <div className="mb-2">
-              <span className="text-3xl font-bold text-green-600">200</span>
-              <span className="text-muted-foreground ml-1">元</span>
+            {visitorTicketType === "single" && (
+              <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg">
+                <CheckCircle2 className="w-5 h-5 text-white" />
+              </div>
+            )}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-bold mb-3">
+              <Ticket size={12} /> 單日票
             </div>
-            <p className="text-xs text-muted-foreground">7/25 或 7/26 擇一日</p>
+            <div className="mb-2 flex items-baseline justify-center gap-1">
+              <span className="text-2xl font-bold text-muted-foreground">NT$</span>
+              <span className="text-5xl md:text-6xl font-display font-bold text-green-600">200</span>
+            </div>
+            <p className="text-sm text-foreground/70 font-medium">7/25 或 7/26 擇一日</p>
           </button>
+
           <button
             type="button"
             onClick={() => { setVisitorTicketType("combo"); setFormData({...formData, eventDate: ""}); clearPromo(); }}
             className={cn(
-              "glass-card rounded-2xl p-6 text-center hover-lift relative transition-all border-2",
-              visitorTicketType === "combo" ? "border-primary shadow-md" : "border-green-200"
+              "group relative rounded-3xl p-7 md:p-8 text-center transition-all border-[3px] overflow-hidden",
+              visitorTicketType === "combo"
+                ? "bg-gradient-to-br from-secondary/10 via-white to-primary/5 border-secondary shadow-2xl shadow-secondary/30 scale-[1.02]"
+                : "bg-white border-green-300 hover:border-secondary/60 hover:shadow-xl hover:-translate-y-1"
             )}
+            data-testid="ticket-type-combo"
           >
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-              省 100 元
+            <div className="absolute -top-px left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs font-bold px-4 py-1.5 rounded-b-xl shadow-md flex items-center gap-1">
+              <Sparkles size={12} /> 最划算 · 省 NT$100
             </div>
-            <h3 className="text-lg font-bold mb-1">兩日套票</h3>
-            <div className="mb-2">
-              <span className="text-3xl font-bold text-green-600">300</span>
-              <span className="text-muted-foreground ml-1">元</span>
+            {visitorTicketType === "combo" && (
+              <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-secondary flex items-center justify-center shadow-lg">
+                <CheckCircle2 className="w-5 h-5 text-white" />
+              </div>
+            )}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/10 text-secondary text-xs font-bold mb-3 mt-4">
+              <Ticket size={12} /> 兩日套票
             </div>
-            <p className="text-xs text-muted-foreground">7/25 + 7/26 兩日</p>
+            <div className="mb-2 flex items-baseline justify-center gap-1">
+              <span className="text-2xl font-bold text-muted-foreground">NT$</span>
+              <span className="text-5xl md:text-6xl font-display font-bold text-green-600">300</span>
+              <span className="text-sm font-bold text-muted-foreground line-through ml-1">400</span>
+            </div>
+            <p className="text-sm text-foreground/70 font-medium">7/25 + 7/26 兩日皆可入場</p>
           </button>
         </div>
 
