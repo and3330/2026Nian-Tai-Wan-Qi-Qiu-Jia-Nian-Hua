@@ -128,7 +128,7 @@ export default function HomePage() {
 
       {/* 活動資訊 + 即時剩餘票數 — 統一資訊條 */}
       <section className="border-y bg-white">
-        <div className="max-w-6xl mx-auto px-4 py-5 grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4 items-stretch">
+        <div className="max-w-6xl mx-auto px-4 py-4 md:py-5 grid grid-cols-2 md:grid-cols-4 gap-x-3 md:gap-x-6 gap-y-4 items-stretch">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Calendar className="text-primary w-5 h-5" />
@@ -156,7 +156,7 @@ export default function HomePage() {
               <div className="font-bold text-foreground text-sm">10:00 – 18:00</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 md:border-l md:pl-6">
+          <div className="flex items-center gap-3 lg:border-l lg:pl-6">
             <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
               <PartyPopper className="text-rose-500 w-5 h-5" />
             </div>
@@ -215,7 +215,7 @@ export default function HomePage() {
         <button
           type="button"
           onClick={() => setZoomedImage(`${import.meta.env.BASE_URL}images/tickets-banner.png`)}
-          className="group block w-full max-w-5xl mx-auto mb-10 rounded-3xl overflow-hidden shadow-2xl shadow-primary/15 border border-white/60 bg-white relative cursor-zoom-in focus:outline-none focus:ring-4 focus:ring-primary/30"
+          className="hidden md:block group w-full max-w-5xl mx-auto mb-10 rounded-3xl overflow-hidden shadow-2xl shadow-primary/15 border border-white/60 bg-white relative cursor-zoom-in focus:outline-none focus:ring-4 focus:ring-primary/30"
           aria-label="放大查看購票圖片"
         >
           <img
@@ -229,7 +229,7 @@ export default function HomePage() {
         </button>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto pt-4">
-          <Link href="/carnival#register" className="group glass-card rounded-3xl p-8 hover-lift border-2 border-transparent hover:border-primary/40 transition-all relative block">
+          <Link href="/carnival#register" className="group glass-card rounded-3xl p-6 md:p-8 hover-lift border-2 border-transparent hover:border-primary/40 transition-all relative block">
             <div className="flex items-start justify-between mb-4 gap-3">
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
                 <Ticket size={28} className="text-primary" />
@@ -251,7 +251,7 @@ export default function HomePage() {
             </span>
           </Link>
 
-          <Link href="/carnival#register" className="group glass-card rounded-3xl p-8 pt-10 hover-lift border-2 border-primary shadow-xl shadow-primary/10 transition-all relative block">
+          <Link href="/carnival#register" className="group glass-card rounded-3xl p-6 pt-10 md:p-8 md:pt-10 hover-lift border-2 border-primary shadow-xl shadow-primary/10 transition-all relative block">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap">
               最划算 ・ 省 100 元
             </div>
@@ -332,7 +332,7 @@ export default function HomePage() {
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">Organizers</h3>
             <h2 className="font-display text-4xl">主辦・協辦單位</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
             {[
               { role: "主辦單位", name: "摸氣球的毛", logo: "images/sponsors/organizer.png", url: "https://www.facebook.com/Momoballoon/", accent: "from-primary/15 to-primary/5", badge: "bg-primary/15 text-primary" },
               { role: "協辦單位", name: "ICTA 社團法人國際兒童才藝協會", logo: "images/sponsors/coorganizer.png", url: "http://www.ictaorg.org/", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
