@@ -199,6 +199,14 @@ export default function HomePage() {
           </p>
         </div>
 
+        <div className="max-w-3xl mx-auto mb-8 rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-white">
+          <img
+            src={`${import.meta.env.BASE_URL}images/tickets-banner.png`}
+            alt="2026 臺灣氣球嘉年華購票"
+            className="w-full h-auto block"
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto pt-4">
           <Link href="/carnival#register" className="group glass-card rounded-3xl p-8 hover-lift border-2 border-transparent hover:border-primary/40 transition-all relative block">
             <div className="flex items-start justify-between mb-4 gap-3">
