@@ -167,8 +167,41 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* 嘉年華精彩內容 — 第一眼讓訪客知道有什麼好玩 */}
+      <section className="py-16 md:py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10 md:mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-4">
+              <Sparkles size={16} /> 活動亮點
+            </div>
+            <h2 className="font-display text-3xl md:text-4xl mb-3">嘉年華精彩內容</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              一張門票，盡享四大主題體驗
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+            {highlights.map((item, idx) => (
+              <div
+                key={idx}
+                className={cn(
+                  "group relative rounded-2xl p-5 md:p-6 border border-transparent bg-white hover:border-current/10 hover:-translate-y-1 transition-all shadow-sm hover:shadow-xl hover:shadow-black/5 overflow-hidden",
+                )}
+              >
+                <div className={cn("absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-60 group-hover:opacity-90 transition-opacity", item.bg)} />
+                <div className={cn("relative w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center mb-3 md:mb-4", item.bg)}>
+                  <item.icon size={26} className={item.color} />
+                </div>
+                <h3 className="relative text-base md:text-lg font-bold mb-1.5 md:mb-2">{item.title}</h3>
+                <p className="relative text-xs md:text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 票價方案 — 主要購票轉換區 */}
-      <section className="py-20 px-4 max-w-5xl mx-auto w-full">
+      <section className="py-16 md:py-20 px-4 max-w-5xl mx-auto w-full border-t">
         <div className="text-center mb-14">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-50 text-green-600 font-bold text-sm mb-4">
             <Ticket size={16} /> 票價方案
@@ -268,33 +301,6 @@ export default function HomePage() {
           <p className="text-sm text-muted-foreground">
             親子手作坊另需現場購票 <span className="font-bold text-foreground">150 元/組</span>　・　6 歲以下兒童免票隨大人入場
           </p>
-        </div>
-      </section>
-
-      {/* 嘉年華亮點 */}
-      <section className="py-20 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-4">
-              <Sparkles size={16} /> 活動亮點
-            </div>
-            <h2 className="font-display text-4xl mb-4">嘉年華精彩內容</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              一張門票，盡享四大主題體驗
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {highlights.map((item, idx) => (
-              <div key={idx} className="glass-card rounded-2xl p-6 hover-lift">
-                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-4", item.bg)}>
-                  <item.icon size={28} className={item.color} />
-                </div>
-                <h3 className="text-lg font-bold mb-2">{item.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
