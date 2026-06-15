@@ -5,6 +5,7 @@ import { db, registrationsTable, paymentTransactionsTable, invoicesTable } from 
 import { createNewebPayOrder, verifyNewebPayCallback } from "../lib/newebpay";
 import { getStripeClient, isStripeConfigured } from "../lib/stripe-client";
 import { issueInvoice, voidInvoice, type InvoiceIssueOptions } from "../lib/ecpay-invoice";
+import { notifyPurchaseSlack } from "../lib/slack-notify";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -258,6 +259,18 @@ router.post("/payments/initiate", async (req, res): Promise<void> => {
     }
 
     // method === "bank"
+    notifyPurchaseSlack({
+      parentName: registrations[0]?.parentName ?? "",
+      phone: registrations[0]?.phone ?? "",
+      email: payerEmail,
+      ticketType: registrations[0]?.ticketType,
+      ticketCount: registrations.reduce((sum, r) => sum + (r.ticketCount || 0), 0),
+      eventDate: registrations[0]?.eventDate,
+      amount: totalAmount,
+      paymentMethod: "bank",
+      paymentRef,
+      awaitingTransfer: true,
+    });
     res.status(201).json({
       type: "bank_info",
       paymentRef,
@@ -447,7 +460,36 @@ async function markPaymentPaid(
     issueInvoiceForPayment(paymentRef).catch((err) => {
       logger.error({ err, paymentRef }, "[ECPay Invoice] async issuance failed");
     });
+    // Fire-and-forget Slack purchase notification.
+    notifyPurchaseForPaymentRef(paymentRef).catch((err) => {
+      logger.error({ err, paymentRef }, "[Slack] purchase notification lookup failed");
+    });
   }
+}
+
+async function notifyPurchaseForPaymentRef(paymentRef: string): Promise<void> {
+  const regs = await db
+    .select()
+    .from(registrationsTable)
+    .where(eq(registrationsTable.paymentRef, paymentRef));
+  if (regs.length === 0) return;
+  const [tx] = await db
+    .select()
+    .from(paymentTransactionsTable)
+    .where(eq(paymentTransactionsTable.paymentRef, paymentRef));
+  const first = regs[0];
+  const totalTickets = regs.reduce((sum, r) => sum + (r.ticketCount || 0), 0);
+  notifyPurchaseSlack({
+    parentName: first.parentName,
+    phone: first.phone,
+    email: first.email,
+    ticketType: first.ticketType,
+    ticketCount: totalTickets,
+    eventDate: first.eventDate,
+    amount: tx?.amount ?? first.amount,
+    paymentMethod: first.paymentMethod,
+    paymentRef,
+  });
 }
 
 async function issueInvoiceForPayment(paymentRef: string): Promise<void> {
