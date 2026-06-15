@@ -320,7 +320,7 @@ function OrderResultCard({
 
         <div className="text-xs text-muted-foreground bg-slate-50 rounded-xl p-3 leading-relaxed">
           <strong>個資保護提醒：</strong>
-          為保護您的個人資料，Email 與手機號碼僅顯示部分字元。如需完整資訊或修改訂單，請來電 02-2720-8889 或寄信至 contact@balloon-carnival.tw。
+          為保護您的個人資料，Email 與手機號碼僅顯示部分字元。如需完整資訊或修改訂單，請來電 02-2368-0623 或寄信至 contact@balloon-carnival.tw。
         </div>
       </div>
 

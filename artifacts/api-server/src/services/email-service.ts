@@ -34,7 +34,7 @@ const DEFAULT_TEMPLATES: Record<EmailTemplateKey, { subject: string; body: strin
 
 (也可保存連結或直接出示本封 email)
 
-如有任何問題，請洽服務專線 02-2720-8889。
+如有任何問題，請洽服務專線 02-2368-0623。
 
 期待與您相見！
 2026 臺灣氣球嘉年華 主辦團隊
@@ -150,7 +150,7 @@ export const EVENT_INFO = {
   venue: "臺北瓶蓋工廠",
   address: "台北市南港區南港路二段 13 號",
   openTime: "10:00 起入場（7/25 延長至 19:00）",
-  servicePhone: "02-2720-8889",
+  servicePhone: "02-2368-0623",
   lineUrl: "https://lin.ee/OUbPwpi",
   transport: [
     "捷運：搭乘板南線至「南港站」1 號出口，步行約 5 分鐘",
