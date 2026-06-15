@@ -34,3 +34,4 @@ channel = "stable-25_05"
 [userenv.shared]
 FACEBOOK_APP_ID = "1330464739139386"
 THREADS_APP_ID = "1480681130228400"
+RESEND_FROM_EMAIL = "2026 臺灣氣球嘉年華 <noreply@2026balloon.tw>"
