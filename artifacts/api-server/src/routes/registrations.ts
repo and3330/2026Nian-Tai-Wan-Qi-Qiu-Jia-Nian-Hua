@@ -207,7 +207,9 @@ router.post("/registrations", async (req, res): Promise<void> => {
       return;
     }
 
-    if (result.registration.email) {
+    // Only free orders get the confirmation (with entry QR) at creation time.
+    // Paid orders receive it after payment is confirmed (see markPaymentPaid).
+    if (result.registration.email && (result.registration.amount ?? 0) <= 0) {
       sendConfirmationEmail(result.registration.id).catch((err) => {
         logger.error({ err, regId: result.registration.id }, "[Registration] confirmation email failed");
       });
@@ -341,7 +343,8 @@ router.post("/registrations/combo", async (req, res): Promise<void> => {
     // overall purchase); the second leg shares the same buyer + payment_ref
     // once the payment is initialized.
     const head = result.registrations[0];
-    if (head?.email) {
+    // Free combos get the confirmation now; paid combos after payment is confirmed.
+    if (head?.email && (head.amount ?? 0) <= 0) {
       sendConfirmationEmail(head.id).catch((err) => {
         logger.error({ err, regId: head.id }, "[Registration] combo confirmation email failed");
       });

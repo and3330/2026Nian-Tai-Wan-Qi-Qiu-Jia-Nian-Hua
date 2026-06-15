@@ -432,6 +432,8 @@ export async function sendConfirmationEmail(registrationId: number): Promise<Sen
     .where(eq(registrationsTable.id, registrationId))
     .limit(1);
   if (!reg || !reg.email || !reg.qrToken) return null;
+  // Idempotent: never send the confirmation twice for the same registration.
+  if (reg.confirmationEmailSentAt) return null;
   const tpl = await getTemplate("confirmation");
   const vars = buildRegistrationVars(reg);
   const result = await sendEmail({

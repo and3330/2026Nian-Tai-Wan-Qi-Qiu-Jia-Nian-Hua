@@ -1,1 +1,2 @@
 - [Confirmation email rendering](confirmation-email.md) — confirmation HTML is code-owned (not admin-editable body); always escapeHtml user data; QR needs a live registration row.
+- [Payment-to-entry lifecycle rules](payment-entry-lifecycle.md) — admission requires paid (null amount ≠ free); QR email only after payment; paid-transition must be atomic+idempotent; combo = one row/QR per day.

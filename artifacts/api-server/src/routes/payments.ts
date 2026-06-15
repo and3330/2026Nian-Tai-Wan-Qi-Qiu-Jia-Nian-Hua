@@ -1,11 +1,12 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import express from "express";
-import { eq, inArray, sql, desc } from "drizzle-orm";
+import { eq, inArray, sql, desc, and, ne } from "drizzle-orm";
 import { db, registrationsTable, paymentTransactionsTable, invoicesTable } from "@workspace/db";
 import { createNewebPayOrder, verifyNewebPayCallback } from "../lib/newebpay";
 import { getStripeClient, isStripeConfigured } from "../lib/stripe-client";
 import { issueInvoice, voidInvoice, type InvoiceIssueOptions } from "../lib/ecpay-invoice";
 import { notifyPurchaseSlack } from "../lib/slack-notify";
+import { sendConfirmationEmail } from "../services/email-service";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -440,7 +441,11 @@ async function markPaymentPaid(
       .from(paymentTransactionsTable)
       .where(eq(paymentTransactionsTable.paymentRef, paymentRef));
     if (!current || current.status === "paid") return;
-    await tx
+    // Atomic guard: only the transaction that actually flips status from
+    // non-paid to paid proceeds with side effects. Concurrent callbacks
+    // (webhook + return, or a manual bank confirm) will match 0 rows here and
+    // therefore never duplicate the invoice / Slack / confirmation email.
+    const flipped = await tx
       .update(paymentTransactionsTable)
       .set({
         status: "paid",
@@ -448,7 +453,14 @@ async function markPaymentPaid(
         providerTradeNo: providerTradeNo || current.providerTradeNo,
         rawResult: (rawResult ?? null) as Record<string, unknown> | null,
       })
-      .where(eq(paymentTransactionsTable.paymentRef, paymentRef));
+      .where(
+        and(
+          eq(paymentTransactionsTable.paymentRef, paymentRef),
+          ne(paymentTransactionsTable.status, "paid"),
+        ),
+      )
+      .returning({ id: paymentTransactionsTable.id });
+    if (flipped.length === 0) return;
     await tx
       .update(registrationsTable)
       .set({ paymentStatus: "paid" })
@@ -464,6 +476,29 @@ async function markPaymentPaid(
     notifyPurchaseForPaymentRef(paymentRef).catch((err) => {
       logger.error({ err, paymentRef }, "[Slack] purchase notification lookup failed");
     });
+    // Fire-and-forget customer confirmation email (with entry QR) — now that
+    // payment is confirmed, the buyer receives their valid ticket.
+    sendConfirmationAfterPayment(paymentRef).catch((err) => {
+      logger.error({ err, paymentRef }, "[Confirmation] post-payment email failed");
+    });
+  }
+}
+
+// Sends the purchase confirmation (with QR) for the buyer of a paid order.
+// One ticket email per registration leg — a two-day combo has a separate QR
+// per day, so the buyer must receive both. sendConfirmationEmail is idempotent.
+async function sendConfirmationAfterPayment(paymentRef: string): Promise<void> {
+  const regs = await db
+    .select()
+    .from(registrationsTable)
+    .where(eq(registrationsTable.paymentRef, paymentRef))
+    .orderBy(registrationsTable.id);
+  for (const reg of regs) {
+    if (reg.email) {
+      await sendConfirmationEmail(reg.id).catch((err) => {
+        logger.error({ err, regId: reg.id }, "[Confirmation] leg email failed");
+      });
+    }
   }
 }
 
@@ -644,6 +679,40 @@ router.post("/payments/invoices/:ref/void", async (req, res): Promise<void> => {
   } catch (error: unknown) {
     logger.error({ err: error }, "[invoice/void] error");
     res.status(500).json({ error: "Failed to void invoice" });
+  }
+});
+
+// Admin manually confirms a bank-transfer order once the money is received.
+// Runs the exact same downstream flow as an online payment: mark paid →
+// issue invoice → Slack notify → send the buyer their confirmation email + QR.
+router.post("/payments/:ref/confirm-bank", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res, "editor")) return;
+  try {
+    const ref = req.params.ref;
+    const [tx] = await db
+      .select()
+      .from(paymentTransactionsTable)
+      .where(eq(paymentTransactionsTable.paymentRef, ref));
+    if (!tx) {
+      res.status(404).json({ error: "找不到此訂單" });
+      return;
+    }
+    if (tx.provider !== "bank") {
+      res.status(400).json({ error: "此訂單不是銀行轉帳訂單" });
+      return;
+    }
+    if (tx.status === "paid") {
+      res.json({ status: "paid" });
+      return;
+    }
+    await markPaymentPaid(ref, `manual-bank-${Date.now()}`, {
+      confirmedBy: (req.user as { id?: number } | undefined)?.id ?? null,
+      confirmedAt: new Date().toISOString(),
+    });
+    res.json({ status: "paid" });
+  } catch (error: unknown) {
+    logger.error({ err: error }, "[payments/confirm-bank] error");
+    res.status(500).json({ error: "確認收款失敗，請稍後再試" });
   }
 });
 

@@ -16,6 +16,18 @@ function requireAuth(req: any, res: any, ...roles: string[]): boolean {
   return true;
 }
 
+// A ticket may only be admitted once payment is confirmed. Genuinely free
+// tickets (amount === 0, e.g. fully-discounted orders) are admissible too.
+// NOTE: a null amount is NOT free — combo (two-day) orders store amount on the
+// first leg only, so the second leg's amount is null and must rely on
+// paymentStatus, which markPaymentPaid sets to "paid" on every leg of the order.
+function isAdmissible(reg: {
+  paymentStatus: string | null;
+  amount: number | null;
+}): boolean {
+  return reg.paymentStatus === "paid" || reg.amount === 0;
+}
+
 router.get("/admin/checkin/lookup/:token", async (req, res): Promise<void> => {
   if (!requireAuth(req, res, "checkin")) return;
   const token = req.params.token;
@@ -31,6 +43,7 @@ router.get("/admin/checkin/lookup/:token", async (req, res): Promise<void> => {
   res.json({
     registration: reg,
     alreadyCheckedIn: !!reg.checkedInAt,
+    admissible: isAdmissible(reg),
   });
 });
 
@@ -44,6 +57,14 @@ router.post("/admin/checkin/:token", async (req, res): Promise<void> => {
     .limit(1);
   if (!reg) {
     res.status(404).json({ error: "找不到此 QR Code 對應的票券" });
+    return;
+  }
+  if (!isAdmissible(reg)) {
+    res.status(402).json({
+      registration: reg,
+      admissible: false,
+      error: "此票券尚未完成付款，無法報到入場",
+    });
     return;
   }
   if (reg.checkedInAt) {

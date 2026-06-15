@@ -57,10 +57,49 @@ function formatTrendLabel(d: Date | string) {
 export default function AdminDashboard() {
   const { data: overview, isLoading: overviewLoading } =
     useAdminGetSalesOverview();
-  const { data: registrations, isLoading: regLoading } =
+  const { data: registrations, isLoading: regLoading, refetch: refetchRegistrations } =
     useAdminListRegistrations({});
 
   const [isExporting, setIsExporting] = useState(false);
+  const [confirmingRef, setConfirmingRef] = useState<string | null>(null);
+
+  const handleConfirmBank = async (paymentRef: string) => {
+    if (
+      !window.confirm(
+        "確認已收到這筆銀行匯款？\n確認後系統會：開立發票、寄送購票確認信（含入場 QR）、發送 Slack 通知。",
+      )
+    ) {
+      return;
+    }
+    setConfirmingRef(paymentRef);
+    try {
+      const res = await fetch(
+        `/api/payments/${encodeURIComponent(paymentRef)}/confirm-bank`,
+        { method: "POST", credentials: "include" },
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "確認失敗");
+      }
+      await refetchRegistrations();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "確認失敗，請稍後再試");
+    } finally {
+      setConfirmingRef(null);
+    }
+  };
+
+  const awaitingTransfers = (() => {
+    const seen = new Set<string>();
+    const list: NonNullable<typeof registrations> = [];
+    for (const reg of registrations ?? []) {
+      if (reg.paymentStatus !== "awaiting_transfer" || !reg.paymentRef) continue;
+      if (seen.has(reg.paymentRef)) continue;
+      seen.add(reg.paymentRef);
+      list.push(reg);
+    }
+    return list;
+  })();
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -424,6 +463,57 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recent Registrations Table */}
+      {awaitingTransfers.length > 0 && (
+        <div className="bg-white rounded-3xl border border-amber-200 shadow-sm overflow-hidden">
+          <div className="p-6 border-b bg-amber-50/60">
+            <h2 className="text-xl font-bold text-amber-800">
+              待確認匯款（{awaitingTransfers.length} 筆）
+            </h2>
+            <p className="text-sm text-amber-700/80 mt-1">
+              銀行轉帳訂單，收到款項後請按「確認收款」，系統會開立發票、寄送確認信並通知 Slack。
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-muted/30">
+                <tr>
+                  <th className="p-4 font-semibold text-muted-foreground">訂單編號</th>
+                  <th className="p-4 font-semibold text-muted-foreground">家長姓名</th>
+                  <th className="p-4 font-semibold text-muted-foreground">聯絡電話</th>
+                  <th className="p-4 font-semibold text-muted-foreground">入場日期</th>
+                  <th className="p-4 font-semibold text-muted-foreground text-right">訂單金額</th>
+                  <th className="p-4 font-semibold text-muted-foreground text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {awaitingTransfers.map((reg) => (
+                  <tr key={reg.paymentRef} className="hover:bg-muted/20">
+                    <td className="p-4 font-mono text-sm">{reg.paymentRef}</td>
+                    <td className="p-4 font-medium">{reg.parentName}</td>
+                    <td className="p-4">{reg.phone}</td>
+                    <td className="p-4 text-primary font-medium">
+                      {formatDate(reg.eventDate)}
+                    </td>
+                    <td className="p-4 text-right font-bold text-green-600">
+                      {reg.amount != null ? formatCurrency(reg.amount) : "—"}
+                    </td>
+                    <td className="p-4 text-right">
+                      <button
+                        onClick={() => handleConfirmBank(reg.paymentRef!)}
+                        disabled={confirmingRef === reg.paymentRef}
+                        className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors"
+                      >
+                        {confirmingRef === reg.paymentRef ? "處理中..." : "確認收款"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
         <div className="p-6 border-b flex items-center justify-between">
           <div>
