@@ -23,6 +23,7 @@ import OrderLookupPage from "@/pages/OrderLookupPage";
 import AdminLayout from "@/pages/AdminLayout";
 import AdminLoginPage from "@/pages/AdminLoginPage";
 import AdminDashboard from "@/pages/Admin/Dashboard";
+import AdminOrdersManage from "@/pages/Admin/OrdersManage";
 import AdminNewsManage from "@/pages/Admin/NewsManage";
 import AdminContestantsManage from "@/pages/Admin/ContestantsManage";
 import AdminSponsorsManage from "@/pages/Admin/SponsorsManage";
@@ -78,6 +79,9 @@ function Router() {
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route path="/admin">
           {() => <AdminLayout><AdminDashboard /></AdminLayout>}
+        </Route>
+        <Route path="/admin/orders">
+          {() => <AdminLayout><AdminOrdersManage /></AdminLayout>}
         </Route>
         <Route path="/admin/news">
           {() => <AdminLayout><AdminNewsManage /></AdminLayout>}

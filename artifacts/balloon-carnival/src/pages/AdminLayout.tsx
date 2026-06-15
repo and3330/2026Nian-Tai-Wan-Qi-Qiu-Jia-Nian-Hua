@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, useLocation, Redirect } from "wouter";
 import { useAuth, type AdminRole } from "@workspace/replit-auth-web";
-import { LayoutDashboard, Newspaper, Users, Handshake, ArrowLeft, Share2, FileText, Settings, ScanLine, Mail, ShieldCheck, LogOut, Tag, Undo2, Menu, X } from "lucide-react";
+import { LayoutDashboard, Newspaper, Users, Handshake, ArrowLeft, Share2, FileText, Settings, ScanLine, Mail, ShieldCheck, LogOut, Tag, Undo2, Menu, X, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -14,6 +14,7 @@ type NavItem = {
 
 const ALL_NAVS: NavItem[] = [
   { href: "/admin", label: "報名監控總覽", icon: LayoutDashboard, exact: true, roles: ["viewer", "editor", "checkin"] },
+  { href: "/admin/orders", label: "訂單管理", icon: ShoppingCart, roles: ["editor"] },
   { href: "/admin/checkin", label: "現場報到", icon: ScanLine, roles: ["checkin"] },
   { href: "/admin/email-templates", label: "Email 模板", icon: Mail, roles: ["editor"] },
   { href: "/admin/news", label: "最新消息管理", icon: Newspaper, roles: ["editor"] },
