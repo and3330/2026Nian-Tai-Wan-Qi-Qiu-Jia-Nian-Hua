@@ -142,7 +142,22 @@ export interface SendEmailInput {
   subject: string;
   body: string;
   qrImageUrl?: string;
+  htmlOverride?: string;
 }
+
+export const EVENT_INFO = {
+  name: "2026 臺灣氣球嘉年華",
+  venue: "臺北瓶蓋工廠",
+  address: "台北市南港區南港路二段 13 號",
+  openTime: "10:00 起入場（7/25 延長至 19:00）",
+  servicePhone: "02-2720-8889",
+  lineUrl: "https://lin.ee/OUbPwpi",
+  transport: [
+    "捷運：搭乘板南線至「南港站」1 號出口，步行約 5 分鐘",
+    "接駁車：活動期間提供免費接駁車，往返捷運南港站",
+    "開車：現場停車位有限，建議搭乘大眾運輸前往",
+  ],
+} as const;
 
 export interface SendEmailResult {
   delivered: boolean;
@@ -166,7 +181,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   }
 
   const fromAddress = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-  const html = buildHtmlBody(input.body, input.qrImageUrl);
+  const html = input.htmlOverride || buildHtmlBody(input.body, input.qrImageUrl);
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -209,6 +224,183 @@ function buildHtmlBody(body: string, qrImageUrl?: string): string {
   return `<div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.7;color:#333;max-width:640px;margin:auto;padding:24px;">${html}</div>`;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatEventDate(raw: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
+  if (!m) return raw;
+  const [, y, mo, d] = m;
+  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+  const date = new Date(Number(y), Number(mo) - 1, Number(d));
+  const wd = Number.isNaN(date.getTime()) ? "" : `（${weekdays[date.getDay()]}）`;
+  return `${y}/${mo}/${d}${wd}`;
+}
+
+export function buildConfirmationEmailHtml(vars: {
+  parentName: string;
+  phone: string;
+  eventDate: string;
+  ticketCount: number;
+  qrUrl: string;
+}): string {
+  const coral = "#EF5739";
+  const yellow = "#FFB50A";
+  const ink = "#1f2933";
+  const muted = "#6b7280";
+  const parentName = escapeHtml(vars.parentName);
+  const phone = escapeHtml(vars.phone);
+  const dateLabel = escapeHtml(formatEventDate(vars.eventDate));
+  const qrUrl = encodeURI(vars.qrUrl);
+
+  const infoRow = (label: string, value: string) => `
+    <tr>
+      <td style="padding:8px 0;color:${muted};font-size:14px;width:96px;vertical-align:top;">${label}</td>
+      <td style="padding:8px 0;color:${ink};font-size:15px;font-weight:700;vertical-align:top;">${value}</td>
+    </tr>`;
+
+  const transportItems = EVENT_INFO.transport
+    .map(
+      (t) =>
+        `<tr><td style="padding:4px 0;color:${ink};font-size:14px;line-height:1.6;">🚇 ${t.replace(/^[^：]+：/, (p) => `<strong style="color:${coral};">${p}</strong>`)}</td></tr>`,
+    )
+    .join("");
+
+  const qrBlock = vars.qrUrl
+    ? `
+      <tr>
+        <td align="center" style="padding:8px 0 4px;">
+          <img src="${qrUrl}" alt="入場報到 QR Code" width="220" height="220" style="display:block;width:220px;height:220px;border:1px solid #f0f0f0;border-radius:12px;padding:10px;background:#ffffff;" />
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:0 0 4px;color:${muted};font-size:13px;">此 QR Code 即為您的電子門票，請妥善保存</td>
+      </tr>`
+    : `
+      <tr>
+        <td align="center" style="padding:12px;color:${muted};font-size:13px;">QR Code 將於付款完成後產生</td>
+      </tr>`;
+
+  return `<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>${EVENT_INFO.name} 購票成功</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f5f7;font-family:'Helvetica Neue','PingFang TC','Microsoft JhengHei',Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:24px 12px;">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 6px 24px rgba(31,41,51,0.08);">
+
+  <!-- Header -->
+  <tr>
+    <td style="background:linear-gradient(135deg,${coral} 0%,${yellow} 100%);padding:36px 32px;text-align:center;">
+      <div style="font-size:34px;line-height:1;margin-bottom:10px;">🎈</div>
+      <div style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:0.5px;">${EVENT_INFO.name}</div>
+      <div style="color:#fff7ed;font-size:15px;font-weight:600;margin-top:6px;">購票成功！期待與您相見 🎉</div>
+    </td>
+  </tr>
+
+  <!-- Greeting -->
+  <tr>
+    <td style="padding:28px 32px 8px;">
+      <p style="margin:0;color:${ink};font-size:16px;line-height:1.7;">親愛的 <strong>${parentName}</strong> 您好，</p>
+      <p style="margin:10px 0 0;color:${ink};font-size:15px;line-height:1.7;">感謝您購買 ${EVENT_INFO.name} 的入場票券，您的訂單已確認。以下是您的票券資訊：</p>
+    </td>
+  </tr>
+
+  <!-- Ticket card -->
+  <tr>
+    <td style="padding:16px 32px 4px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f1;border:1px solid #ffe3cf;border-radius:14px;padding:18px 20px;">
+        <tr><td>
+          <div style="font-size:13px;font-weight:800;color:${coral};letter-spacing:1px;margin-bottom:6px;">🎫 票券資訊</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${infoRow("姓名", parentName)}
+            ${infoRow("聯絡電話", phone)}
+            ${infoRow("入場日期", dateLabel)}
+            ${infoRow("票數", `${vars.ticketCount} 張`)}
+          </table>
+        </td></tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- QR -->
+  <tr>
+    <td style="padding:20px 32px 4px;">
+      <div style="font-size:13px;font-weight:800;color:${coral};letter-spacing:1px;margin-bottom:10px;text-align:center;">📱 您的報到 QR Code</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        ${qrBlock}
+      </table>
+    </td>
+  </tr>
+
+  <!-- Check-in -->
+  <tr>
+    <td style="padding:16px 32px 4px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f9fc;border-radius:14px;padding:16px 20px;">
+        <tr><td>
+          <div style="font-size:13px;font-weight:800;color:${ink};letter-spacing:1px;margin-bottom:8px;">✅ 簽到方式</div>
+          <div style="color:${ink};font-size:14px;line-height:1.7;">
+            1. 活動當日抵達會場入口的「報到處」<br/>
+            2. 出示本封 email 中的 QR Code（手機畫面或列印皆可）<br/>
+            3. 工作人員掃描後即可入場，${EVENT_INFO.openTime}
+          </div>
+        </td></tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- Venue & transport -->
+  <tr>
+    <td style="padding:16px 32px 4px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f9fc;border-radius:14px;padding:16px 20px;">
+        <tr><td>
+          <div style="font-size:13px;font-weight:800;color:${ink};letter-spacing:1px;margin-bottom:8px;">📍 活動地點與交通</div>
+          <div style="color:${ink};font-size:15px;font-weight:700;margin-bottom:2px;">${EVENT_INFO.venue}</div>
+          <div style="color:${muted};font-size:14px;margin-bottom:12px;">${EVENT_INFO.address}</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${transportItems}
+          </table>
+        </td></tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- LINE CTA -->
+  <tr>
+    <td style="padding:22px 32px 6px;text-align:center;">
+      <div style="color:${muted};font-size:14px;margin-bottom:12px;">有任何問題嗎？歡迎透過 LINE 與我們聯繫</div>
+      <a href="${EVENT_INFO.lineUrl}" style="display:inline-block;background:#06C755;color:#ffffff;font-size:16px;font-weight:800;text-decoration:none;padding:13px 32px;border-radius:999px;">💬 加入 LINE 客服</a>
+    </td>
+  </tr>
+
+  <!-- Footer -->
+  <tr>
+    <td style="padding:22px 32px 32px;border-top:1px solid #f0f0f0;margin-top:12px;">
+      <div style="color:${muted};font-size:13px;line-height:1.7;text-align:center;">
+        服務專線：${EVENT_INFO.servicePhone}<br/>
+        ${EVENT_INFO.name} 主辦團隊 敬上<br/>
+        <span style="color:#9aa3af;">此信件為系統自動發送，請勿直接回覆。</span>
+      </div>
+    </td>
+  </tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
 export type RegistrationEmailVars = {
   parentName: string;
   phone: string;
@@ -247,6 +439,7 @@ export async function sendConfirmationEmail(registrationId: number): Promise<Sen
     subject: renderTemplate(tpl.subject, vars),
     body: renderTemplate(tpl.body, vars),
     qrImageUrl: vars.qrUrl,
+    htmlOverride: buildConfirmationEmailHtml(vars),
   });
   if (result.delivered) {
     await db

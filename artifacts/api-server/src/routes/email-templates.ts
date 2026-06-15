@@ -4,6 +4,7 @@ import { db, emailTemplatesTable } from "@workspace/db";
 import {
   EMAIL_TEMPLATE_KEYS,
   type EmailTemplateKey,
+  buildConfirmationEmailHtml,
   buildRegistrationVars,
   getEmailMode,
   getQrImageUrl,
@@ -93,6 +94,8 @@ router.post("/admin/email-templates/:key/test", async (req, res): Promise<void> 
     subject: renderTemplate(tpl.subject, sampleVars),
     body: renderTemplate(tpl.body, sampleVars),
     qrImageUrl: sampleVars.qrUrl,
+    htmlOverride:
+      key === "confirmation" ? buildConfirmationEmailHtml(sampleVars) : undefined,
   });
   res.json({
     delivered: result.delivered,

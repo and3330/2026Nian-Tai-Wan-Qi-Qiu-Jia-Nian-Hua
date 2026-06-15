@@ -1,0 +1,1 @@
+- [Confirmation email rendering](confirmation-email.md) — confirmation HTML is code-owned (not admin-editable body); always escapeHtml user data; QR needs a live registration row.
