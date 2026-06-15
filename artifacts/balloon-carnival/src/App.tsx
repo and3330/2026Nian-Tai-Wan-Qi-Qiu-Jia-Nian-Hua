@@ -1,5 +1,7 @@
-import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { useEffect, useRef } from "react";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { trackPageView } from "@/lib/fbPixel";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@workspace/replit-auth-web";
@@ -42,9 +44,25 @@ const queryClient = new QueryClient({
   },
 });
 
+function PixelPageViewTracker() {
+  const [location] = useLocation();
+  // initPixel() already fires the first PageView on load, so skip the
+  // initial mount and only track subsequent client-side route changes.
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    trackPageView();
+  }, [location]);
+  return null;
+}
+
 function Router() {
   return (
     <Layout>
+      <PixelPageViewTracker />
       <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/news" component={NewsPage} />

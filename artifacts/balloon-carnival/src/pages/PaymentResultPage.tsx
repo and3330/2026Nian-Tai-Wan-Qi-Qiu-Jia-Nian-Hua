@@ -4,6 +4,7 @@ import { CheckCircle2, AlertCircle, Loader2, Banknote, ArrowRight, Home } from "
 import { useGetPaymentStatus, useConfirmStripePayment } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetPaymentStatusQueryKey } from "@workspace/api-client-react";
+import { trackPurchase } from "@/lib/fbPixel";
 
 export default function PaymentResultPage() {
   const search = useSearch();
@@ -45,6 +46,19 @@ export default function PaymentResultPage() {
         /* status polling will continue */
       });
   }, [ref, provider, cancelled, data?.status, confirmed, confirmStripe, queryClient]);
+
+  // Fire the Meta Pixel Purchase conversion exactly once when the order is paid.
+  const [purchaseTracked, setPurchaseTracked] = useState(false);
+  useEffect(() => {
+    if (purchaseTracked) return;
+    if (data?.status !== "paid") return;
+    setPurchaseTracked(true);
+    trackPurchase({
+      value: typeof data.amount === "number" ? data.amount : 0,
+      orderId: data.paymentRef || ref,
+      contentName: "2026 臺灣氣球嘉年華門票",
+    });
+  }, [data?.status, data?.amount, data?.paymentRef, ref, purchaseTracked]);
 
   if (!ref) {
     return (

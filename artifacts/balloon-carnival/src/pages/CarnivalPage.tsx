@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getGetRegistrationAvailabilityQueryKey } from "@workspace/api-client-react";
 import { PaymentMethodModal } from "@/components/PaymentMethodModal";
 import { AnimatedNumber } from "@/components/EventCountdown";
+import { trackInitiateCheckout } from "@/lib/fbPixel";
 
 type VisitorTicketType = "single" | "combo" | "";
 
@@ -244,6 +245,16 @@ export default function CarnivalPage() {
 
       setConfirmedTokens(tokens);
       queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
+      trackInitiateCheckout({
+        value: totalAmount,
+        num_items: formData.ticketCount,
+        contents: [
+          {
+            id: visitorTicketType === "combo" ? "combo" : "single",
+            quantity: formData.ticketCount,
+          },
+        ],
+      });
       setPendingPayment({
         registrationIds: created.map((r) => r.id),
         amount: totalAmount,
