@@ -46,13 +46,6 @@ const methodOptions: Array<{
     accent: "from-blue-500 to-indigo-500",
   },
   {
-    key: "stripe",
-    title: "Stripe 信用卡",
-    description: "支援海外信用卡，使用 Stripe Checkout 結帳",
-    icon: Building2,
-    accent: "from-purple-500 to-fuchsia-500",
-  },
-  {
     key: "bank",
     title: "銀行轉帳 / ATM 匯款",
     description: "完成報名後將顯示匯款帳號，請於 3 日內完成轉帳",
