@@ -16,7 +16,8 @@ export interface OrderLookupRegistration {
   ticketCount: number;
   /** @nullable */
   ticketType?: string | null;
-  eventDate: Date;
+  /** Event date in YYYY-MM-DD (Asia/Taipei), stored and compared as a plain string. */
+  eventDate: string;
   /** @nullable */
   amount?: number | null;
   paymentStatus: string;

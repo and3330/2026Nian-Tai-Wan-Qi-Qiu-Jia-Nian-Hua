@@ -1185,7 +1185,7 @@ components:
           type: string
         eventDate:
           type: string
-          format: date
+          description: Event date in YYYY-MM-DD (Asia/Taipei), stored and compared as a plain string.
         remaining:
           type: number
 
@@ -1205,7 +1205,7 @@ components:
           type: number
         eventDate:
           type: string
-          format: date
+          description: Event date in YYYY-MM-DD (Asia/Taipei), stored and compared as a plain string.
         ticketType:
           type: [string, 'null']
         amount:
@@ -1373,7 +1373,7 @@ components:
           type: [string, 'null']
         eventDate:
           type: string
-          format: date
+          description: Event date in YYYY-MM-DD (Asia/Taipei), stored and compared as a plain string.
         amount:
           type: [number, 'null']
         paymentStatus:

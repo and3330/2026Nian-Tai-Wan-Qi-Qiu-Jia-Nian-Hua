@@ -221,7 +221,11 @@ export const LookupOrderResponse = zod.object({
       email: zod.string().nullish(),
       ticketCount: zod.number(),
       ticketType: zod.string().nullish(),
-      eventDate: zod.date(),
+      eventDate: zod
+        .string()
+        .describe(
+          "Event date in YYYY-MM-DD (Asia\/Taipei), stored and compared as a plain string.",
+        ),
       amount: zod.number().nullish(),
       paymentStatus: zod.string(),
       qrToken: zod.string().nullish(),
@@ -428,7 +432,11 @@ export const AdminListRegistrationsResponseItem = zod.object({
   phone: zod.string(),
   email: zod.string().nullish(),
   ticketCount: zod.number(),
-  eventDate: zod.date(),
+  eventDate: zod
+    .string()
+    .describe(
+      "Event date in YYYY-MM-DD (Asia\/Taipei), stored and compared as a plain string.",
+    ),
   ticketType: zod.string().nullish(),
   amount: zod.number().nullish(),
   paymentMethod: zod.string().nullish(),
@@ -557,7 +565,11 @@ export const AdminLookupCheckinResponse = zod.object({
     phone: zod.string(),
     email: zod.string().nullish(),
     ticketCount: zod.number(),
-    eventDate: zod.date(),
+    eventDate: zod
+      .string()
+      .describe(
+        "Event date in YYYY-MM-DD (Asia\/Taipei), stored and compared as a plain string.",
+      ),
     ticketType: zod.string().nullish(),
     amount: zod.number().nullish(),
     paymentMethod: zod.string().nullish(),
@@ -587,7 +599,11 @@ export const AdminPerformCheckinResponse = zod.object({
     phone: zod.string(),
     email: zod.string().nullish(),
     ticketCount: zod.number(),
-    eventDate: zod.date(),
+    eventDate: zod
+      .string()
+      .describe(
+        "Event date in YYYY-MM-DD (Asia\/Taipei), stored and compared as a plain string.",
+      ),
     ticketType: zod.string().nullish(),
     amount: zod.number().nullish(),
     paymentMethod: zod.string().nullish(),

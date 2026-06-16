@@ -9,6 +9,7 @@
 export interface SoldOutError {
   error: string;
   code: string;
-  eventDate: Date;
+  /** Event date in YYYY-MM-DD (Asia/Taipei), stored and compared as a plain string. */
+  eventDate: string;
   remaining: number;
 }

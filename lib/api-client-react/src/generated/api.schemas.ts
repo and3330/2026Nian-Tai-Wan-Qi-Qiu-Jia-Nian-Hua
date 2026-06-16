@@ -112,6 +112,7 @@ export interface Registration {
   /** @nullable */
   email?: string | null;
   ticketCount: number;
+  /** Event date in YYYY-MM-DD (Asia/Taipei), stored and compared as a plain string. */
   eventDate: string;
   /** @nullable */
   ticketType?: string | null;
@@ -142,6 +143,7 @@ export interface ComboRegistrationResult {
 export interface SoldOutError {
   error: string;
   code: string;
+  /** Event date in YYYY-MM-DD (Asia/Taipei), stored and compared as a plain string. */
   eventDate: string;
   remaining: number;
 }
@@ -273,6 +275,7 @@ export interface OrderLookupRegistration {
   ticketCount: number;
   /** @nullable */
   ticketType?: string | null;
+  /** Event date in YYYY-MM-DD (Asia/Taipei), stored and compared as a plain string. */
   eventDate: string;
   /** @nullable */
   amount?: number | null;

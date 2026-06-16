@@ -13,7 +13,8 @@ export interface Registration {
   /** @nullable */
   email?: string | null;
   ticketCount: number;
-  eventDate: Date;
+  /** Event date in YYYY-MM-DD (Asia/Taipei), stored and compared as a plain string. */
+  eventDate: string;
   /** @nullable */
   ticketType?: string | null;
   /** @nullable */
