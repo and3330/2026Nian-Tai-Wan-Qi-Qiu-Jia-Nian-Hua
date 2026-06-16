@@ -74,6 +74,7 @@ export function createNewebPayOrder(input: NewebPayOrderInput): {
     ClientBackURL: input.clientBackUrl,
     CREDIT: 1,
     VACC: 1,
+    CVS: 1,
   };
 
   const tradeInfoStr = buildQueryString(tradeInfo);

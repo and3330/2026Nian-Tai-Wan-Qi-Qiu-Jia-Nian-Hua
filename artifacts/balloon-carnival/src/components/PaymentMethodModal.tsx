@@ -32,7 +32,7 @@ const methodOptions: Array<{
   {
     key: "newebpay",
     title: "藍新金流",
-    description: "信用卡 / ATM 虛擬帳號（離開網站至藍新付款頁）",
+    description: "信用卡 / ATM 虛擬帳號 / 超商代碼繳費（離開網站至藍新付款頁）",
     icon: CreditCard,
     accent: "from-blue-500 to-indigo-500",
   },
