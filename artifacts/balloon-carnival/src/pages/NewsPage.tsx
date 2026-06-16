@@ -37,15 +37,26 @@ export default function NewsPage() {
             <Link key={article.id} href={`/news/${article.id}`}>
               <div className="group bg-card border hover:border-secondary/50 rounded-3xl p-6 md:p-8 hover:shadow-xl hover:shadow-secondary/5 transition-all duration-300 hover:-translate-y-1 flex flex-col md:flex-row gap-6 md:gap-10 items-center cursor-pointer">
                 
-                {/* Date Badge */}
-                <div className="shrink-0 flex flex-col items-center justify-center w-24 h-24 rounded-2xl bg-secondary/5 border border-secondary/20 group-hover:bg-secondary group-hover:text-white transition-colors">
-                  <span className="text-sm font-bold opacity-80 uppercase tracking-wider">
-                    {new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short' })}
-                  </span>
-                  <span className="text-3xl font-display leading-none mt-1">
-                    {new Date(article.createdAt).getDate()}
-                  </span>
-                </div>
+                {article.imageUrl ? (
+                  <div className="shrink-0 w-full md:w-48 h-32 rounded-2xl overflow-hidden border">
+                    <img
+                      src={article.imageUrl}
+                      alt={article.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={e => (e.currentTarget.parentElement!.style.display = "none")}
+                    />
+                  </div>
+                ) : (
+                  /* Date Badge */
+                  <div className="shrink-0 flex flex-col items-center justify-center w-24 h-24 rounded-2xl bg-secondary/5 border border-secondary/20 group-hover:bg-secondary group-hover:text-white transition-colors">
+                    <span className="text-sm font-bold opacity-80 uppercase tracking-wider">
+                      {new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short' })}
+                    </span>
+                    <span className="text-3xl font-display leading-none mt-1">
+                      {new Date(article.createdAt).getDate()}
+                    </span>
+                  </div>
+                )}
 
                 {/* Content */}
                 <div className="flex-1">

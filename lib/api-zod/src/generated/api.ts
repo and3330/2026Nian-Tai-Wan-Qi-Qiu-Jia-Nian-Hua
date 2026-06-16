@@ -334,6 +334,7 @@ export const ListNewsResponseItem = zod.object({
   title: zod.string(),
   content: zod.string(),
   summary: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -351,6 +352,7 @@ export const GetNewsArticleResponse = zod.object({
   title: zod.string(),
   content: zod.string(),
   summary: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -468,6 +470,7 @@ export const AdminCreateNewsBody = zod.object({
   title: zod.string().min(1),
   content: zod.string().min(1),
   summary: zod.string().optional(),
+  imageUrl: zod.string().nullish(),
 });
 
 /**
@@ -481,6 +484,7 @@ export const AdminUpdateNewsBody = zod.object({
   title: zod.string().min(1),
   content: zod.string().min(1),
   summary: zod.string().optional(),
+  imageUrl: zod.string().nullish(),
 });
 
 export const AdminUpdateNewsResponse = zod.object({
@@ -488,6 +492,7 @@ export const AdminUpdateNewsResponse = zod.object({
   title: zod.string(),
   content: zod.string(),
   summary: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });

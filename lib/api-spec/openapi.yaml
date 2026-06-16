@@ -1445,6 +1445,8 @@ components:
           minLength: 1
         summary:
           type: string
+        imageUrl:
+          type: [string, 'null']
 
     NewsArticle:
       type: object
@@ -1457,6 +1459,8 @@ components:
         content:
           type: string
         summary:
+          type: [string, 'null']
+        imageUrl:
           type: [string, 'null']
         createdAt:
           type: string

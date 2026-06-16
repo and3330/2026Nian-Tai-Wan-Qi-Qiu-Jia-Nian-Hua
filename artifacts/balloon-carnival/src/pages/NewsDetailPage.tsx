@@ -58,6 +58,15 @@ export default function NewsDetailPage() {
         </div>
       </header>
       
+      {article.imageUrl && (
+        <img
+          src={article.imageUrl}
+          alt={article.title}
+          className="w-full max-h-[480px] object-cover rounded-2xl border mb-10"
+          onError={e => (e.currentTarget.style.display = "none")}
+        />
+      )}
+
       {article.summary && (
         <div className="text-xl text-muted-foreground font-medium leading-relaxed mb-10 pl-6 border-l-4 border-secondary">
           {article.summary}

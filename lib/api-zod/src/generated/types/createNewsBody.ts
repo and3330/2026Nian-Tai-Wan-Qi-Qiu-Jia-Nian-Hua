@@ -12,4 +12,6 @@ export interface CreateNewsBody {
   /** @minLength 1 */
   content: string;
   summary?: string;
+  /** @nullable */
+  imageUrl?: string | null;
 }

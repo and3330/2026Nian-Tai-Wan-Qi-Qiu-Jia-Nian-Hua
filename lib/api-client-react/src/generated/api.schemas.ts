@@ -322,6 +322,8 @@ export interface CreateNewsBody {
   /** @minLength 1 */
   content: string;
   summary?: string;
+  /** @nullable */
+  imageUrl?: string | null;
 }
 
 export interface NewsArticle {
@@ -330,6 +332,8 @@ export interface NewsArticle {
   content: string;
   /** @nullable */
   summary?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }

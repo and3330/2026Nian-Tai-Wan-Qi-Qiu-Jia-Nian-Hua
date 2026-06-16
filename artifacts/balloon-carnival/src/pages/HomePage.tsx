@@ -315,6 +315,11 @@ export default function HomePage() {
             <div className="hidden md:grid md:grid-cols-3 gap-6">
               {latestNews.map(article => (
                 <Link key={article.id} href={`/news/${article.id}`} className="glass-card rounded-2xl p-6 hover-lift group block">
+                  {article.imageUrl && (
+                    <div className="-mx-6 -mt-6 mb-4 h-40 overflow-hidden rounded-t-2xl">
+                      <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={e => (e.currentTarget.parentElement!.style.display = "none")} />
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
                     <Calendar size={12} />
                     {article.createdAt ? formatDate(String(article.createdAt)) : '最新'}
@@ -341,6 +346,11 @@ export default function HomePage() {
                     href={`/news/${article.id}`}
                     className="glass-card rounded-2xl p-5 group block snap-start shrink-0 w-[78%] max-w-[320px]"
                   >
+                    {article.imageUrl && (
+                      <div className="-mx-5 -mt-5 mb-3 h-36 overflow-hidden rounded-t-2xl">
+                        <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" onError={e => (e.currentTarget.parentElement!.style.display = "none")} />
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
                       <Calendar size={12} />
                       {article.createdAt ? formatDate(String(article.createdAt)) : '最新'}

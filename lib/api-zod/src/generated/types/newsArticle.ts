@@ -12,6 +12,8 @@ export interface NewsArticle {
   content: string;
   /** @nullable */
   summary?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
