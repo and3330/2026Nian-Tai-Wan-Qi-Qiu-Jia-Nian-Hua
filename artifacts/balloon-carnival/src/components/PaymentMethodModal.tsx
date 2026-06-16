@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { CreditCard, Building2, Banknote, X, Loader2, CheckCircle2, FileText, User, Heart, Smartphone } from "lucide-react";
+import { CreditCard, Building2, X, Loader2, FileText, User, Heart, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useInitiatePayment,
   type InitiatePaymentResponse,
 } from "@workspace/api-client-react";
 
-type Method = "newebpay" | "stripe" | "bank";
+type Method = "newebpay";
 type InvoiceType = "personal" | "company" | "donation";
 type CarrierType = "phone_barcode" | "citizen_certificate" | "ecpay_carrier" | "";
 
@@ -22,15 +22,6 @@ interface PaymentMethodModalProps {
   onCompleted: () => void;
 }
 
-interface BankInfoState {
-  paymentRef: string;
-  amount: number;
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  memo: string;
-}
-
 const methodOptions: Array<{
   key: Method;
   title: string;
@@ -44,13 +35,6 @@ const methodOptions: Array<{
     description: "信用卡 / ATM 虛擬帳號（離開網站至藍新付款頁）",
     icon: CreditCard,
     accent: "from-blue-500 to-indigo-500",
-  },
-  {
-    key: "bank",
-    title: "銀行轉帳 / ATM 匯款",
-    description: "完成報名後將顯示匯款帳號，請於 3 日內完成轉帳",
-    icon: Banknote,
-    accent: "from-emerald-500 to-green-500",
   },
 ];
 
@@ -86,10 +70,9 @@ export function PaymentMethodModal({
   onClose,
   onCompleted,
 }: PaymentMethodModalProps) {
-  const [selected, setSelected] = useState<Method | null>(null);
+  const [selected, setSelected] = useState<Method | null>("newebpay");
   const [email, setEmail] = useState(defaultEmail || "");
   const [error, setError] = useState<string | null>(null);
-  const [bankInfo, setBankInfo] = useState<BankInfoState | null>(null);
 
   // Invoice fields
   const [invoiceType, setInvoiceType] = useState<InvoiceType>("personal");
@@ -163,17 +146,6 @@ export function PaymentMethodModal({
         window.location.assign(result.url);
         return;
       }
-      if (result.type === "bank_info" && result.bankInfo) {
-        setBankInfo({
-          paymentRef: result.paymentRef,
-          amount: result.amount,
-          bankName: result.bankInfo.bankName || "",
-          accountName: result.bankInfo.accountName || "",
-          accountNumber: result.bankInfo.accountNumber || "",
-          memo: result.bankInfo.memo || "",
-        });
-        return;
-      }
       setError("未收到有效的付款資訊，請稍後再試。");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "付款初始化失敗，請稍後再試";
@@ -191,10 +163,7 @@ export function PaymentMethodModal({
           </div>
           <button
             type="button"
-            onClick={() => {
-              setBankInfo(null);
-              onClose();
-            }}
+            onClick={onClose}
             className="rounded-full p-2 text-muted-foreground hover:bg-muted"
             aria-label="關閉"
             data-testid="payment-modal-close"
@@ -215,54 +184,7 @@ export function PaymentMethodModal({
             </div>
           </div>
 
-          {bankInfo ? (
-            <div data-testid="payment-bank-info">
-              <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-5 mb-4">
-                <div className="flex items-center gap-2 text-emerald-700 font-bold mb-3">
-                  <CheckCircle2 size={20} /> 報名已建立 — 請完成匯款
-                </div>
-                <dl className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">銀行</dt>
-                    <dd className="font-bold">{bankInfo.bankName}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">戶名</dt>
-                    <dd className="font-bold">{bankInfo.accountName}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">帳號</dt>
-                    <dd className="font-mono font-bold text-emerald-700 text-base" data-testid="bank-account-number">
-                      {bankInfo.accountNumber}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">應匯金額</dt>
-                    <dd className="font-bold">NT$ {bankInfo.amount.toLocaleString()}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">訂單編號</dt>
-                    <dd className="font-mono font-bold" data-testid="bank-order-ref">{bankInfo.paymentRef}</dd>
-                  </div>
-                </dl>
-                <p className="text-xs text-emerald-700 mt-4 leading-relaxed">{bankInfo.memo}</p>
-                <p className="text-xs text-emerald-700 mt-2 leading-relaxed">主辦單位確認入帳後，將自動為您開立電子發票並寄送至您的 Email / 手機載具。</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setBankInfo(null);
-                  onCompleted();
-                }}
-                className="w-full py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
-                data-testid="bank-info-confirm"
-              >
-                我已記下匯款資訊
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-3 mb-5">
+          <div className="space-y-3 mb-5">
                 {methodOptions.map((opt) => {
                   const Icon = opt.icon;
                   const active = selected === opt.key;
@@ -432,8 +354,6 @@ export function PaymentMethodModal({
                   "確認付款"
                 )}
               </button>
-            </>
-          )}
         </div>
       </div>
     </div>

@@ -112,9 +112,9 @@ router.post("/payments/initiate", async (req, res): Promise<void> => {
       res.status(400).json({ error: "Invalid registrationIds" });
       return;
     }
-    const allowedMethods = new Set(["newebpay", "stripe", "bank"]);
+    const allowedMethods = new Set(["newebpay"]);
     if (typeof method !== "string" || !allowedMethods.has(method)) {
-      res.status(400).json({ error: "method must be one of newebpay, stripe, bank" });
+      res.status(400).json({ error: "method must be newebpay" });
       return;
     }
 
