@@ -246,6 +246,18 @@ export default function TORPage() {
         </div>
       </section>
 
+      {/* 主視覺圖 */}
+      <section className="bg-white">
+        <div className="max-w-4xl mx-auto px-4 pt-8">
+          <img
+            src="https://cmsedu.b-cdn.net/S__74825753.jpg"
+            alt="第四屆重擊盃 戰鬥陀螺挑戰賽"
+            className="w-full rounded-3xl shadow-sm"
+            loading="lazy"
+          />
+        </div>
+      </section>
+
       {/* 賽事資訊 */}
       <section className="border-y bg-white">
         <div className="max-w-4xl mx-auto px-4 py-5 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-4">
