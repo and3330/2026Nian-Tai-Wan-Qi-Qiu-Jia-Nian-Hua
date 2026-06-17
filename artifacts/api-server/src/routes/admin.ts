@@ -1,6 +1,15 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, sql } from "drizzle-orm";
-import { db, registrationsTable, newsTable, contestantsTable, sponsorsTable } from "@workspace/db";
+import { eq, desc, sql, inArray, or } from "drizzle-orm";
+import {
+  db,
+  registrationsTable,
+  newsTable,
+  contestantsTable,
+  sponsorsTable,
+  paymentTransactionsTable,
+  invoicesTable,
+  refundRequestsTable,
+} from "@workspace/db";
 import {
   AdminListRegistrationsQueryParams,
   AdminListRegistrationsResponse,
@@ -147,6 +156,82 @@ router.get("/admin/registrations/export", async (req, res): Promise<void> => {
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", "attachment; filename=registrations.csv");
   res.send("\uFEFF" + csv);
+});
+
+// Bulk-delete orders from the admin orders area. The caller sends registration
+// row ids ("legs"); an order is the group of registrations sharing a paymentRef.
+// To avoid leaving orphan financial records, deletion is order-level: for every
+// paymentRef touched we also remove the matching payment_transactions, invoices
+// and refund_requests (all linked by the paymentRef string, not a DB FK). All
+// legs sharing a deleted ref are removed even if not explicitly listed, so an
+// order is never left half-deleted. Registrations with no paymentRef (e.g. free
+// / standalone rows) are deleted by id. The whole operation runs in one
+// transaction.
+router.post("/admin/registrations/bulk-delete", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor")) return;
+
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
+  const cleanIds = Array.from(
+    new Set(
+      (ids ?? [])
+        .map((v: unknown) => Number(v))
+        .filter((n: number) => Number.isInteger(n) && n > 0),
+    ),
+  ) as number[];
+
+  if (cleanIds.length === 0) {
+    res.status(400).json({ error: "請提供要刪除的訂單" });
+    return;
+  }
+
+  // Resolve which orders these registrations belong to.
+  const rows = await db
+    .select({ id: registrationsTable.id, paymentRef: registrationsTable.paymentRef })
+    .from(registrationsTable)
+    .where(inArray(registrationsTable.id, cleanIds));
+
+  if (rows.length === 0) {
+    res.json({ deletedCount: 0, ordersDeleted: 0 });
+    return;
+  }
+
+  const refs = Array.from(
+    new Set(
+      rows
+        .map((r) => r.paymentRef)
+        .filter((r): r is string => Boolean(r)),
+    ),
+  );
+  const standaloneIds = rows.filter((r) => !r.paymentRef).map((r) => r.id);
+
+  let deletedCount = 0;
+  await db.transaction(async (tx) => {
+    const conds = [];
+    if (refs.length > 0)
+      conds.push(inArray(registrationsTable.paymentRef, refs));
+    if (standaloneIds.length > 0)
+      conds.push(inArray(registrationsTable.id, standaloneIds));
+
+    const deletedRegs = await tx
+      .delete(registrationsTable)
+      .where(conds.length === 1 ? conds[0] : or(...conds))
+      .returning({ id: registrationsTable.id });
+    deletedCount = deletedRegs.length;
+
+    if (refs.length > 0) {
+      await tx
+        .delete(paymentTransactionsTable)
+        .where(inArray(paymentTransactionsTable.paymentRef, refs));
+      await tx
+        .delete(invoicesTable)
+        .where(inArray(invoicesTable.paymentRef, refs));
+      await tx
+        .delete(refundRequestsTable)
+        .where(inArray(refundRequestsTable.paymentRef, refs));
+    }
+  });
+
+  res.json({ deletedCount, ordersDeleted: refs.length + standaloneIds.length });
 });
 
 router.get("/admin/stats", async (req, res): Promise<void> => {

@@ -14,6 +14,7 @@ import {
   Banknote,
   XCircle,
   Undo2,
+  Trash2,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -165,6 +166,9 @@ export default function OrdersManage() {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [confirmingRef, setConfirmingRef] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkConfirming, setIsBulkConfirming] = useState(false);
 
   const orders = useMemo(
     () => buildOrders(registrations ?? []),
@@ -198,6 +202,125 @@ export default function OrdersManage() {
       );
     });
   }, [orders, filter, search]);
+
+  const orderByRef = useMemo(() => {
+    const m = new Map<string, Order>();
+    for (const o of orders) m.set(o.ref, o);
+    return m;
+  }, [orders]);
+
+  const selectedOrders = useMemo(
+    () =>
+      Array.from(selected)
+        .map((r) => orderByRef.get(r))
+        .filter((o): o is Order => Boolean(o)),
+    [selected, orderByRef],
+  );
+
+  const selectedAwaiting = selectedOrders.filter(
+    (o) => o.paymentStatus === "awaiting_transfer" && o.isRealRef,
+  );
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((o) => selected.has(o.ref));
+
+  const toggleAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        for (const o of filtered) next.delete(o.ref);
+      } else {
+        for (const o of filtered) next.add(o.ref);
+      }
+      return next;
+    });
+  };
+
+  const toggleOne = (ref: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(ref)) next.delete(ref);
+      else next.add(ref);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const sel = selectedOrders;
+    if (sel.length === 0) return;
+    const ids = sel.flatMap((o) => o.legs.map((l) => l.id));
+    const paidCount = sel.filter(
+      (o) => normalizeStatus(o.paymentStatus) === "paid",
+    ).length;
+    const warn =
+      paidCount > 0
+        ? `\n\n⚠️ 其中有 ${paidCount} 筆「已付款」訂單，刪除後將一併移除該筆營收與報到紀錄。`
+        : "";
+    if (
+      !window.confirm(
+        `確定要刪除選取的 ${sel.length} 筆訂單嗎？此操作無法復原。${warn}`,
+      )
+    ) {
+      return;
+    }
+    setIsBulkDeleting(true);
+    try {
+      const res = await fetch("/api/admin/registrations/bulk-delete", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "刪除失敗");
+      }
+      setSelected(new Set());
+      await refetch();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "刪除失敗，請稍後再試");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleBulkConfirm = async () => {
+    const targets = selectedAwaiting;
+    if (targets.length === 0) return;
+    if (
+      !window.confirm(
+        `確認已收到這 ${targets.length} 筆銀行匯款？\n系統會逐筆開立發票、寄送購票確認信（含入場 QR）、發送 Slack 通知。`,
+      )
+    ) {
+      return;
+    }
+    setIsBulkConfirming(true);
+    let ok = 0;
+    const failed: string[] = [];
+    try {
+      for (const o of targets) {
+        try {
+          const res = await fetch(
+            `/api/payments/${encodeURIComponent(o.ref)}/confirm-bank`,
+            { method: "POST", credentials: "include" },
+          );
+          if (!res.ok) throw new Error();
+          ok += 1;
+        } catch {
+          failed.push(o.ref);
+        }
+      }
+      await refetch();
+      setSelected(new Set());
+      if (failed.length > 0) {
+        window.alert(
+          `完成 ${ok} 筆，${failed.length} 筆失敗：\n${failed.join("\n")}`,
+        );
+      }
+    } finally {
+      setIsBulkConfirming(false);
+    }
+  };
 
   const handleConfirmBank = async (paymentRef: string) => {
     if (
@@ -345,12 +468,67 @@ export default function OrdersManage() {
         </div>
       </div>
 
+      {/* Batch action bar */}
+      {canConfirm && selected.size > 0 && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3">
+          <div className="text-sm font-semibold text-foreground">
+            已選取 {selected.size} 筆訂單
+            {selectedAwaiting.length > 0 && (
+              <span className="ml-2 text-amber-600 font-normal">
+                （其中 {selectedAwaiting.length} 筆待匯款）
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedAwaiting.length > 0 && (
+              <button
+                onClick={handleBulkConfirm}
+                disabled={isBulkConfirming || isBulkDeleting}
+                className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                <Banknote size={16} />
+                {isBulkConfirming
+                  ? "確認中..."
+                  : `批量確認收款（${selectedAwaiting.length}）`}
+              </button>
+            )}
+            <button
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting || isBulkConfirming}
+              className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors flex items-center gap-2"
+            >
+              <Trash2 size={16} />
+              {isBulkDeleting ? "刪除中..." : `批量刪除（${selected.size}）`}
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              disabled={isBulkDeleting || isBulkConfirming}
+              className="px-4 py-2 rounded-xl border text-sm font-semibold hover:bg-muted disabled:opacity-50 transition-colors"
+            >
+              取消選取
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Orders table */}
       <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/30">
               <tr>
+                {canConfirm && (
+                  <th className="p-4 w-10">
+                    <input
+                      type="checkbox"
+                      aria-label="全選"
+                      checked={allFilteredSelected}
+                      onChange={toggleAll}
+                      disabled={filtered.length === 0}
+                      className="h-4 w-4 rounded border-muted-foreground/40 accent-primary cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th className="p-4 font-semibold text-muted-foreground">訂單編號</th>
                 <th className="p-4 font-semibold text-muted-foreground">購買人</th>
                 <th className="p-4 font-semibold text-muted-foreground">聯絡方式</th>
@@ -367,21 +545,38 @@ export default function OrdersManage() {
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={11} className="p-10 text-center text-muted-foreground">
+                  <td colSpan={canConfirm ? 12 : 11} className="p-10 text-center text-muted-foreground">
                     載入中...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="p-10 text-center text-muted-foreground">
+                  <td colSpan={canConfirm ? 12 : 11} className="p-10 text-center text-muted-foreground">
                     {orders.length === 0 ? "尚無訂單資料" : "沒有符合條件的訂單"}
                   </td>
                 </tr>
               ) : (
                 filtered.map((o) => {
                   const totalSeats = o.legs.length;
+                  const isSelected = selected.has(o.ref);
                   return (
-                    <tr key={o.ref} className="hover:bg-muted/20 align-top">
+                    <tr
+                      key={o.ref}
+                      className={`align-top transition-colors ${
+                        isSelected ? "bg-primary/5" : "hover:bg-muted/20"
+                      }`}
+                    >
+                      {canConfirm && (
+                        <td className="p-4">
+                          <input
+                            type="checkbox"
+                            aria-label={`選取訂單 ${o.isRealRef ? o.ref : o.buyerName}`}
+                            checked={isSelected}
+                            onChange={() => toggleOne(o.ref)}
+                            className="h-4 w-4 rounded border-muted-foreground/40 accent-primary cursor-pointer"
+                          />
+                        </td>
+                      )}
                       <td className="p-4 font-mono text-xs">
                         {o.isRealRef ? o.ref : "—"}
                         <div className="text-[11px] text-muted-foreground mt-1">
