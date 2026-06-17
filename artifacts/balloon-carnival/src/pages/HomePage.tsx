@@ -301,7 +301,7 @@ export default function HomePage() {
                   <Gift size={22} className="text-amber-600" />
                 </div>
                 <div>
-                  <p className="font-bold text-foreground leading-snug">手工藝報到小禮物</p>
+                  <p className="font-bold text-foreground leading-snug">報到即送精美小禮物</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     價值 <span className="font-bold text-amber-600">50 元</span>，一張票於現場報到兌換一組。
                   </p>
@@ -314,7 +314,7 @@ export default function HomePage() {
                 <div>
                   <p className="font-bold text-foreground leading-snug">商城優惠套裝折扣碼</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    價值 <span className="font-bold text-amber-600">1,000 元</span>，購票後以簡訊寄送。
+                    價值 <span className="font-bold text-amber-600">500 元</span>，購票後以簡訊寄送。
                   </p>
                 </div>
               </div>
