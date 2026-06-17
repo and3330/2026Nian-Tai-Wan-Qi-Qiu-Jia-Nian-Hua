@@ -1,5 +1,5 @@
 import { useListNews, useGetRegistrationAvailability } from "@workspace/api-client-react";
-import { Calendar, MapPin, Clock, ArrowRight, Ticket, Sparkles, ChevronRight, PartyPopper, Baby, Eye, Cpu, ShieldCheck, Star, ZoomIn, X, Gift, Smartphone } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowRight, Ticket, Sparkles, ChevronRight, PartyPopper, Baby, Eye, Cpu, ShieldCheck, Star, ZoomIn, X, Gift, Mail } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useState } from "react";
 import { formatDate } from "@/lib/utils";
@@ -309,12 +309,12 @@ export default function HomePage() {
               </div>
               <div className="flex items-start gap-3 rounded-2xl bg-white/70 p-4 border border-amber-100">
                 <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                  <Smartphone size={22} className="text-amber-600" />
+                  <Mail size={22} className="text-amber-600" />
                 </div>
                 <div>
                   <p className="font-bold text-foreground leading-snug">商城優惠套裝折扣碼</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    價值 <span className="font-bold text-amber-600">500 元</span>，購票後以簡訊寄送。
+                    價值 <span className="font-bold text-amber-600">500 元</span>，購票後以 Email 寄送。
                   </p>
                 </div>
               </div>
