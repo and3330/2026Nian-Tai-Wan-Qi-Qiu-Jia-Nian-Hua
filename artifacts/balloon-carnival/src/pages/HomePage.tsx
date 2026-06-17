@@ -1,5 +1,5 @@
 import { useListNews, useGetRegistrationAvailability } from "@workspace/api-client-react";
-import { Calendar, MapPin, Clock, ArrowRight, Ticket, Sparkles, ChevronRight, PartyPopper, Baby, Eye, Cpu, ShieldCheck, Star, ZoomIn, X } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowRight, Ticket, Sparkles, ChevronRight, PartyPopper, Baby, Eye, Cpu, ShieldCheck, Star, ZoomIn, X, Gift, Smartphone } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useState } from "react";
 import { formatDate } from "@/lib/utils";
@@ -286,6 +286,40 @@ export default function HomePage() {
               選擇兩日套票 <ArrowRight size={16} />
             </span>
           </Link>
+        </div>
+
+        {/* 門票皆包含 — 加值好禮 */}
+        <div className="max-w-3xl mx-auto mt-8">
+          <div className="rounded-3xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50/60 p-6 md:p-8">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <Gift size={20} className="text-amber-600" />
+              <h3 className="text-lg md:text-xl font-bold text-foreground">每張門票皆包含</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-start gap-3 rounded-2xl bg-white/70 p-4 border border-amber-100">
+                <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                  <Gift size={22} className="text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground leading-snug">手工藝報到小禮物</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    價值 <span className="font-bold text-amber-600">50 元</span>，一張票於現場報到兌換一組。
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-2xl bg-white/70 p-4 border border-amber-100">
+                <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                  <Smartphone size={22} className="text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground leading-snug">商城優惠套裝折扣碼</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    價值 <span className="font-bold text-amber-600">1,000 元</span>，購票後以簡訊寄送。
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="text-center mt-8">
