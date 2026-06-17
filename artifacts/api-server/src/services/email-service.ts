@@ -1,5 +1,6 @@
 import { db, emailTemplatesTable, registrationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import QRCode from "qrcode";
 import { logger } from "../lib/logger";
 
 export type EmailMode = "resend" | "console";
@@ -141,12 +142,39 @@ export function getQrImageUrl(qrToken: string): string {
   return `${base}/api/qr/${encodeURIComponent(qrToken)}`;
 }
 
+export interface EmailAttachment {
+  filename: string;
+  content: string;
+}
+
 export interface SendEmailInput {
   to: string;
   subject: string;
   body: string;
   qrImageUrl?: string;
   htmlOverride?: string;
+  attachments?: EmailAttachment[];
+}
+
+// Render the registration QR token into a PNG and return it as a base64
+// attachment. Attaching the QR (rather than relying only on a remote <img>)
+// guarantees the buyer always gets a scannable code, even when their mail
+// client blocks remote images or the image URL is temporarily unreachable.
+export async function buildQrAttachment(
+  qrToken: string,
+): Promise<EmailAttachment | null> {
+  try {
+    const buffer = await QRCode.toBuffer(qrToken, {
+      errorCorrectionLevel: "M",
+      type: "png",
+      margin: 2,
+      width: 480,
+    });
+    return { filename: "checkin-qr.png", content: buffer.toString("base64") };
+  } catch (err) {
+    logger.error({ err }, "[Email] Failed to build QR attachment");
+    return null;
+  }
 }
 
 export const EVENT_INFO = {
@@ -221,6 +249,9 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         subject: input.subject,
         text: input.body,
         html,
+        ...(input.attachments && input.attachments.length > 0
+          ? { attachments: input.attachments }
+          : {}),
       }),
     });
     if (!res.ok) {
@@ -531,12 +562,14 @@ export async function sendConfirmationEmail(
   if (!opts?.force && reg.confirmationEmailSentAt) return null;
   const tpl = await getTemplate("confirmation");
   const vars = buildRegistrationVars(reg);
+  const qrAttachment = reg.qrToken ? await buildQrAttachment(reg.qrToken) : null;
   const result = await sendEmail({
     to: reg.email,
     subject: renderTemplate(tpl.subject, vars),
     body: renderTemplate(tpl.body, vars),
     qrImageUrl: vars.qrUrl,
     htmlOverride: buildConfirmationEmailHtml(vars),
+    attachments: qrAttachment ? [qrAttachment] : undefined,
   });
   if (result.delivered) {
     await db

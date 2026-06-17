@@ -15,3 +15,8 @@ The customer "購票成功" confirmation email is rendered by a hardcoded rich H
 
 ## QR images need a live registration row
 `/api/qr/:token` only serves a PNG if a registration with that `qrToken` exists. To send a test confirmation with a *working* QR without consuming capacity, insert a temp registration with `paymentStatus: "refunded"` (capacity `countForDate` excludes only `refunded`; revenue stats count only `paid`) and keep the row — deleting it breaks the QR in the already-sent email.
+
+## QR must be an email attachment, not just a remote <img>
+Buyers reported confirmation emails with no QR despite `/api/qr` returning 200 in prod. A remote `<img src>` is unreliable: many mail clients block remote images (Outlook, Apple Mail privacy, corporate), and an autoscale deployment may be cold when the image is fetched — both leave a broken image.
+**Why:** Server-side generation working ≠ buyer can see the code; the QR is the ticket, so delivery must not depend on the client loading a remote URL.
+**How to apply:** Always also attach the QR PNG (`buildQrAttachment` → Resend `attachments`, base64) in `sendConfirmationEmail`. Keep the inline img + fallback link as extras. Attachment failure is non-fatal (logs, still sends). Same applies to any future ticket/QR email.
