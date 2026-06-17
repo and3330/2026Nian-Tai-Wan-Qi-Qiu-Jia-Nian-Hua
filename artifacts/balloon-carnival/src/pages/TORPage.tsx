@@ -14,6 +14,7 @@ import {
   Minus,
   AlertCircle,
   Swords,
+  X,
   Medal,
   ScrollText,
   Sparkles,
@@ -71,6 +72,7 @@ export default function TORPage() {
   const [availability, setAvailability] = useState<Availability | null>(null);
   const [loadingAvail, setLoadingAvail] = useState(true);
 
+  const [imageZoomed, setImageZoomed] = useState(false);
   const [mode, setMode] = useState<Mode>("participant");
   const [form, setForm] = useState({ parentName: "", phone: "", email: "" });
   const [companionCount, setCompanionCount] = useState(0);
@@ -249,14 +251,46 @@ export default function TORPage() {
       {/* 主視覺圖 */}
       <section className="bg-white">
         <div className="max-w-4xl mx-auto px-4 pt-8">
+          <button
+            type="button"
+            onClick={() => setImageZoomed(true)}
+            className="block w-full group cursor-zoom-in"
+            aria-label="放大查看主視覺圖"
+            data-testid="button-zoom-image"
+          >
+            <img
+              src="https://cmsedu.b-cdn.net/S__74825753.jpg"
+              alt="第四屆重擊盃 戰鬥陀螺挑戰賽"
+              className="w-full rounded-3xl shadow-sm transition-transform group-hover:scale-[1.01]"
+              loading="lazy"
+            />
+          </button>
+        </div>
+      </section>
+
+      {/* 主視覺圖放大 */}
+      {imageZoomed && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setImageZoomed(false)}
+          data-testid="image-lightbox"
+        >
+          <button
+            type="button"
+            onClick={() => setImageZoomed(false)}
+            className="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center"
+            aria-label="關閉"
+          >
+            <X size={24} />
+          </button>
           <img
             src="https://cmsedu.b-cdn.net/S__74825753.jpg"
             alt="第四屆重擊盃 戰鬥陀螺挑戰賽"
-            className="w-full rounded-3xl shadow-sm"
-            loading="lazy"
+            className="max-w-full max-h-full object-contain rounded-xl"
+            onClick={(e) => e.stopPropagation()}
           />
         </div>
-      </section>
+      )}
 
       {/* 賽事資訊 */}
       <section className="border-y bg-white">
