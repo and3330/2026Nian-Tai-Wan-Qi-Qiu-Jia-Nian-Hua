@@ -49,16 +49,20 @@ const scheduleItems = [
 ];
 
 const ruleItems = [
-  "採國際通用積分制，每場先達指定分數者獲勝。",
-  "擊飛對手（Over Finish）或對手停止運轉（Survivor Finish）得 1 分；陀螺爆裂（Burst Finish）得 2 分。",
-  "請自備市售合法戰鬥陀螺，不得使用改造或非法零件。",
-  "依報到分組進行循環賽與淘汰賽，賽程以現場公告為準。",
+  "使用限制：全面開放台灣有代理之版本，嚴禁使用美版及台灣未販售之陀螺。",
+  "賽事規則：採用官方規則第 12 版。",
+  "判決基準：賽場上若有判決疑慮，一律採用「輔助判決」為準。",
+  "晉級機制：預賽分為四區進行，各區冠軍晉級「四強循環賽」爭奪總冠軍。",
 ];
 
 const prizeItems = [
-  "冠軍、亞軍、季軍頒發獎盃與精選獎品。",
-  "完成報到的選手皆可獲得限定參賽禮。",
-  "現場另設多項互動挑戰與抽獎好禮。",
+  "本次賽事重磅加碼，前 8 名皆能獲得專屬獎品！",
+  "🥇 第一名：八岐大蛇",
+  "🥈 第二名：澀谷爆刃（紫）",
+  "🥉 第三名：紅空力天馬",
+  "🏅 第四名：黑勇氣",
+  "🎁 第五～八名（分區亞軍）：神秘獎品",
+  "✨ 報名專屬好禮：完成報名即贈 500 元居家清潔折扣券！",
 ];
 
 const timelineItems = [
@@ -73,6 +77,16 @@ export default function TORPage() {
   const [loadingAvail, setLoadingAvail] = useState(true);
 
   const [imageZoomed, setImageZoomed] = useState(false);
+
+  useEffect(() => {
+    if (!imageZoomed) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setImageZoomed(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [imageZoomed]);
+
   const [mode, setMode] = useState<Mode>("participant");
   const [form, setForm] = useState({ parentName: "", phone: "", email: "" });
   const [companionCount, setCompanionCount] = useState(0);
@@ -273,6 +287,9 @@ export default function TORPage() {
         <div
           className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out"
           onClick={() => setImageZoomed(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="主視覺圖放大檢視"
           data-testid="image-lightbox"
         >
           <button
@@ -383,15 +400,34 @@ export default function TORPage() {
               <h3 className="font-bold text-lg">敗者加碼</h3>
             </div>
             <p className="text-sm text-indigo-900/80 leading-relaxed">
-              即使在初賽不敵對手也別氣餒！現場將舉辦「敗部復活挑戰」，
-              讓淘汰選手有機會重返賽場、爭取晉級名額，並有額外限定好禮等你來拿。
+              拒絕一輪遊！每位參賽選手只要在賽程中落敗，即可獲得「神秘好禮」抽獎資格。
+              即使無法站上決賽舞台，依然有機會把大獎帶回家！
             </p>
           </div>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          ＊詳細賽制、分組與獎項以現場公告及主辦單位最終說明為準。
-        </p>
+        <div className="mt-8 rounded-3xl border bg-white p-6 md:p-7 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center">
+              <AlertCircle className="text-rose-600 w-5 h-5" />
+            </div>
+            <h3 className="font-bold text-lg">報名方式與注意事項</h3>
+          </div>
+          <ul className="space-y-2.5 text-sm text-muted-foreground">
+            <li className="flex gap-2">
+              <span className="text-rose-500 mt-0.5">•</span>
+              <span>報名流程：請於本頁填寫報名表並完成報名費繳納，即確認參賽名額。</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-rose-500 mt-0.5">•</span>
+              <span>名單公告：正選名單將於 7 月 20 日（一）正式公告。</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-rose-500 mt-0.5">•</span>
+              <span>賽事相關規定若有未盡事宜，主辦單位保留最終決策與解釋之權利。</span>
+            </li>
+          </ul>
+        </div>
       </section>
 
       {/* 線上報名 */}
