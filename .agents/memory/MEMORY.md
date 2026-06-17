@@ -4,3 +4,4 @@
 - [Order deletion cleanup](order-deletion-cleanup.md) — orders link by paymentRef string (no FK); deleting an order must transactionally remove registrations + payment_transactions + invoices + refund_requests.
 - [Date fields zod validation](date-fields-zod-validation.md) — date-only cols (mode:string) must be plain string (no format:date) in spec response schemas, else response .parse() 500s once rows exist.
 - [Rebuild libs after codegen](codegen-rebuild-libs.md) — after api-spec codegen, web tsc still errors until `pnpm run typecheck:libs` (tsc --build) regenerates lib dist .d.ts.
+- [api-server testing](api-server-testing.md) — vitest+supertest in test/ (not src/); runs vs shared dev DB with `__torTEST__` marker cleanup; mount router, not app.ts.
