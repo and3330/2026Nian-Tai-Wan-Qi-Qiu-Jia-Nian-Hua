@@ -123,10 +123,14 @@ export async function getTemplate(key: EmailTemplateKey): Promise<{ subject: str
 }
 
 function getPublicBaseUrl(): string {
+  // Prefer an explicit, stable public domain. Fall back to the deployment's
+  // REPLIT_DOMAINS *before* the ephemeral REPLIT_DEV_DOMAIN, so production
+  // emails never embed a workspace-only URL that stops resolving once the
+  // workspace sleeps (which left previously-sent QR codes as broken images).
   const domain =
     process.env.PUBLIC_BASE_URL ||
-    process.env.REPLIT_DEV_DOMAIN ||
-    process.env.REPLIT_DOMAINS?.split(",")[0];
+    process.env.REPLIT_DOMAINS?.split(",")[0] ||
+    process.env.REPLIT_DEV_DOMAIN;
   if (!domain) return "";
   if (domain.startsWith("http")) return domain.replace(/\/$/, "");
   return `https://${domain}`;
@@ -218,7 +222,7 @@ function buildHtmlBody(body: string, qrImageUrl?: string): string {
     .replace(/>/g, "&gt;");
   let html = escaped.replace(/\n/g, "<br/>");
   if (qrImageUrl) {
-    const qrTag = `<br/><img src="${qrImageUrl}" alt="報到 QR Code" style="width:240px;height:240px;border:1px solid #eee;padding:8px;background:#fff;"/><br/>`;
+    const qrTag = `<br/><img src="${qrImageUrl}" alt="報到 QR Code" style="width:240px;height:240px;border:1px solid #eee;padding:8px;background:#fff;"/><br/><a href="${qrImageUrl}" style="color:#EF5739;font-weight:700;">若 QR Code 沒有顯示，請點此開啟</a><br/>`;
     html = html.replace(qrImageUrl, qrTag);
   }
   return `<div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.7;color:#333;max-width:640px;margin:auto;padding:24px;">${html}</div>`;
@@ -281,6 +285,11 @@ export function buildConfirmationEmailHtml(vars: {
       </tr>
       <tr>
         <td align="center" style="padding:0 0 4px;color:${muted};font-size:13px;">此 QR Code 即為您的電子門票，請妥善保存</td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:2px 0 6px;font-size:13px;">
+          <a href="${qrUrl}" style="color:${coral};font-weight:700;text-decoration:underline;">若 QR Code 沒有顯示，請點此開啟入場 QR Code</a>
+        </td>
       </tr>`
     : `
       <tr>
