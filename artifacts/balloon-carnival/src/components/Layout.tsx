@@ -13,6 +13,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
+  const isTor = location.toLowerCase() === "/tor";
   const { isAuthenticated, logout, isLoading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -212,17 +213,31 @@ export function Layout({ children }: LayoutProps) {
                 <Calendar size={20} className="text-primary" />
               </div>
               <div className="min-w-0">
-                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide leading-tight">公開場次</div>
-                <div className="font-bold text-foreground text-sm leading-tight">7/25 – 7/26</div>
+                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide leading-tight">
+                  {isTor ? "戰鬥陀螺賽" : "公開場次"}
+                </div>
+                <div className="font-bold text-foreground text-sm leading-tight">
+                  {isTor ? "7/26（日）" : "7/25 – 7/26"}
+                </div>
               </div>
             </div>
-            <Link
-              href="/carnival"
-              className="shrink-0 px-5 py-3 rounded-full font-bold text-sm text-white bg-gradient-to-r from-primary to-secondary shadow-md shadow-primary/30 flex items-center gap-1.5 active:scale-95 transition-transform"
-              data-testid="mobile-bottom-cta-buy"
-            >
-              <Ticket size={16} /> 前往搶票 <ArrowRight size={14} />
-            </Link>
+            {isTor ? (
+              <a
+                href="#tor-register"
+                className="shrink-0 px-5 py-3 rounded-full font-bold text-sm text-white bg-gradient-to-r from-primary to-secondary shadow-md shadow-primary/30 flex items-center gap-1.5 active:scale-95 transition-transform"
+                data-testid="mobile-bottom-cta-tor"
+              >
+                <Ticket size={16} /> 我要報名參賽 <ArrowRight size={14} />
+              </a>
+            ) : (
+              <Link
+                href="/carnival"
+                className="shrink-0 px-5 py-3 rounded-full font-bold text-sm text-white bg-gradient-to-r from-primary to-secondary shadow-md shadow-primary/30 flex items-center gap-1.5 active:scale-95 transition-transform"
+                data-testid="mobile-bottom-cta-buy"
+              >
+                <Ticket size={16} /> 前往搶票 <ArrowRight size={14} />
+              </Link>
+            )}
           </div>
         </div>
       )}

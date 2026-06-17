@@ -361,7 +361,7 @@ export default function TORPage() {
       </section>
 
       {/* 線上報名 */}
-      <section className="pb-16 md:pb-20 px-4 max-w-3xl mx-auto w-full">
+      <section id="tor-register" className="scroll-mt-24 pb-16 md:pb-20 px-4 max-w-3xl mx-auto w-full">
         {success ? (
           <div className="bg-green-50 border-2 border-green-200 rounded-3xl p-10 md:p-12 text-center shadow-lg">
             <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-6" />
