@@ -90,7 +90,8 @@ export default function CarnivalPage() {
     parentName: "",
     phone: "",
     email: "",
-    ticketCount: 1,
+    adultCount: 1,
+    childCount: 0,
     eventDate: ""
   });
   const [success, setSuccess] = useState(false);
@@ -114,11 +115,13 @@ export default function CarnivalPage() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
+  const totalHeads = formData.adultCount + formData.childCount;
+
   const baseTotal =
     visitorTicketType === "combo"
-      ? 300 * formData.ticketCount
+      ? 300 * formData.adultCount + 100 * formData.childCount
       : visitorTicketType === "single"
-        ? 200 * formData.ticketCount
+        ? 200 * formData.adultCount + 50 * formData.childCount
         : 0;
   const finalTotal = appliedPromo ? appliedPromo.finalAmount : baseTotal;
 
@@ -135,7 +138,8 @@ export default function CarnivalPage() {
         body: JSON.stringify({
           code,
           ticketType: visitorTicketType,
-          ticketCount: formData.ticketCount,
+          ticketCount: totalHeads,
+          baseAmount: baseTotal,
         }),
       });
       const data = await res.json();
@@ -167,7 +171,7 @@ export default function CarnivalPage() {
   const selectedDateInfo = publicDates?.find(a => a.date === formData.eventDate);
   const isSelectedDateFull = selectedDateInfo ? selectedDateInfo.remaining <= 0 : false;
   const isSelectedDateInsufficient = selectedDateInfo
-    ? selectedDateInfo.remaining < formData.ticketCount
+    ? selectedDateInfo.remaining < totalHeads
     : false;
 
   // For combo tickets, both 7/25 and 7/26 must each have enough remaining seats.
@@ -175,9 +179,9 @@ export default function CarnivalPage() {
   const day26 = publicDates?.find(a => a.date === "2026-07-26");
   const comboInsufficientDate =
     visitorTicketType === "combo"
-      ? day25 && day25.remaining < formData.ticketCount
+      ? day25 && day25.remaining < totalHeads
         ? day25
-        : day26 && day26.remaining < formData.ticketCount
+        : day26 && day26.remaining < totalHeads
           ? day26
           : null
       : null;
@@ -202,15 +206,21 @@ export default function CarnivalPage() {
       const tokens: string[] = [];
       let totalAmount = 0;
       let itemLabel = "";
+      const headLabel =
+        formData.childCount > 0
+          ? `大人 ${formData.adultCount}、兒童 ${formData.childCount}`
+          : `${formData.adultCount} 張`;
 
       if (visitorTicketType === "combo") {
-        const comboTotal = 300 * formData.ticketCount;
+        const comboTotal = 300 * formData.adultCount + 100 * formData.childCount;
         const result = await createComboMutation.mutateAsync({
           data: {
             parentName: formData.parentName,
             phone: formData.phone,
             email: formData.email || undefined,
-            ticketCount: formData.ticketCount,
+            adultCount: formData.adultCount,
+            childCount: formData.childCount,
+            ticketCount: totalHeads,
             eventDates: ["2026-07-25", "2026-07-26"],
             ticketType: "combo",
             amount: comboTotal,
@@ -222,15 +232,17 @@ export default function CarnivalPage() {
           if (r.qrToken) tokens.push(r.qrToken);
         }
         totalAmount = appliedPromo ? appliedPromo.finalAmount : comboTotal;
-        itemLabel = `兩日套票 × ${formData.ticketCount}（7/25 + 7/26）${appliedPromo ? ` · 折扣碼 ${appliedPromo.code}` : ""}`;
+        itemLabel = `兩日套票 × ${headLabel}（7/25 + 7/26）${appliedPromo ? ` · 折扣碼 ${appliedPromo.code}` : ""}`;
       } else {
-        const singleTotal = 200 * formData.ticketCount;
+        const singleTotal = 200 * formData.adultCount + 50 * formData.childCount;
         const r = await createMutation.mutateAsync({
           data: {
             parentName: formData.parentName,
             phone: formData.phone,
             email: formData.email || undefined,
-            ticketCount: formData.ticketCount,
+            adultCount: formData.adultCount,
+            childCount: formData.childCount,
+            ticketCount: totalHeads,
             eventDate: formData.eventDate,
             ticketType: "single",
             amount: singleTotal,
@@ -240,18 +252,18 @@ export default function CarnivalPage() {
         created.push(r);
         if (r.qrToken) tokens.push(r.qrToken);
         totalAmount = appliedPromo ? appliedPromo.finalAmount : singleTotal;
-        itemLabel = `單日票 × ${formData.ticketCount}（${formData.eventDate}）${appliedPromo ? ` · 折扣碼 ${appliedPromo.code}` : ""}`;
+        itemLabel = `單日票 × ${headLabel}（${formData.eventDate}）${appliedPromo ? ` · 折扣碼 ${appliedPromo.code}` : ""}`;
       }
 
       setConfirmedTokens(tokens);
       queryClient.invalidateQueries({ queryKey: getGetRegistrationAvailabilityQueryKey() });
       trackInitiateCheckout({
         value: totalAmount,
-        num_items: formData.ticketCount,
+        num_items: totalHeads,
         contents: [
           {
             id: visitorTicketType === "combo" ? "combo" : "single",
-            quantity: formData.ticketCount,
+            quantity: totalHeads,
           },
         ],
       });
@@ -439,7 +451,11 @@ export default function CarnivalPage() {
                 <div className="text-muted-foreground">票種：</div>
                 <div className="font-bold text-right text-primary">{visitorTicketType === "combo" ? "兩日套票 300 元" : "單日票 200 元"}</div>
                 <div className="text-muted-foreground">票數：</div>
-                <div className="font-bold text-right">{formData.ticketCount} 張</div>
+                <div className="font-bold text-right">
+                  {formData.childCount > 0
+                    ? `大人 ${formData.adultCount}、兒童 ${formData.childCount}（共 ${totalHeads} 位）`
+                    : `${formData.adultCount} 張`}
+                </div>
                 <div className="text-muted-foreground">入場日期：</div>
                 <div className="font-bold text-right text-primary">{visitorTicketType === "combo" ? "7/25 + 7/26" : formData.eventDate}</div>
               </div>
@@ -471,7 +487,7 @@ export default function CarnivalPage() {
             )}
 
             <button
-              onClick={() => { setSuccess(false); setVisitorTicketType(""); setConfirmedTokens([]); setFormData({ parentName: "", phone: "", email: "", ticketCount: 1, eventDate: "" }); }}
+              onClick={() => { setSuccess(false); setVisitorTicketType(""); setConfirmedTokens([]); setFormData({ parentName: "", phone: "", email: "", adultCount: 1, childCount: 0, eventDate: "" }); }}
               className="mt-10 text-green-600 font-bold hover:underline"
             >
               繼續購票
@@ -496,7 +512,7 @@ export default function CarnivalPage() {
                 <div className="space-y-4">
                   {publicDates?.map((day) => {
                     const isFull = day.remaining <= 0;
-                    const isInsufficient = !isFull && day.remaining < formData.ticketCount;
+                    const isInsufficient = !isFull && day.remaining < totalHeads;
                     const isLow = day.remaining > 0 && day.remaining < 50;
                     const isSelected = formData.eventDate === day.date;
                     return (
@@ -590,18 +606,45 @@ export default function CarnivalPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Ticket size={16} className="text-primary" /> 預購票數 <span className="text-destructive">*</span>
-                    </label>
-                    <select
-                      value={formData.ticketCount}
-                      onChange={e => { setFormData({...formData, ticketCount: parseInt(e.target.value)}); clearPromo(); }}
-                      className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg appearance-none cursor-pointer"
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
-                        <option key={num} value={num}>{num} 張</option>
-                      ))}
-                    </select>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                          <Ticket size={16} className="text-primary" /> 大人票數 <span className="text-destructive">*</span>
+                        </label>
+                        <select
+                          value={formData.adultCount}
+                          onChange={e => {
+                            const adultCount = parseInt(e.target.value);
+                            setFormData(f => ({ ...f, adultCount, childCount: Math.min(f.childCount, 10 - adultCount) }));
+                            clearPromo();
+                          }}
+                          data-testid="select-adult-count"
+                          className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg appearance-none cursor-pointer"
+                        >
+                          {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
+                            <option key={num} value={num}>{num} 位</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                          <Ticket size={16} className="text-primary" /> 兒童票數
+                        </label>
+                        <select
+                          value={formData.childCount}
+                          onChange={e => { setFormData(f => ({ ...f, childCount: parseInt(e.target.value) })); clearPromo(); }}
+                          data-testid="select-child-count"
+                          className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg appearance-none cursor-pointer"
+                        >
+                          {Array.from({ length: 11 - formData.adultCount }, (_, i) => i).map(num => (
+                            <option key={num} value={num}>{num} 位</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      兒童票適用未滿 6 歲、身高 115 公分以下；單日 50 元、兩日套票 100 元。每位兒童皆佔 1 個入場名額，每筆訂單至少 1 位大人。
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -679,7 +722,7 @@ export default function CarnivalPage() {
                       <AlertCircle className="shrink-0 mt-0.5" size={18} />
                       <p data-testid="combo-blocked-warning">
                         {comboInsufficientDate.date} 僅剩 {comboInsufficientDate.remaining} 張，
-                        無法滿足兩日套票 × {formData.ticketCount} 的數量。請改選單日票或減少張數。
+                        無法滿足兩日套票 × {totalHeads} 的數量。請改選單日票或減少張數。
                       </p>
                     </div>
                   )}
@@ -738,7 +781,7 @@ export default function CarnivalPage() {
                 items: [
                   "每日限量 500 名，建議提前線上購票以確保入場",
                   "入場請出示購票確認 QR Code（電子或紙本皆可）",
-                  "6 歲（含）以下兒童可免票隨大人入場",
+                  "兒童票（未滿 6 歲、身高 115 公分以下）單日 50 元、兩日套票 100 元，兒童亦佔 1 個入場名額",
                   "兩日套票須完成兩次報到（7/25 + 7/26 各一次）",
                   "每張票含價值 50 元精美報到小禮物（一票兌換一組）",
                   "每張票贈價值 500 元商城優惠套裝折扣碼（購票後以 Email 寄送）",

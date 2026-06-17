@@ -10,6 +10,7 @@ export const registrationsTable = pgTable(
     phone: text("phone").notNull(),
     email: text("email"),
     ticketCount: integer("ticket_count").notNull(),
+    childCount: integer("child_count").notNull().default(0),
     eventDate: date("event_date", { mode: "string" }).notNull(),
     ticketType: text("ticket_type"),
     amount: integer("amount"),

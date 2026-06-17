@@ -304,6 +304,7 @@ export function buildConfirmationEmailHtml(vars: {
   phone: string;
   eventDate: string;
   ticketCount: number;
+  childCount?: number;
   qrUrl: string;
   ticketType?: string | null;
 }): string {
@@ -317,6 +318,12 @@ export function buildConfirmationEmailHtml(vars: {
   const dateLabel = escapeHtml(formatEventDate(vars.eventDate));
   const qrUrl = encodeURI(vars.qrUrl);
   const isTournament = TOURNAMENT_TICKET_TYPES.includes(vars.ticketType ?? "");
+  const childCount = vars.childCount ?? 0;
+  const adultCount = vars.ticketCount - childCount;
+  const headcountLabel =
+    childCount > 0
+      ? `大人 ${adultCount} 位、兒童 ${childCount} 位（共 ${vars.ticketCount} 位）`
+      : `${vars.ticketCount} 張`;
   const isCompanion = vars.ticketType === "tournament-companion";
 
   const infoRow = (label: string, value: string) => `
@@ -415,7 +422,7 @@ export function buildConfirmationEmailHtml(vars: {
             ${infoRow("姓名", parentName)}
             ${infoRow("聯絡電話", phone)}
             ${infoRow("入場日期", dateLabel)}
-            ${infoRow("票數", `${vars.ticketCount} 張`)}
+            ${infoRow("票數", headcountLabel)}
           </table>
         </td></tr>
       </table>
@@ -534,6 +541,7 @@ export function buildRegistrationVars(reg: {
   phone: string;
   eventDate: string;
   ticketCount: number;
+  childCount?: number | null;
   qrToken: string | null;
   ticketType?: string | null;
 }): RegistrationEmailVars {
@@ -542,6 +550,7 @@ export function buildRegistrationVars(reg: {
     phone: reg.phone,
     eventDate: reg.eventDate,
     ticketCount: reg.ticketCount,
+    childCount: reg.childCount ?? 0,
     qrUrl: reg.qrToken ? getQrImageUrl(reg.qrToken) : "",
     ticketType: reg.ticketType ?? "",
   };

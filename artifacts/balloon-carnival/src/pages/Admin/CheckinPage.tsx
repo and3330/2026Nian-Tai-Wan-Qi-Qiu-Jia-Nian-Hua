@@ -8,6 +8,7 @@ type Registration = {
   phone: string;
   email: string | null;
   ticketCount: number;
+  childCount?: number;
   eventDate: string;
   qrToken: string | null;
   checkedInAt: string | null;
@@ -257,8 +258,12 @@ export default function CheckinPage() {
                   <div className="text-muted-foreground">Email：</div>
                   <div className="font-bold break-all">{result.reg.email}</div>
                 </>)}
-                <div className="text-muted-foreground">票數：</div>
-                <div className="font-bold">{result.reg.ticketCount} 張</div>
+                <div className="text-muted-foreground">入場人數：</div>
+                <div className="font-bold">
+                  {result.reg.childCount && result.reg.childCount > 0
+                    ? `共 ${result.reg.ticketCount} 位（大人 ${result.reg.ticketCount - result.reg.childCount}、兒童 ${result.reg.childCount}）`
+                    : `${result.reg.ticketCount} 位`}
+                </div>
                 <div className="text-muted-foreground">入場日期：</div>
                 <div className="font-bold text-primary">{result.reg.eventDate}</div>
               </div>

@@ -1,5 +1,7 @@
 - [Confirmation email rendering](confirmation-email.md) — confirmation HTML is code-owned (not admin-editable body); always escapeHtml user data; QR needs a live registration row.
 - [Payment-to-entry lifecycle rules](payment-entry-lifecycle.md) — admission requires paid (null amount ≠ free); QR email only after payment; paid-transition must be atomic+idempotent; combo = one row/QR per day.
+- [Carnival ticket pricing model](carnival-pricing.md) — adult/child tiers; ticketCount=total heads (capacity auto-includes children); promo validate needs authoritative baseAmount for mixed-price orders.
+- [lib/db type generation](monorepo-db-typegen.md) — after a schema column change run `pnpm run typecheck:libs` (tsc --build) or api-server tsc reports the new column as missing (stale emitted .d.ts).
 - [Stripe webhook path mismatch](stripe-webhook-path.md) — webhook route must be `/api/payments/stripe/webhook` to match Stripe dashboard + convention; mismatch silently 404s → unconfirmed orders + duplicates.
 - [Email QR base URL](email-qr-base-url.md) — email QR `<img>` base must be stable public domain (never ephemeral dev domain); always add a fallback link; don't use pure CID (Gmail blocks it).
 - [Order deletion cleanup](order-deletion-cleanup.md) — orders link by paymentRef string (no FK); deleting an order must transactionally remove registrations + payment_transactions + invoices + refund_requests.
