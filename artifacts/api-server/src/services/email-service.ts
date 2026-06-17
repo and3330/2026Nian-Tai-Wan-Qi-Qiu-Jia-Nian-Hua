@@ -169,8 +169,9 @@ export const EVENT_INFO = {
 export const SHOP_COUPON = {
   title: "價值 500 元 商城優惠折扣套裝",
   code: "2026balloon",
+  url: "https://cmsedu-life.com/",
   usage:
-    "於 CM 生活＋平台預約全台冷氣清潔服務、洗衣機清潔服務，結帳即享 500 元折扣優惠券。",
+    "於 CM 生活＋平台（cmsedu-life.com）預約全台冷氣清潔服務、洗衣機清潔服務，結帳輸入優惠券碼即享 500 元折扣優惠。",
 } as const;
 
 export interface SendEmailResult {
@@ -394,6 +395,13 @@ export function buildConfirmationEmailHtml(vars: {
             </tr>
           </table>
           <div style="color:${ink};font-size:14px;line-height:1.7;margin-top:12px;">📌 使用方式：${escapeHtml(SHOP_COUPON.usage)}</div>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:14px;">
+            <tr>
+              <td style="background:#b45309;border-radius:10px;">
+                <a href="${escapeHtml(SHOP_COUPON.url)}" target="_blank" style="display:inline-block;padding:11px 22px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">前往 CM 生活＋ 預約服務 →</a>
+              </td>
+            </tr>
+          </table>
         </td></tr>
       </table>
     </td>
