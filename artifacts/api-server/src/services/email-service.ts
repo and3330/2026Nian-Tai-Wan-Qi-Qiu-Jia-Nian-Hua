@@ -163,6 +163,16 @@ export const EVENT_INFO = {
   ],
 } as const;
 
+// Shared gift coupon attached to every purchase-confirmation email
+// (「禮物 Coupon 券專區」). A single code for all buyers — value provided by the
+// organizer. Update here if the offer changes.
+export const SHOP_COUPON = {
+  title: "價值 500 元 商城優惠折扣套裝",
+  code: "2026balloon",
+  usage:
+    "於 CM 生活＋平台預約全台冷氣清潔服務、洗衣機清潔服務，結帳即享 500 元折扣優惠券。",
+} as const;
+
 export interface SendEmailResult {
   delivered: boolean;
   mode: EmailMode;
@@ -363,6 +373,27 @@ export function buildConfirmationEmailHtml(vars: {
             2. 出示本封 email 中的 QR Code（手機畫面或列印皆可）<br/>
             3. 工作人員掃描後即可入場，${EVENT_INFO.openTime}
           </div>
+        </td></tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- Gift coupon (禮物 Coupon 券專區) -->
+  <tr>
+    <td style="padding:16px 32px 4px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:18px 20px;">
+        <tr><td>
+          <div style="font-size:13px;font-weight:800;color:#b45309;letter-spacing:1px;margin-bottom:8px;">🎁 禮物 Coupon 券專區</div>
+          <div style="color:${ink};font-size:15px;font-weight:700;margin-bottom:12px;">${escapeHtml(SHOP_COUPON.title)}</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="background:#ffffff;border:1px dashed #f59e0b;border-radius:10px;padding:12px 16px;text-align:center;">
+                <div style="font-size:12px;color:${muted};margin-bottom:4px;">優惠券碼</div>
+                <div style="font-size:22px;font-weight:800;letter-spacing:2px;color:#b45309;font-family:'Courier New',Consolas,monospace;">${escapeHtml(SHOP_COUPON.code)}</div>
+              </td>
+            </tr>
+          </table>
+          <div style="color:${ink};font-size:14px;line-height:1.7;margin-top:12px;">📌 使用方式：${escapeHtml(SHOP_COUPON.usage)}</div>
         </td></tr>
       </table>
     </td>
