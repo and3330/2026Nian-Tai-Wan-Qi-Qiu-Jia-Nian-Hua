@@ -163,6 +163,16 @@ export const EVENT_INFO = {
   ],
 } as const;
 
+// 戰鬥陀螺賽 schedule shown in the confirmation email for tournament tickets.
+export const TOURNAMENT_INFO = {
+  date: "2026/07/26（日）",
+  checkin: "11:00 – 12:30",
+  venue: "臺北瓶蓋工廠 M 棟",
+  start: "13:00 開賽",
+} as const;
+
+const TOURNAMENT_TICKET_TYPES = ["tournament", "tournament-companion"];
+
 // Shared gift coupon attached to every purchase-confirmation email
 // (「禮物 Coupon 券專區」). A single code for all buyers — value provided by the
 // organizer. Update here if the offer changes.
@@ -264,21 +274,49 @@ export function buildConfirmationEmailHtml(vars: {
   eventDate: string;
   ticketCount: number;
   qrUrl: string;
+  ticketType?: string | null;
 }): string {
   const coral = "#EF5739";
   const yellow = "#FFB50A";
   const ink = "#1f2933";
   const muted = "#6b7280";
+  const indigo = "#4338ca";
   const parentName = escapeHtml(vars.parentName);
   const phone = escapeHtml(vars.phone);
   const dateLabel = escapeHtml(formatEventDate(vars.eventDate));
   const qrUrl = encodeURI(vars.qrUrl);
+  const isTournament = TOURNAMENT_TICKET_TYPES.includes(vars.ticketType ?? "");
+  const isCompanion = vars.ticketType === "tournament-companion";
 
   const infoRow = (label: string, value: string) => `
     <tr>
       <td style="padding:8px 0;color:${muted};font-size:14px;width:96px;vertical-align:top;">${label}</td>
       <td style="padding:8px 0;color:${ink};font-size:15px;font-weight:700;vertical-align:top;">${value}</td>
     </tr>`;
+
+  const tournamentBlock = isTournament
+    ? `
+  <tr>
+    <td style="padding:16px 32px 4px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:14px;padding:18px 20px;">
+        <tr><td>
+          <div style="font-size:13px;font-weight:800;color:${indigo};letter-spacing:1px;margin-bottom:8px;">🌀 戰鬥陀螺賽資訊${isCompanion ? "（隨同入場票）" : "（參賽者）"}</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${infoRow("比賽日期", TOURNAMENT_INFO.date)}
+            ${infoRow("報到時間", TOURNAMENT_INFO.checkin)}
+            ${infoRow("報到地點", TOURNAMENT_INFO.venue)}
+            ${infoRow("開賽時間", TOURNAMENT_INFO.start)}
+          </table>
+          <div style="color:${ink};font-size:13px;line-height:1.7;margin-top:10px;">${
+            isCompanion
+              ? "本票券為隨同一般入場票，可於 7/26 公開場入場並一同觀賽，無參賽資格。"
+              : "請於報到時間內憑本 QR Code 完成報到，逾時恐影響賽程安排。"
+          }</div>
+        </td></tr>
+      </table>
+    </td>
+  </tr>`
+    : "";
 
   const transportItems = EVENT_INFO.transport
     .map(
@@ -352,6 +390,8 @@ export function buildConfirmationEmailHtml(vars: {
       </table>
     </td>
   </tr>
+
+  ${tournamentBlock}
 
   <!-- QR -->
   <tr>
@@ -455,6 +495,7 @@ export type RegistrationEmailVars = {
   eventDate: string;
   ticketCount: number;
   qrUrl: string;
+  ticketType: string;
 } & Record<string, string | number>;
 
 export function buildRegistrationVars(reg: {
@@ -463,6 +504,7 @@ export function buildRegistrationVars(reg: {
   eventDate: string;
   ticketCount: number;
   qrToken: string | null;
+  ticketType?: string | null;
 }): RegistrationEmailVars {
   return {
     parentName: reg.parentName,
@@ -470,6 +512,7 @@ export function buildRegistrationVars(reg: {
     eventDate: reg.eventDate,
     ticketCount: reg.ticketCount,
     qrUrl: reg.qrToken ? getQrImageUrl(reg.qrToken) : "",
+    ticketType: reg.ticketType ?? "",
   };
 }
 

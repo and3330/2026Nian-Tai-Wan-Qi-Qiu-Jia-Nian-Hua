@@ -14,6 +14,7 @@ import NewsPage from "@/pages/NewsPage";
 import NewsDetailPage from "@/pages/NewsDetailPage";
 import ContestantsPage from "@/pages/ContestantsPage";
 import CarnivalPage from "@/pages/CarnivalPage";
+import TORPage from "@/pages/TORPage";
 import SponsorsPage from "@/pages/SponsorsPage";
 import AdGuidePage from "@/pages/AdGuidePage";
 import PaymentResultPage from "@/pages/PaymentResultPage";
@@ -24,6 +25,7 @@ import AdminLayout from "@/pages/AdminLayout";
 import AdminLoginPage from "@/pages/AdminLoginPage";
 import AdminDashboard from "@/pages/Admin/Dashboard";
 import AdminOrdersManage from "@/pages/Admin/OrdersManage";
+import AdminTournamentManage from "@/pages/Admin/TournamentManage";
 import AdminNewsManage from "@/pages/Admin/NewsManage";
 import AdminContestantsManage from "@/pages/Admin/ContestantsManage";
 import AdminSponsorsManage from "@/pages/Admin/SponsorsManage";
@@ -69,6 +71,8 @@ function Router() {
         <Route path="/news" component={NewsPage} />
         <Route path="/news/:id" component={NewsDetailPage} />
         <Route path="/carnival" component={CarnivalPage} />
+        <Route path="/TOR" component={TORPage} />
+        <Route path="/tor" component={TORPage} />
         <Route path="/contestants" component={ContestantsPage} />
         <Route path="/conference">{() => <Redirect to="/contestants" />}</Route>
         <Route path="/sponsors" component={SponsorsPage} />
@@ -82,6 +86,9 @@ function Router() {
         </Route>
         <Route path="/admin/orders">
           {() => <AdminLayout><AdminOrdersManage /></AdminLayout>}
+        </Route>
+        <Route path="/admin/tournament">
+          {() => <AdminLayout><AdminTournamentManage /></AdminLayout>}
         </Route>
         <Route path="/admin/news">
           {() => <AdminLayout><AdminNewsManage /></AdminLayout>}

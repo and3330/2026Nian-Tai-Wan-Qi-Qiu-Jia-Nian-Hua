@@ -46,7 +46,13 @@ const TICKET_TYPE_LABELS: Record<string, string> = {
   "four-day-pass": "四日通行證",
   workshop: "大師工作坊",
   competition: "交流大賽",
+  tournament: "戰鬥陀螺賽參賽",
+  "tournament-companion": "戰鬥陀螺賽隨同票",
 };
+
+// Tournament legs live on 7/26 but belong to their own 128-slot inventory, so
+// they must be excluded wherever the 500/day carnival capacity is computed.
+const isCarnivalLeg = sql`(${registrationsTable.ticketType} IS NULL OR ${registrationsTable.ticketType} NOT IN ('tournament', 'tournament-companion'))`;
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   paid: "已付款",
   pending: "處理中",
@@ -283,6 +289,7 @@ router.get("/admin/stats", async (req, res): Promise<void> => {
       total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)`,
     })
     .from(registrationsTable)
+    .where(isCarnivalLeg)
     .groupBy(registrationsTable.eventDate);
 
   const counts: Record<string, number> = {};
@@ -311,7 +318,7 @@ router.get("/admin/sales-overview", async (req, res): Promise<void> => {
       total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)`,
     })
     .from(registrationsTable)
-    .where(sql`${registrationsTable.paymentStatus} <> 'failed'`)
+    .where(sql`${registrationsTable.paymentStatus} <> 'failed' AND ${isCarnivalLeg}`)
     .groupBy(registrationsTable.eventDate);
 
   const sessionRegistered: Record<string, number> = {};

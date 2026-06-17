@@ -25,3 +25,8 @@ NewebPay, Stripe, and the admin bank-transfer confirm all call the same paid-tra
 
 ## Combo = one registration row per day
 A two-day combo is multiple registration rows sharing one `paymentRef`, each with its own `qrToken` and `eventDate`. The buyer needs ALL legs' QRs, so confirmation emails must be sent per leg (buyer email is copied onto every leg).
+
+## Tournament (戰鬥陀螺賽) is a separate inventory from carnival admission
+Tournament rows live on the same date (7/26) as general carnival admission but belong to their own cap (128 competitors), tracked by `ticketType IN ('tournament','tournament-companion')`. Participant legs (`tournament`, 600, includes own entry) consume the 128 cap; companion legs (`tournament-companion`, 200, general 7/26 entry) do NOT.
+**Why:** Mixing them either lets tournament sales eat the 500/day general cap or lets companions falsely fill competitor slots.
+**How to apply:** Anywhere the 500/day carnival capacity is computed (availability endpoints, transactional `countForDate`, admin `/admin/stats` and `/admin/sales-overview` session-capacity), the query MUST exclude tournament leg types. Revenue/trend/paid-total aggregates intentionally still INCLUDE tournament sales. The 128 competitor count sums only `ticketType='tournament'`. Capacity check is serialized with an advisory lock keyed `"tournament"` + re-count inside the insert transaction.

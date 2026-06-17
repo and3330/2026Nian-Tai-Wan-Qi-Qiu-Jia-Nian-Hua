@@ -45,6 +45,8 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 const TICKET_TYPE_LABELS: Record<string, string> = {
   single: "單日票",
   combo: "兩日套票",
+  tournament: "戰鬥陀螺賽參賽",
+  "tournament-companion": "戰鬥陀螺賽隨同票",
 };
 
 type OrderStatus =

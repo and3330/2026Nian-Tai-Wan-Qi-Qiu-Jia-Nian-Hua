@@ -47,6 +47,19 @@ function parseRegistrationBody(body: any): { ok: true; data: CreateRegistrationI
 const EVENT_DATES = ["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"];
 const DAILY_CAPACITY = 500;
 
+// 戰鬥陀螺賽（線上報名）— a separate inventory from the 500-per-day carnival
+// admission. Tournament rows live on 7/26 too, but are counted independently so
+// they neither consume nor are blocked by the general 500 daily capacity.
+const TOURNAMENT_DATE = "2026-07-26";
+const TOURNAMENT_CAPACITY = 128;
+const TOURNAMENT_PARTICIPANT_TYPE = "tournament";
+const TOURNAMENT_COMPANION_TYPE = "tournament-companion";
+
+// SQL fragment: a row belongs to the general carnival inventory (i.e. it is NOT
+// a tournament participant/companion leg). Used everywhere the 500-per-day cap
+// is computed so tournament sales stay isolated.
+const isCarnivalLeg = sql`(${registrationsTable.ticketType} IS NULL OR ${registrationsTable.ticketType} NOT IN (${TOURNAMENT_PARTICIPANT_TYPE}, ${TOURNAMENT_COMPANION_TYPE}))`;
+
 async function getDateCounts(): Promise<Record<string, number>> {
   // Refunded registrations release their seats back to inventory.
   const rows = await db
@@ -55,7 +68,7 @@ async function getDateCounts(): Promise<Record<string, number>> {
       total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)`,
     })
     .from(registrationsTable)
-    .where(sql`${registrationsTable.paymentStatus} <> 'refunded'`)
+    .where(sql`${registrationsTable.paymentStatus} <> 'refunded' AND ${isCarnivalLeg}`)
     .groupBy(registrationsTable.eventDate);
 
   const counts: Record<string, number> = {};
@@ -85,6 +98,9 @@ const PRICE_BOOK: Record<string, number> = {
   "four-day-pass": 12000,
   workshop: 8000,
   competition: 5000,
+  // 戰鬥陀螺賽：參賽者本人（含 7/26 入場 QR）600、隨同一般門票 200。
+  tournament: 600,
+  "tournament-companion": 200,
 };
 
 function resolveAmount(
@@ -118,7 +134,19 @@ async function countForDate(tx: DbExecutor, date: string): Promise<number> {
   const [row] = await tx
     .select({ total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)` })
     .from(registrationsTable)
-    .where(sql`${registrationsTable.eventDate} = ${date} AND ${registrationsTable.paymentStatus} <> 'refunded'`);
+    .where(sql`${registrationsTable.eventDate} = ${date} AND ${registrationsTable.paymentStatus} <> 'refunded' AND ${isCarnivalLeg}`);
+  return Number(row?.total ?? 0);
+}
+
+// Counts confirmed-or-pending tournament participants (the 600-tier "本人"
+// legs). Companion general tickets do NOT consume the 128-slot competitor cap.
+async function countTournamentParticipants(tx: DbExecutor | typeof db): Promise<number> {
+  const [row] = await tx
+    .select({ total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)` })
+    .from(registrationsTable)
+    .where(
+      sql`${registrationsTable.ticketType} = ${TOURNAMENT_PARTICIPANT_TYPE} AND ${registrationsTable.paymentStatus} <> 'refunded'`,
+    );
   return Number(row?.total ?? 0);
 }
 
@@ -353,6 +381,118 @@ router.post("/registrations/combo", async (req, res): Promise<void> => {
   } catch (err) {
     logger.error({ err }, "[Registration] combo create failed");
     res.status(500).json({ error: "套票報名建立失敗，請稍後再試" });
+  }
+});
+
+// Remaining online slots for the 戰鬥陀螺賽 (128-competitor cap, isolated from
+// the 500/day carnival admission).
+router.get("/registrations/tournament/availability", async (req, res): Promise<void> => {
+  const registered = await countTournamentParticipants(db);
+  const remaining = Math.max(0, TOURNAMENT_CAPACITY - registered);
+  res.json({
+    capacity: TOURNAMENT_CAPACITY,
+    registered,
+    remaining,
+    soldOut: remaining <= 0,
+  });
+});
+
+// Atomic 戰鬥陀螺賽 order: one row per participant ("本人", 600, own 7/26 entry
+// QR) and one row per companion ("隨同一般門票", 200). All legs share a paymentRef
+// once payment is initiated. The 128-competitor cap is enforced under a per-key
+// advisory lock so concurrent buyers serialize. Tournament orders are always
+// paid online — confirmation + QR emails are sent after payment (markPaymentPaid).
+router.post("/registrations/tournament", async (req, res): Promise<void> => {
+  const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : null;
+  if (!body) {
+    res.status(400).json({ error: "Invalid body" });
+    return;
+  }
+
+  const parentName = typeof body.parentName === "string" ? body.parentName.trim() : "";
+  const phone = typeof body.phone === "string" ? body.phone.trim() : "";
+  if (!parentName) {
+    res.status(400).json({ error: "parentName is required" });
+    return;
+  }
+  if (!phone) {
+    res.status(400).json({ error: "phone is required" });
+    return;
+  }
+  const emailRaw = body.email;
+  let email: string | null = null;
+  if (emailRaw != null && emailRaw !== "") {
+    if (typeof emailRaw !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw.trim())) {
+      res.status(400).json({ error: "email format is invalid" });
+      return;
+    }
+    email = emailRaw.trim();
+  }
+
+  const participantCount = Number(body.participantCount);
+  const companionCount = body.companionCount == null ? 0 : Number(body.companionCount);
+  if (!Number.isInteger(participantCount) || participantCount < 1 || participantCount > 10) {
+    res.status(400).json({ error: "participantCount must be between 1 and 10" });
+    return;
+  }
+  if (!Number.isInteger(companionCount) || companionCount < 0 || companionCount > 20) {
+    res.status(400).json({ error: "companionCount must be between 0 and 20" });
+    return;
+  }
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      await lockDate(tx, "tournament");
+      const current = await countTournamentParticipants(tx);
+      if (current + participantCount > TOURNAMENT_CAPACITY) {
+        return { soldOut: true as const, remaining: Math.max(0, TOURNAMENT_CAPACITY - current) };
+      }
+
+      const inserted: Array<typeof registrationsTable.$inferSelect> = [];
+      const legs: Array<{ ticketType: string; amount: number }> = [
+        ...Array.from({ length: participantCount }, () => ({
+          ticketType: TOURNAMENT_PARTICIPANT_TYPE,
+          amount: PRICE_BOOK[TOURNAMENT_PARTICIPANT_TYPE],
+        })),
+        ...Array.from({ length: companionCount }, () => ({
+          ticketType: TOURNAMENT_COMPANION_TYPE,
+          amount: PRICE_BOOK[TOURNAMENT_COMPANION_TYPE],
+        })),
+      ];
+
+      for (const leg of legs) {
+        const qrToken = crypto.randomBytes(16).toString("hex");
+        const [reg] = await tx
+          .insert(registrationsTable)
+          .values({
+            parentName,
+            phone,
+            email,
+            ticketCount: 1,
+            eventDate: TOURNAMENT_DATE,
+            ticketType: leg.ticketType,
+            amount: leg.amount,
+            qrToken,
+          })
+          .returning();
+        inserted.push(reg);
+      }
+      return { soldOut: false as const, registrations: inserted };
+    });
+
+    if (result.soldOut) {
+      res.status(409).json({
+        error: `戰鬥陀螺賽名額已額滿，剩餘 ${result.remaining} 個名額`,
+        code: "SOLD_OUT",
+        remaining: result.remaining,
+      });
+      return;
+    }
+
+    res.status(201).json({ registrations: result.registrations });
+  } catch (err) {
+    logger.error({ err }, "[Registration] tournament create failed");
+    res.status(500).json({ error: "戰鬥陀螺賽報名建立失敗，請稍後再試" });
   }
 });
 
