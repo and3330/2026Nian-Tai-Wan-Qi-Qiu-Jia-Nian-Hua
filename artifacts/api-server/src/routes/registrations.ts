@@ -420,48 +420,43 @@ router.post("/registrations/tournament", async (req, res): Promise<void> => {
     return;
   }
   const emailRaw = body.email;
-  let email: string | null = null;
-  if (emailRaw != null && emailRaw !== "") {
-    if (typeof emailRaw !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw.trim())) {
-      res.status(400).json({ error: "email format is invalid" });
-      return;
-    }
-    email = emailRaw.trim();
-  }
-
-  const participantCount = Number(body.participantCount);
-  const companionCount = body.companionCount == null ? 0 : Number(body.companionCount);
-  if (!Number.isInteger(participantCount) || participantCount < 1 || participantCount > 10) {
-    res.status(400).json({ error: "participantCount must be between 1 and 10" });
+  if (typeof emailRaw !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw.trim())) {
+    res.status(400).json({ error: "email is required and must be valid" });
     return;
   }
-  if (!Number.isInteger(companionCount) || companionCount < 0 || companionCount > 20) {
-    res.status(400).json({ error: "companionCount must be between 0 and 20" });
+  const email = emailRaw.trim();
+
+  // Two purchase paths share this endpoint:
+  //  - "participant": the registrant competes (1 own entry, 600) and may add N
+  //    companion/spectator tickets. Consumes one slot of the 128 participant cap.
+  //  - "spectator": companion/observer-only purchase of N general entry tickets.
+  //    Independent of the 128 cap (and of the carnival 500/day cap).
+  const mode = body.mode === "spectator" ? "spectator" : body.mode === "participant" ? "participant" : null;
+  if (!mode) {
+    res.status(400).json({ error: "mode must be 'participant' or 'spectator'" });
+    return;
+  }
+  const companionCount = body.companionCount == null ? 0 : Number(body.companionCount);
+  const minCompanions = mode === "spectator" ? 1 : 0;
+  if (!Number.isInteger(companionCount) || companionCount < minCompanions || companionCount > 20) {
+    res.status(400).json({
+      error: `companionCount must be between ${minCompanions} and 20`,
+    });
     return;
   }
 
   try {
     const result = await db.transaction(async (tx) => {
-      await lockDate(tx, "tournament");
-      const current = await countTournamentParticipants(tx);
-      if (current + participantCount > TOURNAMENT_CAPACITY) {
-        return { soldOut: true as const, remaining: Math.max(0, TOURNAMENT_CAPACITY - current) };
-      }
-
       const inserted: Array<typeof registrationsTable.$inferSelect> = [];
-      const legs: Array<{ ticketType: string; amount: number }> = [
-        ...Array.from({ length: participantCount }, () => ({
-          ticketType: TOURNAMENT_PARTICIPANT_TYPE,
-          amount: PRICE_BOOK[TOURNAMENT_PARTICIPANT_TYPE],
-        })),
-        ...Array.from({ length: companionCount }, () => ({
-          ticketType: TOURNAMENT_COMPANION_TYPE,
-          amount: PRICE_BOOK[TOURNAMENT_COMPANION_TYPE],
-        })),
-      ];
 
-      for (const leg of legs) {
-        const qrToken = crypto.randomBytes(16).toString("hex");
+      // Participant leg: own entry. Serialize with an advisory lock and re-count
+      // inside the txn so the 128 cap cannot be oversold under concurrency.
+      if (mode === "participant") {
+        await lockDate(tx, "tournament");
+        const current = await countTournamentParticipants(tx);
+        if (current + 1 > TOURNAMENT_CAPACITY) {
+          return { soldOut: true as const, remaining: Math.max(0, TOURNAMENT_CAPACITY - current) };
+        }
         const [reg] = await tx
           .insert(registrationsTable)
           .values({
@@ -470,19 +465,40 @@ router.post("/registrations/tournament", async (req, res): Promise<void> => {
             email,
             ticketCount: 1,
             eventDate: TOURNAMENT_DATE,
-            ticketType: leg.ticketType,
-            amount: leg.amount,
-            qrToken,
+            ticketType: TOURNAMENT_PARTICIPANT_TYPE,
+            amount: PRICE_BOOK[TOURNAMENT_PARTICIPANT_TYPE],
+            qrToken: crypto.randomBytes(16).toString("hex"),
           })
           .returning();
         inserted.push(reg);
       }
+
+      // Companion/spectator leg: a SINGLE row with ticketCount = N carrying one
+      // QR that admits N people (matches the existing single-ticket model). The
+      // amount is the full N × unit price; payment sums per-leg amounts.
+      if (companionCount > 0) {
+        const [reg] = await tx
+          .insert(registrationsTable)
+          .values({
+            parentName,
+            phone,
+            email,
+            ticketCount: companionCount,
+            eventDate: TOURNAMENT_DATE,
+            ticketType: TOURNAMENT_COMPANION_TYPE,
+            amount: PRICE_BOOK[TOURNAMENT_COMPANION_TYPE] * companionCount,
+            qrToken: crypto.randomBytes(16).toString("hex"),
+          })
+          .returning();
+        inserted.push(reg);
+      }
+
       return { soldOut: false as const, registrations: inserted };
     });
 
     if (result.soldOut) {
       res.status(409).json({
-        error: `戰鬥陀螺賽名額已額滿，剩餘 ${result.remaining} 個名額`,
+        error: `戰鬥陀螺賽參賽名額已額滿，剩餘 ${result.remaining} 個名額`,
         code: "SOLD_OUT",
         remaining: result.remaining,
       });

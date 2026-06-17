@@ -53,12 +53,16 @@ export default function TournamentManage() {
     const participants = legs.filter((r) => r.ticketType === PARTICIPANT_TYPE);
     const companions = legs.filter((r) => r.ticketType === COMPANION_TYPE);
     const active = (r: Registration) => r.paymentStatus !== "refunded";
+    // A companion order is a single row carrying ticketCount = N (one QR for N
+    // people), so sum ticketCount rather than counting rows.
+    const sumTickets = (rows: Registration[]) =>
+      rows.reduce((n, r) => n + (r.ticketCount ?? 1), 0);
     return {
       participantTotal: participants.filter(active).length,
       participantPaid: participants.filter((r) => r.paymentStatus === "paid").length,
       participantCheckedIn: participants.filter((r) => r.checkedInAt).length,
-      companionTotal: companions.filter(active).length,
-      companionPaid: companions.filter((r) => r.paymentStatus === "paid").length,
+      companionTotal: sumTickets(companions.filter(active)),
+      companionPaid: sumTickets(companions.filter((r) => r.paymentStatus === "paid")),
     };
   }, [legs]);
 
