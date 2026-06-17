@@ -36,7 +36,7 @@ app.use(cookieParser());
 // Stripe webhook MUST receive the raw request body to verify the signature.
 // Register this route BEFORE express.json() / express.urlencoded() parsers.
 app.post(
-  "/api/stripe/webhook",
+  "/api/payments/stripe/webhook",
   express.raw({ type: "application/json" }),
   async (req, res) => {
     const signature = req.headers["stripe-signature"];
