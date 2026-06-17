@@ -27,6 +27,7 @@ import {
   AdminGetStatsResponse,
   AdminGetSalesOverviewResponse,
 } from "@workspace/api-zod";
+import { sendConfirmationEmail } from "../services/email-service";
 
 const router: IRouter = Router();
 
@@ -232,6 +233,45 @@ router.post("/admin/registrations/bulk-delete", async (req, res): Promise<void> 
   });
 
   res.json({ deletedCount, ordersDeleted: refs.length + standaloneIds.length });
+});
+
+// Resend the purchase-confirmation email (with entry QR) for the given
+// registration "legs". Each leg of a two-day combo carries its own QR, so the
+// caller passes every leg id and we resend per leg. Forced: bypasses the
+// once-only guard so admins can re-deliver to buyers who lost the email. Only
+// legs that already have a QR (i.e. paid) and an email actually send; others are
+// reported as skipped.
+router.post("/admin/registrations/resend-confirmation", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor")) return;
+
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
+  const cleanIds = Array.from(
+    new Set(
+      (ids ?? [])
+        .map((v: unknown) => Number(v))
+        .filter((n: number) => Number.isInteger(n) && n > 0),
+    ),
+  ) as number[];
+
+  if (cleanIds.length === 0) {
+    res.status(400).json({ error: "請提供要重新發送的訂單" });
+    return;
+  }
+
+  let sent = 0;
+  let skipped = 0;
+  let failed = 0;
+  for (const id of cleanIds) {
+    try {
+      const result = await sendConfirmationEmail(id, { force: true });
+      if (result?.delivered) sent += 1;
+      else skipped += 1;
+    } catch {
+      failed += 1;
+    }
+  }
+
+  res.json({ sent, skipped, failed });
 });
 
 router.get("/admin/stats", async (req, res): Promise<void> => {

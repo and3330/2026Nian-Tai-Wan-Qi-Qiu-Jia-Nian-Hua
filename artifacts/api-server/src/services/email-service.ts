@@ -434,15 +434,19 @@ export function buildRegistrationVars(reg: {
   };
 }
 
-export async function sendConfirmationEmail(registrationId: number): Promise<SendEmailResult | null> {
+export async function sendConfirmationEmail(
+  registrationId: number,
+  opts?: { force?: boolean },
+): Promise<SendEmailResult | null> {
   const [reg] = await db
     .select()
     .from(registrationsTable)
     .where(eq(registrationsTable.id, registrationId))
     .limit(1);
   if (!reg || !reg.email || !reg.qrToken) return null;
-  // Idempotent: never send the confirmation twice for the same registration.
-  if (reg.confirmationEmailSentAt) return null;
+  // Idempotent: never send the confirmation twice for the same registration —
+  // unless an admin explicitly forces a resend (e.g. buyer lost the email).
+  if (!opts?.force && reg.confirmationEmailSentAt) return null;
   const tpl = await getTemplate("confirmation");
   const vars = buildRegistrationVars(reg);
   const result = await sendEmail({

@@ -15,6 +15,7 @@ import {
   XCircle,
   Undo2,
   Trash2,
+  Send,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -169,6 +170,7 @@ export default function OrdersManage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isBulkConfirming, setIsBulkConfirming] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   const orders = useMemo(
     () => buildOrders(registrations ?? []),
@@ -219,6 +221,12 @@ export default function OrdersManage() {
 
   const selectedAwaiting = selectedOrders.filter(
     (o) => o.paymentStatus === "awaiting_transfer" && o.isRealRef,
+  );
+
+  // Only paid orders have a QR + a confirmation email worth resending, and we
+  // need an email address to send to.
+  const selectedResendable = selectedOrders.filter(
+    (o) => normalizeStatus(o.paymentStatus) === "paid" && Boolean(o.email),
   );
 
   const allFilteredSelected =
@@ -319,6 +327,49 @@ export default function OrdersManage() {
       }
     } finally {
       setIsBulkConfirming(false);
+    }
+  };
+
+  const handleBulkResend = async () => {
+    const targets = selectedResendable;
+    if (targets.length === 0) return;
+    if (
+      !window.confirm(
+        `確定要重新發送這 ${targets.length} 筆訂單的購票確認信（含入場 QR Code）嗎？\n系統會寄送至每筆訂單的 Email；兩日套票會分別寄出兩天的 QR Code。`,
+      )
+    ) {
+      return;
+    }
+    setIsResending(true);
+    try {
+      const ids = targets.flatMap((o) => o.legs.map((l) => l.id));
+      const res = await fetch("/api/admin/registrations/resend-confirmation", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "重新發送失敗");
+      }
+      const data = (await res.json().catch(() => ({}))) as {
+        sent?: number;
+        skipped?: number;
+        failed?: number;
+      };
+      setSelected(new Set());
+      window.alert(
+        `已重新發送 ${data.sent ?? 0} 封確認信。` +
+          (data.skipped ? `\n略過 ${data.skipped} 封（無 QR 或無 Email）。` : "") +
+          (data.failed ? `\n失敗 ${data.failed} 封，請稍後再試。` : ""),
+      );
+    } catch (err) {
+      window.alert(
+        err instanceof Error ? err.message : "重新發送失敗，請稍後再試",
+      );
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -483,7 +534,7 @@ export default function OrdersManage() {
             {selectedAwaiting.length > 0 && (
               <button
                 onClick={handleBulkConfirm}
-                disabled={isBulkConfirming || isBulkDeleting}
+                disabled={isBulkConfirming || isBulkDeleting || isResending}
                 className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 <Banknote size={16} />
@@ -492,9 +543,21 @@ export default function OrdersManage() {
                   : `批量確認收款（${selectedAwaiting.length}）`}
               </button>
             )}
+            {selectedResendable.length > 0 && (
+              <button
+                onClick={handleBulkResend}
+                disabled={isResending || isBulkDeleting || isBulkConfirming}
+                className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                <Send size={16} />
+                {isResending
+                  ? "發送中..."
+                  : `批量重新發送 QR（${selectedResendable.length}）`}
+              </button>
+            )}
             <button
               onClick={handleBulkDelete}
-              disabled={isBulkDeleting || isBulkConfirming}
+              disabled={isBulkDeleting || isBulkConfirming || isResending}
               className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors flex items-center gap-2"
             >
               <Trash2 size={16} />
