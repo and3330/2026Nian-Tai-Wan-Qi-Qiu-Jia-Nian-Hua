@@ -294,6 +294,96 @@ router.post("/admin/registrations/set-vip", async (req, res): Promise<void> => {
   res.json({ updated, isVip });
 });
 
+// Directly refund a paid order from the back office (manual / offline refund).
+// Marks every leg sharing the order's paymentRef as "refunded", which releases
+// its seats back to capacity (all capacity queries exclude 'refunded'). This
+// does NOT call the payment gateway — the actual money is refunded offline by
+// staff via NewebPay / Stripe, matching the existing refund-request approval
+// flow. Refuses orders that are already refunded, not yet paid, or have any
+// checked-in leg. Applied to the whole order. Editor+ only.
+router.post("/admin/registrations/refund", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor")) return;
+
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
+  const cleanIds = Array.from(
+    new Set(
+      (ids ?? [])
+        .map((v: unknown) => Number(v))
+        .filter((n: number) => Number.isInteger(n) && n > 0),
+    ),
+  ) as number[];
+
+  if (cleanIds.length === 0) {
+    res.status(400).json({ error: "請提供要退票的訂單" });
+    return;
+  }
+
+  // Resolve which orders these registrations belong to, then expand to every
+  // leg of those orders so a combo refunds both days together.
+  const seeds = await db
+    .select({ id: registrationsTable.id, paymentRef: registrationsTable.paymentRef })
+    .from(registrationsTable)
+    .where(inArray(registrationsTable.id, cleanIds));
+
+  if (seeds.length === 0) {
+    res.status(404).json({ error: "找不到訂單" });
+    return;
+  }
+
+  const refs = Array.from(
+    new Set(seeds.map((r) => r.paymentRef).filter((r): r is string => Boolean(r))),
+  );
+  const standaloneIds = seeds.filter((r) => !r.paymentRef).map((r) => r.id);
+
+  const orderCond =
+    refs.length > 0 && standaloneIds.length > 0
+      ? or(
+          inArray(registrationsTable.paymentRef, refs),
+          inArray(registrationsTable.id, standaloneIds),
+        )
+      : refs.length > 0
+        ? inArray(registrationsTable.paymentRef, refs)
+        : inArray(registrationsTable.id, standaloneIds);
+
+  const legs = await db
+    .select({
+      id: registrationsTable.id,
+      paymentStatus: registrationsTable.paymentStatus,
+      checkedInAt: registrationsTable.checkedInAt,
+    })
+    .from(registrationsTable)
+    .where(orderCond);
+
+  if (legs.some((l) => l.checkedInAt)) {
+    res.status(400).json({ error: "已入場的票券無法退票" });
+    return;
+  }
+  if (legs.every((l) => l.paymentStatus === "refunded")) {
+    res.status(400).json({ error: "此訂單已退款" });
+    return;
+  }
+  if (!legs.some((l) => l.paymentStatus === "paid")) {
+    res.status(400).json({ error: "僅能對「已付款」訂單退票" });
+    return;
+  }
+
+  let updated = 0;
+  await db.transaction(async (tx) => {
+    const updatedRows = await tx
+      .update(registrationsTable)
+      .set({ paymentStatus: "refunded" })
+      .where(and(orderCond, sql`${registrationsTable.paymentStatus} <> 'refunded'`))
+      .returning({ id: registrationsTable.id });
+    updated = updatedRows.length;
+  });
+
+  logger.info(
+    { refs, standaloneIds, updated },
+    "[refund] admin direct refund from orders manage",
+  );
+  res.json({ updated, ordersRefunded: refs.length + standaloneIds.length });
+});
+
 // Resend the purchase-confirmation email (with entry QR) for the given
 // registration "legs". Each leg of a two-day combo carries its own QR, so the
 // caller passes every leg id and we resend per leg. Forced: bypasses the
