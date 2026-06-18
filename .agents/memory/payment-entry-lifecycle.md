@@ -33,6 +33,11 @@ Before `/payments/initiate` creates a NEW NewebPay order, it must check whether 
 **Why:** Our `paymentStatus` lags the gateway — NewebPay charges the card, then confirms asynchronously (notify/return). A buyer who retries in that window passes the `paymentStatus !== 'paid'` guard and gets charged a second time. This was the root cause of "付款成功卻要重複刷一次".
 **How to apply:** Only fires on retries (first-time orders have null `paymentRef`, so no added latency). On a transient QueryTradeInfo failure, log and fall through to allow the legitimate retry (don't hard-block). Only the local `paymentStatus === 'paid'` short-circuit alone is insufficient.
 
+## Refund = status flip only; capacity release is implicit; money is offline
+Refunding an order (both the buyer-submitted refund-request approval AND the admin "退票" button in 訂單管理) just sets every leg's `paymentStatus = 'refunded'` for the whole order (by `paymentRef`). It does NOT call NewebPay/Stripe refund APIs — the actual money is returned offline by staff.
+**Why:** No gateway refund integration exists; both refund paths deliberately keep the same offline-money model so they behave identically.
+**How to apply:** Capacity is released purely because every capacity/availability query excludes `paymentStatus = 'refunded'` — so a refund needs no separate inventory write. Guard refunds: reject if any leg is checked in, if already fully refunded, or if not paid. Do the re-check + status flip in ONE transaction with `.for("update")` row locks so a concurrent check-in can't slip between guard and update. Admin direct refund is editor-only and expands a single leg id to the whole order before updating.
+
 ## Combo = one registration row per day
 A two-day combo is multiple registration rows sharing one `paymentRef`, each with its own `qrToken` and `eventDate`. The buyer needs ALL legs' QRs, so confirmation emails must be sent per leg (buyer email is copied onto every leg).
 

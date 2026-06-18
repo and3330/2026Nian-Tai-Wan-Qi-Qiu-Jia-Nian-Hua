@@ -172,6 +172,7 @@ export default function OrdersManage() {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [confirmingRef, setConfirmingRef] = useState<string | null>(null);
   const [markingPaidRef, setMarkingPaidRef] = useState<string | null>(null);
+  const [refundingRef, setRefundingRef] = useState<string | null>(null);
   const [vipBusyRef, setVipBusyRef] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -440,6 +441,37 @@ export default function OrdersManage() {
       window.alert(err instanceof Error ? err.message : "標記失敗，請稍後再試");
     } finally {
       setMarkingPaidRef(null);
+    }
+  };
+
+  const handleRefund = async (o: Order) => {
+    if (
+      !window.confirm(
+        `確定要將「${o.buyerName}」這筆訂單退票嗎？\n` +
+          `系統會將訂單狀態改為「已退款」，並釋放 ${o.ticketCount} 個入場名額。\n\n` +
+          `⚠️ 本操作僅更改系統狀態，不會自動退款。實際退款金額請另於金流後台（藍新／Stripe）或線下處理。`,
+      )
+    ) {
+      return;
+    }
+    setRefundingRef(o.ref);
+    try {
+      const ids = o.legs.map((l) => l.id);
+      const res = await fetch("/api/admin/registrations/refund", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "退票失敗");
+      }
+      await refetch();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "退票失敗，請稍後再試");
+    } finally {
+      setRefundingRef(null);
     }
   };
 
@@ -887,6 +919,18 @@ export default function OrdersManage() {
                                 {markingPaidRef === o.ref
                                   ? "處理中..."
                                   : "標記已付款"}
+                              </button>
+                            ) : null
+                          ) : normalizeStatus(o.paymentStatus) === "paid" ? (
+                            canConfirm && o.checkedInCount === 0 ? (
+                              <button
+                                onClick={() => handleRefund(o)}
+                                disabled={refundingRef === o.ref}
+                                title="退票：將訂單設為已退款並釋放名額（不會自動退款，金額請於金流後台或線下處理）"
+                                className="px-3 py-1.5 rounded-xl border border-red-400 text-red-600 text-xs font-semibold hover:bg-red-50 disabled:opacity-50 transition-colors whitespace-nowrap inline-flex items-center gap-1"
+                              >
+                                <Undo2 size={12} />
+                                {refundingRef === o.ref ? "處理中..." : "退票"}
                               </button>
                             ) : null
                           ) : o.paymentStatus === "refunded" ? (

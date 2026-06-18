@@ -345,43 +345,47 @@ router.post("/admin/registrations/refund", async (req, res): Promise<void> => {
         ? inArray(registrationsTable.paymentRef, refs)
         : inArray(registrationsTable.id, standaloneIds);
 
-  const legs = await db
-    .select({
-      id: registrationsTable.id,
-      paymentStatus: registrationsTable.paymentStatus,
-      checkedInAt: registrationsTable.checkedInAt,
-    })
-    .from(registrationsTable)
-    .where(orderCond);
+  // Lock the order's legs, re-validate, and flip status in one transaction so a
+  // concurrent check-in can't slip in between the guard and the update.
+  const result = await db.transaction(async (tx) => {
+    const legs = await tx
+      .select({
+        id: registrationsTable.id,
+        paymentStatus: registrationsTable.paymentStatus,
+        checkedInAt: registrationsTable.checkedInAt,
+      })
+      .from(registrationsTable)
+      .where(orderCond)
+      .for("update");
 
-  if (legs.some((l) => l.checkedInAt)) {
-    res.status(400).json({ error: "已入場的票券無法退票" });
-    return;
-  }
-  if (legs.every((l) => l.paymentStatus === "refunded")) {
-    res.status(400).json({ error: "此訂單已退款" });
-    return;
-  }
-  if (!legs.some((l) => l.paymentStatus === "paid")) {
-    res.status(400).json({ error: "僅能對「已付款」訂單退票" });
-    return;
-  }
+    if (legs.some((l) => l.checkedInAt)) {
+      return { ok: false as const, status: 400, error: "已入場的票券無法退票" };
+    }
+    if (legs.every((l) => l.paymentStatus === "refunded")) {
+      return { ok: false as const, status: 400, error: "此訂單已退款" };
+    }
+    if (!legs.some((l) => l.paymentStatus === "paid")) {
+      return { ok: false as const, status: 400, error: "僅能對「已付款」訂單退票" };
+    }
 
-  let updated = 0;
-  await db.transaction(async (tx) => {
     const updatedRows = await tx
       .update(registrationsTable)
       .set({ paymentStatus: "refunded" })
       .where(and(orderCond, sql`${registrationsTable.paymentStatus} <> 'refunded'`))
       .returning({ id: registrationsTable.id });
-    updated = updatedRows.length;
+    return { ok: true as const, updated: updatedRows.length };
   });
 
+  if (!result.ok) {
+    res.status(result.status).json({ error: result.error });
+    return;
+  }
+
   logger.info(
-    { refs, standaloneIds, updated },
+    { refs, standaloneIds, updated: result.updated },
     "[refund] admin direct refund from orders manage",
   );
-  res.json({ updated, ordersRefunded: refs.length + standaloneIds.length });
+  res.json({ updated: result.updated, ordersRefunded: refs.length + standaloneIds.length });
 });
 
 // Resend the purchase-confirmation email (with entry QR) for the given
