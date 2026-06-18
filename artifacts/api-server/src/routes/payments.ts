@@ -128,6 +128,45 @@ router.post("/payments/initiate", async (req, res): Promise<void> => {
       res.status(400).json({ error: "Some registrations are already paid" });
       return;
     }
+
+    // Guard against double-charging. NewebPay flips our status to "paid"
+    // asynchronously (notify/return), so there is a window after the buyer's
+    // card was actually charged but before our DB reflects it. If the buyer
+    // retries during that window we would otherwise create a brand-new
+    // NewebPay order and charge them a second time. Before creating a new
+    // charge, ask NewebPay's authoritative QueryTradeInfo whether the existing
+    // pending order for these registrations was in fact already collected; if
+    // so, mark it paid and send the buyer to their success page instead.
+    const existingRefs = Array.from(
+      new Set(registrations.map((r) => r.paymentRef).filter((v): v is string => Boolean(v))),
+    );
+    for (const existingRef of existingRefs) {
+      const [existingTx] = await db
+        .select()
+        .from(paymentTransactionsTable)
+        .where(eq(paymentTransactionsTable.paymentRef, existingRef));
+      if (!existingTx || existingTx.provider !== "newebpay" || existingTx.status === "paid") {
+        continue;
+      }
+      try {
+        const q = await queryNewebPayTrade(existingRef, existingTx.amount);
+        if (q.ok && q.paid && q.amount === existingTx.amount) {
+          await markPaymentPaid(existingRef, q.tradeNo, q.raw);
+          res.status(201).json({
+            type: "redirect",
+            paymentRef: existingRef,
+            amount: existingTx.amount,
+            url: `/payment/result?ref=${encodeURIComponent(existingRef)}&provider=newebpay&status=success`,
+          });
+          return;
+        }
+      } catch (err) {
+        // A transient QueryTradeInfo failure must not block a legitimate retry,
+        // so we log and fall through to create a new order.
+        logger.warn({ err, paymentRef: existingRef }, "[payments/initiate] NewebPay pre-check failed");
+      }
+    }
+
     const totalAmount = registrations.reduce((sum, r) => sum + (r.amount || 0), 0);
     if (totalAmount <= 0) {
       res.status(400).json({ error: "Order amount must be positive" });
