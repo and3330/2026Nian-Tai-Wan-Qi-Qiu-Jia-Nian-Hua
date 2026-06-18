@@ -1,11 +1,64 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { CheckCircle2, ArrowRight, Home, Search, MessageCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useGetPaymentStatus,
+  useConfirmStripePayment,
+  getGetPaymentStatusQueryKey,
+} from "@workspace/api-client-react";
+import { trackPurchase } from "@/lib/fbPixel";
 import { LINE_URL } from "@/components/LineChatBubble";
 
 export default function SuccessPage() {
   const search = useSearch();
-  const ref = useMemo(() => new URLSearchParams(search).get("ref") || "", [search]);
+  const params = useMemo(() => new URLSearchParams(search), [search]);
+  // `ref` / `provider` are kept only for ad-conversion tracking — they are
+  // intentionally NOT shown on screen.
+  const ref = params.get("ref") || "";
+  const provider = params.get("provider") || "";
+  const queryClient = useQueryClient();
+  const confirmStripe = useConfirmStripePayment();
+  const [confirmed, setConfirmed] = useState(false);
+
+  const { data } = useGetPaymentStatus(ref, {
+    query: {
+      queryKey: getGetPaymentStatusQueryKey(ref),
+      enabled: Boolean(ref),
+      refetchInterval: (query) => {
+        const status = (query.state.data as { status?: string } | undefined)?.status;
+        return status === "paid" ? false : 4000;
+      },
+    },
+  });
+
+  // When arriving from Stripe, ask the server to confirm the session right away
+  // in case the webhook hasn't fired yet (best-effort).
+  useEffect(() => {
+    if (!ref || provider !== "stripe" || confirmed) return;
+    if (data?.status === "paid") return;
+    setConfirmed(true);
+    confirmStripe
+      .mutateAsync({ data: { paymentRef: ref } })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: getGetPaymentStatusQueryKey(ref) });
+      })
+      .catch(() => {
+        /* status polling will continue */
+      });
+  }, [ref, provider, data?.status, confirmed, confirmStripe, queryClient]);
+
+  // Fire the Meta Pixel Purchase conversion exactly once when the order is paid.
+  const [purchaseTracked, setPurchaseTracked] = useState(false);
+  useEffect(() => {
+    if (purchaseTracked || data?.status !== "paid") return;
+    setPurchaseTracked(true);
+    trackPurchase({
+      value: typeof data.amount === "number" ? data.amount : 0,
+      orderId: data.paymentRef || ref,
+      contentName: "2026 臺灣氣球嘉年華門票",
+    });
+  }, [data?.status, data?.amount, data?.paymentRef, ref, purchaseTracked]);
 
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-12">
@@ -20,17 +73,10 @@ export default function SuccessPage() {
         <p className="text-muted-foreground leading-relaxed">
           感謝您購買 2026 臺灣氣球嘉年華門票。
         </p>
-        <p className="text-muted-foreground leading-relaxed mb-2">
+        <p className="text-muted-foreground leading-relaxed">
           我們已將「報名成功確認信」（內含入場 QR Code）寄送至您填寫的 Email，
           請一併查看「收件匣」與「垃圾郵件」資料夾。
         </p>
-
-        {ref && (
-          <div className="mt-5 rounded-2xl bg-muted/40 px-4 py-3 text-sm">
-            <span className="text-muted-foreground">訂單編號　</span>
-            <span className="font-mono font-bold">{ref}</span>
-          </div>
-        )}
 
         <div className="mt-8 flex flex-col gap-3">
           <Link

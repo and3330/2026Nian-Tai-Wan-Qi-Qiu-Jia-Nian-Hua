@@ -156,7 +156,7 @@ router.post("/payments/initiate", async (req, res): Promise<void> => {
             type: "redirect",
             paymentRef: existingRef,
             amount: existingTx.amount,
-            url: `/success`,
+            url: `/success?ref=${encodeURIComponent(existingRef)}`,
           });
           return;
         }
@@ -282,7 +282,7 @@ router.post("/payments/initiate", async (req, res): Promise<void> => {
         customer_email: payerEmail || undefined,
         client_reference_id: paymentRef,
         metadata: { paymentRef },
-        success_url: `${baseUrl}/success`,
+        success_url: `${baseUrl}/success?ref=${paymentRef}&provider=stripe`,
         cancel_url: `${baseUrl}/payment/result?ref=${paymentRef}&provider=stripe&cancelled=1`,
       });
       await db
@@ -836,11 +836,11 @@ router.post("/payments/newebpay/return", async (req, res): Promise<void> => {
       }
     }
     const baseUrl = getBaseUrl(req);
+    const ref = result.orderNo || "";
     if (result.valid && result.paid) {
-      res.redirect(`${baseUrl}/success`);
+      res.redirect(`${baseUrl}/success?ref=${encodeURIComponent(ref)}`);
       return;
     }
-    const ref = result.orderNo || "";
     res.redirect(`${baseUrl}/payment/result?ref=${encodeURIComponent(ref)}&provider=newebpay&status=failed`);
   } catch (error: unknown) {
     logger.error({ err: error }, "[NewebPay Return Error]");
