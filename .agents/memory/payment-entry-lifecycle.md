@@ -23,6 +23,11 @@ The status flip to `paid` and all downstream side effects (invoice issuance, Sla
 ## Every method funnels through one paid-transition
 NewebPay, Stripe, and the admin bank-transfer confirm all call the same paid-transition function, so they share invoice + Slack + email behavior and the idempotency guard. Bank transfer has no automatic callback — it is confirmed manually from the admin dashboard's "待確認匯款" list (editor role).
 
+## "Missing confirmation email" is almost always "order never reached paid"
+When buyers report no purchase-success email, check `paymentStatus` first — the email only fires on the paid-transition by design. An order stuck in `pending`/`awaiting_transfer`/`unpaid` correctly gets no email; it is not an email bug.
+**Why:** Diagnosed a "many people didn't get the email" report: all paid+email orders had been sent; the complainers were all non-paid orders whose payment never came back.
+**How to apply:** A NewebPay pending row with NO callback data (`raw_result IS NULL`, empty `provider_trade_no`) means no notify/return ever arrived = buyer never completed payment (abandoned card page, or got an ATM/超商 code and hasn't paid). To prove `notify` itself works, confirm some `paid` rows are `PaymentType` VACC/CVS — those async methods can ONLY confirm via server-side notify, so their success rules out a dropped-webhook bug. The authoritative per-order truth is NewebPay's QueryTradeInfo API, but it needs the real HASH_KEY/HASH_IV/MERCHANT_ID — see the env-secrets-masking note.
+
 ## Combo = one registration row per day
 A two-day combo is multiple registration rows sharing one `paymentRef`, each with its own `qrToken` and `eventDate`. The buyer needs ALL legs' QRs, so confirmation emails must be sent per leg (buyer email is copied onto every leg).
 

@@ -1,5 +1,6 @@
 - [Confirmation email rendering](confirmation-email.md) — confirmation HTML is code-owned (not admin-editable body); always escapeHtml user data; QR needs a live registration row.
-- [Payment-to-entry lifecycle rules](payment-entry-lifecycle.md) — admission requires paid (null amount ≠ free); QR email only after payment; paid-transition must be atomic+idempotent; combo = one row/QR per day.
+- [Payment-to-entry lifecycle rules](payment-entry-lifecycle.md) — admission requires paid (null amount ≠ free); QR email only after payment; paid-transition atomic+idempotent; "missing email" = order never reached paid.
+- [Code sandbox masks secrets](code-sandbox-env-secrets.md) — viewEnvVars returns secret presence booleans not values; secret-bearing API calls must run in the deployed app, not the sandbox.
 - [Carnival ticket pricing model](carnival-pricing.md) — adult/child tiers; ticketCount=total heads (capacity auto-includes children); promo validate needs authoritative baseAmount for mixed-price orders.
 - [lib/db type generation](monorepo-db-typegen.md) — after a schema column change run `pnpm run typecheck:libs` (tsc --build) or api-server tsc reports the new column as missing (stale emitted .d.ts).
 - [Stripe webhook path mismatch](stripe-webhook-path.md) — webhook route must be `/api/payments/stripe/webhook` to match Stripe dashboard + convention; mismatch silently 404s → unconfirmed orders + duplicates.
