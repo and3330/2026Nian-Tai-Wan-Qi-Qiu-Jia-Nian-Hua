@@ -779,7 +779,14 @@ export const AdminGetSalesOverviewResponse = zod.object({
         eventDate: zod.date(),
         label: zod.string(),
         totalCapacity: zod.number(),
-        registered: zod.number(),
+        registered: zod
+          .number()
+          .describe(
+            "All non-failed registrations for this session (includes unpaid reservations holding a seat).",
+          ),
+        paid: zod
+          .number()
+          .describe("Tickets with paymentStatus = 'paid' for this session."),
         remaining: zod.number(),
         fillPercentage: zod.number(),
       }),

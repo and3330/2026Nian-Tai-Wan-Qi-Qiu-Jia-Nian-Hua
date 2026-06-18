@@ -484,7 +484,10 @@ export interface SessionAvailability {
   eventDate: string;
   label: string;
   totalCapacity: number;
+  /** All non-failed registrations for this session (includes unpaid reservations holding a seat). */
   registered: number;
+  /** Tickets with paymentStatus = 'paid' for this session. */
+  paid: number;
   remaining: number;
   fillPercentage: number;
 }

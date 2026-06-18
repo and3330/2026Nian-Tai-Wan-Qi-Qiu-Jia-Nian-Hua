@@ -147,12 +147,17 @@ export default function AdminDashboard() {
     overview?.sessionAvailability.map((s) => ({
       name: s.label,
       registered: s.registered,
+      paid: s.paid,
+      reservedUnpaid: Math.max(s.registered - s.paid, 0),
       remaining: s.remaining,
       fillPercentage: s.fillPercentage,
     })) || [];
 
   const remainingCapacity =
     overview?.sessionAvailability.reduce((sum, s) => sum + s.remaining, 0) ?? 0;
+
+  const totalPaidSeats =
+    overview?.sessionAvailability.reduce((sum, s) => sum + s.paid, 0) ?? 0;
 
   const PAYMENT_STATUS_LABELS: Record<string, string> = {
     paid: "已付款",
@@ -240,14 +245,12 @@ export default function AdminDashboard() {
           loading={overviewLoading}
           icon={<Ticket size={28} />}
           tone="orange"
-          label="已預訂座位"
-          value={
-            overview
-              ? `${formatNumber(overview.totalCapacity - remainingCapacity)} / ${formatNumber(overview.totalCapacity)} 席`
-              : "—"
-          }
+          label="已付款座位"
+          value={overview ? `${formatNumber(totalPaidSeats)} 席` : "—"}
           sub={
-            overview ? `整體佔用率 ${overview.overallFillPercentage}%` : undefined
+            overview
+              ? `含未付款預訂共 ${formatNumber(overview.totalCapacity - remainingCapacity)} 席 · 佔用率 ${overview.overallFillPercentage}%`
+              : undefined
           }
         />
         <KpiCard
@@ -393,9 +396,9 @@ export default function AdminDashboard() {
 
       {/* Per-session capacity */}
       <div className="bg-white p-6 rounded-3xl border shadow-sm">
-        <h2 className="text-xl font-bold mb-1">各日剩餘名額</h2>
+        <h2 className="text-xl font-bold mb-1">各日售票狀況</h2>
         <p className="text-sm text-muted-foreground mb-6">
-          每場次容量 {overview?.sessionAvailability[0]?.totalCapacity ?? 500} 名
+          每場次容量 {overview?.sessionAvailability[0]?.totalCapacity ?? 500} 名 · 區分已付款與未付款預訂
         </p>
         {overviewLoading ? (
           <div className="h-72 bg-muted/50 animate-pulse rounded-xl" />
@@ -430,22 +433,39 @@ export default function AdminDashboard() {
                     border: "none",
                     boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
                   }}
-                  formatter={(value: number, name) => [
-                    `${value} 張`,
-                    name === "registered" ? "已售出" : "剩餘",
-                  ]}
+                  formatter={(value: number, name) => {
+                    const labels: Record<string, string> = {
+                      paid: "已付款",
+                      reservedUnpaid: "未付款預訂",
+                      remaining: "剩餘",
+                    };
+                    return [`${value} 張`, labels[name as string] ?? name];
+                  }}
                 />
                 <Legend
                   iconType="circle"
                   wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-                  formatter={(v) => (v === "registered" ? "已售出" : "剩餘名額")}
+                  formatter={(v) =>
+                    v === "paid"
+                      ? "已付款"
+                      : v === "reservedUnpaid"
+                        ? "未付款預訂"
+                        : "剩餘名額"
+                  }
                 />
                 <Bar
-                  dataKey="registered"
-                  name="registered"
+                  dataKey="paid"
+                  name="paid"
                   stackId="cap"
                   fill="hsl(var(--primary))"
                   radius={[0, 0, 6, 6]}
+                  maxBarSize={60}
+                />
+                <Bar
+                  dataKey="reservedUnpaid"
+                  name="reservedUnpaid"
+                  stackId="cap"
+                  fill="hsl(var(--primary) / 0.4)"
                   maxBarSize={60}
                 />
                 <Bar

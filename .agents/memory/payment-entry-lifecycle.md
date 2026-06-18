@@ -38,6 +38,11 @@ Refunding an order (both the buyer-submitted refund-request approval AND the adm
 **Why:** No gateway refund integration exists; both refund paths deliberately keep the same offline-money model so they behave identically.
 **How to apply:** Capacity is released purely because every capacity/availability query excludes `paymentStatus = 'refunded'` — so a refund needs no separate inventory write. Guard refunds: reject if any leg is checked in, if already fully refunded, or if not paid. Do the re-check + status flip in ONE transaction with `.for("update")` row locks so a concurrent check-in can't slip between guard and update. Admin direct refund is editor-only and expands a single leg id to the whole order before updating.
 
+## "Occupied seats" vs "paid seats" are two different counts — keep both consistent with the capacity rule
+The admin overview distinguishes seats that merely HOLD capacity from seats actually PAID. Occupied/held = `paymentStatus NOT IN ('failed','refunded')` (pending/awaiting_transfer/unpaid all still consume a seat); paid = `paymentStatus = 'paid'`. "未付款預訂" displayed = held − paid.
+**Why:** A refunded or failed row must not show as an occupied/unpaid reservation — it released its seat. Counting only `<> 'failed'` (forgetting refunded) double-shows refunded seats as still reserved and diverges from the real capacity check.
+**How to apply:** Any seat-occupancy/availability count anywhere (carnival capacity, overview session bars) must use the SAME `NOT IN ('failed','refunded')` filter as the authoritative check in registrations.ts, plus `isCarnivalLeg` to exclude tournament legs. Per-session paid count is safe to sum across dates (combo = one leg per date, no double count).
+
 ## Combo = one registration row per day
 A two-day combo is multiple registration rows sharing one `paymentRef`, each with its own `qrToken` and `eventDate`. The buyer needs ALL legs' QRs, so confirmation emails must be sent per leg (buyer email is copied onto every leg).
 

@@ -591,20 +591,40 @@ router.get("/admin/stats", async (req, res): Promise<void> => {
 router.get("/admin/sales-overview", async (req, res): Promise<void> => {
   if (!requireAuth(req, res)) return;
 
-  // Per-session capacity (counts ALL non-failed registrations, regardless of payment status,
-  // so reserved-but-unpaid seats still consume capacity).
+  // Per-session occupied seats: every registration that still holds a seat — i.e.
+  // not failed and not refunded — regardless of payment status, so reserved-but-unpaid
+  // seats still consume capacity. Mirrors the authoritative capacity check in
+  // registrations.ts (which excludes 'refunded').
   const sessionRows = await db
     .select({
       eventDate: registrationsTable.eventDate,
       total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)`,
     })
     .from(registrationsTable)
-    .where(sql`${registrationsTable.paymentStatus} <> 'failed' AND ${isCarnivalLeg}`)
+    .where(
+      sql`${registrationsTable.paymentStatus} NOT IN ('failed', 'refunded') AND ${isCarnivalLeg}`,
+    )
     .groupBy(registrationsTable.eventDate);
 
   const sessionRegistered: Record<string, number> = {};
   for (const row of sessionRows) {
     sessionRegistered[row.eventDate] = Number(row.total);
+  }
+
+  // Per-session PAID counts (actual purchased tickets per event date), so the
+  // overview can report headcount based on payment rather than reservations.
+  const sessionPaidRows = await db
+    .select({
+      eventDate: registrationsTable.eventDate,
+      total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)`,
+    })
+    .from(registrationsTable)
+    .where(and(eq(registrationsTable.paymentStatus, "paid"), isCarnivalLeg))
+    .groupBy(registrationsTable.eventDate);
+
+  const sessionPaid: Record<string, number> = {};
+  for (const row of sessionPaidRows) {
+    sessionPaid[row.eventDate] = Number(row.total);
   }
 
   // Paid daily sales trend (grouped by createdAt date in Asia/Taipei). Revenue uses the
@@ -696,6 +716,7 @@ router.get("/admin/sales-overview", async (req, res): Promise<void> => {
       label: sessionLabel(d),
       totalCapacity: DAILY_CAPACITY,
       registered,
+      paid: sessionPaid[d] || 0,
       remaining: DAILY_CAPACITY - registered,
       fillPercentage: Math.round((registered / DAILY_CAPACITY) * 1000) / 10,
     };

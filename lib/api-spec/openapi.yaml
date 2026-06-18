@@ -1663,7 +1663,7 @@ components:
 
     SessionAvailability:
       type: object
-      required: [eventDate, label, totalCapacity, registered, remaining, fillPercentage]
+      required: [eventDate, label, totalCapacity, registered, paid, remaining, fillPercentage]
       properties:
         eventDate:
           type: string
@@ -1674,6 +1674,10 @@ components:
           type: number
         registered:
           type: number
+          description: All non-failed registrations for this session (includes unpaid reservations holding a seat).
+        paid:
+          type: number
+          description: Tickets with paymentStatus = 'paid' for this session.
         remaining:
           type: number
         fillPercentage:
