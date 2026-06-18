@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
-import { CheckCircle2, AlertCircle, Loader2, Banknote, ArrowRight, Home } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Banknote, ArrowRight, Home, MessageCircle } from "lucide-react";
 import { useGetPaymentStatus, useConfirmStripePayment } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetPaymentStatusQueryKey } from "@workspace/api-client-react";
 import { trackPurchase } from "@/lib/fbPixel";
+import { LINE_URL } from "@/components/LineChatBubble";
 
 export default function PaymentResultPage() {
   const search = useSearch();
@@ -106,6 +107,24 @@ export default function PaymentResultPage() {
             <h1 className="text-3xl font-bold text-emerald-700 mb-2" data-testid="payment-result-paid">付款成功！</h1>
             <p className="text-muted-foreground mb-6">感謝您購買 2026 臺灣氣球嘉年華門票</p>
             <ResultDetails data={data} />
+            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 text-left text-sm space-y-3" data-testid="payment-result-email-notice">
+              <p className="text-emerald-800 leading-relaxed">
+                我們已將「報名成功確認信」（內含入場 QR Code）寄送至您填寫的電子信箱，
+                請一併查看「收件匣」與「垃圾郵件」資料夾。非常感謝您的支持！
+              </p>
+              <p className="text-emerald-700/90 leading-relaxed">
+                若未收到信件，歡迎加入官方 LINE，我們將協助您處理。
+              </p>
+              <a
+                href={LINE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#06C755] text-white font-bold hover:opacity-90 transition-opacity"
+                data-testid="payment-result-line-link"
+              >
+                <MessageCircle size={18} fill="white" stroke="#06C755" /> 加入官方 LINE
+              </a>
+            </div>
             <Link
               href="/"
               className="mt-8 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-bold hover:opacity-90 transition-opacity"

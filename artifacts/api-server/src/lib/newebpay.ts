@@ -140,3 +140,84 @@ export function verifyNewebPayCallback(body: Record<string, string>): NewebPayCa
     return { valid: false, orderNo: "", tradeNo: "", paid: false, amount: null, rawData: null };
   }
 }
+
+export interface NewebPayTradeQueryResult {
+  // Whether the query API call itself succeeded (NewebPay Status === "SUCCESS").
+  ok: boolean;
+  // Authoritative: NewebPay reports this order as actually paid (TradeStatus "1").
+  paid: boolean;
+  tradeStatus: string;
+  tradeNo: string;
+  amount: number | null;
+  paymentType: string;
+  payTime: string;
+  message: string;
+  raw: Record<string, unknown> | null;
+}
+
+// Queries NewebPay's official QueryTradeInfo API for the authoritative status of
+// a single order. Used by the admin reconcile job to recover orders that were
+// actually paid but whose notify/return callback never reached us. Read-only.
+// TradeStatus codes: "0" 未付款, "1" 已付款, "2" 付款失敗, "3" 取消, "6" 退款.
+export async function queryNewebPayTrade(
+  orderNo: string,
+  amount: number,
+): Promise<NewebPayTradeQueryResult> {
+  const cfg = getConfig();
+  const checkStr = `IV=${cfg.hashIV}&Amt=${amount}&MerchantID=${cfg.merchantId}&MerchantOrderNo=${orderNo}&Key=${cfg.hashKey}`;
+  const checkValue = sha256Hash(checkStr);
+  let origin = "https://core.newebpay.com";
+  try {
+    origin = new URL(cfg.mpgUrl).origin;
+  } catch {
+    /* keep production default */
+  }
+  const queryUrl = `${origin}/API/QueryTradeInfo`;
+  const body = buildQueryString({
+    MerchantID: cfg.merchantId,
+    Version: "1.3",
+    RespondType: "JSON",
+    CheckValue: checkValue,
+    TimeStamp: Math.floor(Date.now() / 1000).toString(),
+    MerchantOrderNo: orderNo,
+    Amt: amount,
+  });
+
+  const res = await fetch(queryUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const text = await res.text();
+  let json: { Status?: string; Message?: string; Result?: Record<string, unknown> };
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return {
+      ok: false,
+      paid: false,
+      tradeStatus: "",
+      tradeNo: "",
+      amount: null,
+      paymentType: "",
+      payTime: "",
+      message: `非預期回應: ${text.slice(0, 120)}`,
+      raw: null,
+    };
+  }
+  const result: Record<string, unknown> = json.Result ?? {};
+  const tradeStatus = String(result.TradeStatus ?? "");
+  const amtRaw = result.Amt;
+  const amt = amtRaw == null ? null : parseInt(String(amtRaw), 10);
+  return {
+    ok: json.Status === "SUCCESS",
+    paid: tradeStatus === "1",
+    tradeStatus,
+    tradeNo: String(result.TradeNo || ""),
+    amount: Number.isNaN(amt as number) ? null : amt,
+    paymentType: String(result.PaymentType || ""),
+    payTime: String(result.PayTime || ""),
+    message: String(json.Message || ""),
+    raw: json as Record<string, unknown>,
+  };
+}

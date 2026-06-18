@@ -173,6 +173,7 @@ export default function OrdersManage() {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isBulkConfirming, setIsBulkConfirming] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isReconciling, setIsReconciling] = useState(false);
 
   const orders = useMemo(
     () => buildOrders(registrations ?? []),
@@ -401,6 +402,42 @@ export default function OrdersManage() {
     }
   };
 
+  const handleReconcile = async () => {
+    if (
+      !window.confirm(
+        "向藍新金流（NewebPay）逐筆查詢「待付款」訂單的真實付款狀態？\n凡是藍新顯示「已付款」的訂單，系統會自動確認、開立發票並補寄購票確認信（含入場 QR）。未付款的訂單不會有任何變動。",
+      )
+    ) {
+      return;
+    }
+    setIsReconciling(true);
+    try {
+      const res = await fetch("/api/payments/newebpay/reconcile", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "對帳失敗");
+      }
+      const data = (await res.json()) as {
+        checked?: number;
+        confirmed?: number;
+        stillUnpaid?: number;
+        errors?: number;
+      };
+      await refetch();
+      window.alert(
+        `對帳完成：\n共查詢 ${data.checked ?? 0} 筆待付款訂單\n已確認並補寄確認信 ${data.confirmed ?? 0} 筆\n仍未付款 ${data.stillUnpaid ?? 0} 筆` +
+          (data.errors ? `\n查詢失敗 ${data.errors} 筆，請稍後再試一次` : ""),
+      );
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "對帳失敗，請稍後再試");
+    } finally {
+      setIsReconciling(false);
+    }
+  };
+
   const handleExport = async () => {
     setIsExporting(true);
     try {
@@ -449,6 +486,17 @@ export default function OrdersManage() {
             <RefreshCw size={16} className={isRefetching ? "animate-spin" : ""} />
             重新整理
           </button>
+          {canConfirm && (
+            <button
+              onClick={handleReconcile}
+              disabled={isReconciling}
+              title="向藍新金流查詢待付款訂單的真實狀態，已付款者自動補確認並補寄確認信"
+              className="border border-emerald-500 text-emerald-700 px-4 py-2.5 rounded-full font-semibold flex items-center gap-2 hover:bg-emerald-50 transition-all disabled:opacity-50"
+            >
+              <Banknote size={16} className={isReconciling ? "animate-pulse" : ""} />
+              {isReconciling ? "對帳中..." : "藍新對帳"}
+            </button>
+          )}
           <button
             onClick={handleExport}
             disabled={isExporting}

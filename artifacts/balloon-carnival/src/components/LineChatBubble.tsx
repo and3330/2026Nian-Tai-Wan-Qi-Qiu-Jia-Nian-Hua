@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { MessageCircle, X } from "lucide-react";
 
 const STORAGE_KEY = "line-bubble-dismissed";
-const LINE_URL = "https://lin.ee/OUbPwpi";
+export const LINE_URL = "https://lin.ee/OUbPwpi";
 
 export function LineChatBubble() {
   const [visible, setVisible] = useState(false);
@@ -10,10 +10,9 @@ export function LineChatBubble() {
 
   useEffect(() => {
     const dismissed = typeof window !== "undefined" && sessionStorage.getItem(STORAGE_KEY) === "1";
-    if (!dismissed) {
-      const t = setTimeout(() => setVisible(true), 600);
-      return () => clearTimeout(t);
-    }
+    if (dismissed) return undefined;
+    const t = setTimeout(() => setVisible(true), 600);
+    return () => clearTimeout(t);
   }, []);
 
   const close = () => {

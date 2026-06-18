@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import express from "express";
 import { eq, inArray, sql, desc, and, ne } from "drizzle-orm";
 import { db, registrationsTable, paymentTransactionsTable, invoicesTable } from "@workspace/db";
-import { createNewebPayOrder, verifyNewebPayCallback } from "../lib/newebpay";
+import { createNewebPayOrder, verifyNewebPayCallback, queryNewebPayTrade } from "../lib/newebpay";
 import { getStripeClient, isStripeConfigured } from "../lib/stripe-client";
 import { issueInvoice, voidInvoice, type InvoiceIssueOptions } from "../lib/ecpay-invoice";
 import { notifyPurchaseSlack } from "../lib/slack-notify";
@@ -706,7 +706,7 @@ router.post("/payments/:ref/confirm-bank", async (req, res): Promise<void> => {
       return;
     }
     await markPaymentPaid(ref, `manual-bank-${Date.now()}`, {
-      confirmedBy: (req.user as { id?: number } | undefined)?.id ?? null,
+      confirmedBy: (req as { user?: { id?: number } }).user?.id ?? null,
       confirmedAt: new Date().toISOString(),
     });
     res.json({ status: "paid" });
@@ -766,6 +766,66 @@ router.post("/payments/newebpay/return", async (req, res): Promise<void> => {
   } catch (error: unknown) {
     logger.error({ err: error }, "[NewebPay Return Error]");
     res.redirect(getBaseUrl(req) + "/payment/result?status=error&provider=newebpay");
+  }
+});
+
+// Admin: reconcile NewebPay orders stuck in pending against NewebPay's
+// authoritative QueryTradeInfo API. Recovers orders that were genuinely paid
+// but whose notify/return callback never reached us (e.g. buyer closed the
+// browser, or paid an ATM/超商 code later). Confirming an order runs the normal
+// paid-transition (invoice + Slack + confirmation email with QR). Orders that
+// NewebPay still reports as unpaid are left untouched, so no one who hasn't
+// paid receives a ticket.
+router.post("/payments/newebpay/reconcile", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res, "editor")) return;
+  try {
+    const pending = await db
+      .select()
+      .from(paymentTransactionsTable)
+      .where(
+        and(
+          eq(paymentTransactionsTable.provider, "newebpay"),
+          ne(paymentTransactionsTable.status, "paid"),
+        ),
+      );
+    let confirmed = 0;
+    let stillUnpaid = 0;
+    let errors = 0;
+    const confirmedRefs: string[] = [];
+    for (const tx of pending) {
+      try {
+        const q = await queryNewebPayTrade(tx.paymentRef, tx.amount);
+        if (!q.ok) {
+          errors += 1;
+          logger.warn({ paymentRef: tx.paymentRef, message: q.message }, "[NewebPay Reconcile] query not ok");
+          continue;
+        }
+        if (q.paid && q.amount === tx.amount) {
+          await markPaymentPaid(tx.paymentRef, q.tradeNo, q.raw);
+          confirmed += 1;
+          confirmedRefs.push(tx.paymentRef);
+        } else if (q.paid) {
+          // NewebPay reports paid but the amount is missing or does not match
+          // our record. Never auto-confirm on a mismatch — flag for manual
+          // review instead of risking a wrong ticket / accounting error.
+          errors += 1;
+          logger.warn(
+            { paymentRef: tx.paymentRef, expected: tx.amount, got: q.amount },
+            "[NewebPay Reconcile] paid but amount mismatch, skipped for manual review",
+          );
+        } else {
+          stillUnpaid += 1;
+        }
+      } catch (err) {
+        errors += 1;
+        logger.error({ err, paymentRef: tx.paymentRef }, "[NewebPay Reconcile] order failed");
+      }
+    }
+    logger.info({ checked: pending.length, confirmed, stillUnpaid, errors }, "[NewebPay Reconcile] done");
+    res.json({ checked: pending.length, confirmed, stillUnpaid, errors, confirmedRefs });
+  } catch (error: unknown) {
+    logger.error({ err: error }, "[payments/newebpay/reconcile] error");
+    res.status(500).json({ error: "對帳失敗，請稍後再試" });
   }
 });
 
