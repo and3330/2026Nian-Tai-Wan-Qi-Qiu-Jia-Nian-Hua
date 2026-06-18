@@ -138,6 +138,10 @@ export default function CheckinPage() {
 
   const startScanner = useCallback(async () => {
     setCameraError(null);
+    // Make the scanner container visible BEFORE calling start(). Some mobile
+    // browsers fail to initialise the camera against a hidden (display:none)
+    // element because they can't measure it.
+    setScanning(true);
     try {
       const { Html5Qrcode } = await import("html5-qrcode");
       const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID);
@@ -157,7 +161,6 @@ export default function CheckinPage() {
           cameras[cameras.length - 1];
         await scanner.start(rear.id, config, onDecoded, () => {});
       }
-      setScanning(true);
     } catch (err) {
       try {
         await scannerRef.current?.clear();
@@ -234,15 +237,24 @@ export default function CheckinPage() {
             </button>
           </div>
           <div
-            id={SCANNER_ELEMENT_ID}
             className={cn(
               "w-full bg-muted/30 rounded-2xl overflow-hidden",
-              scanning ? "min-h-[280px]" : "min-h-[160px] flex items-center justify-center text-muted-foreground text-sm",
+              scanning ? "min-h-[280px]" : "min-h-[160px]",
             )}
           >
-            {!scanning && !cameraError && "點擊「開始掃描」以啟動相機"}
+            {/* Scanner target: kept FREE of React children. html5-qrcode
+                injects its own <video>/DOM nodes here; if React also manages
+                children in the same node, reconciliation throws a removeChild
+                error and blanks the whole page. Placeholder/error live as
+                siblings instead. */}
+            <div id={SCANNER_ELEMENT_ID} className={cn("w-full", scanning ? "" : "hidden")} />
+            {!scanning && !cameraError && (
+              <div className="min-h-[160px] flex items-center justify-center text-muted-foreground text-sm">
+                點擊「開始掃描」以啟動相機
+              </div>
+            )}
             {cameraError && (
-              <div className="text-red-500 text-sm p-4 text-center">
+              <div className="min-h-[160px] flex flex-col items-center justify-center text-red-500 text-sm p-4 text-center">
                 <AlertTriangle className="mx-auto mb-2" /> 相機錯誤：{cameraError}
               </div>
             )}
