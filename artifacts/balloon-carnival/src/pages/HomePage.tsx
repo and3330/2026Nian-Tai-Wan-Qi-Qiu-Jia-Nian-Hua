@@ -254,7 +254,7 @@ export default function HomePage() {
             </div>
             <div className="space-y-2 text-sm text-muted-foreground mb-6">
               <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 全展區 ・ 舞臺表演 ・ 比賽展件</p>
-              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 6 歲以下兒童免票隨行</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 未滿 6 歲兒童優惠票 50 元 / 人</p>
             </div>
             <span className="inline-flex items-center gap-2 text-primary font-bold text-sm group-hover:gap-3 transition-all">
               選擇單日票 <ArrowRight size={16} />
