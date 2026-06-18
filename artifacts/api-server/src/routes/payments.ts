@@ -473,11 +473,11 @@ router.get("/payments/status/:ref", async (req, res): Promise<void> => {
   });
 });
 
-async function markPaymentPaid(
+export async function markPaymentPaid(
   paymentRef: string,
   providerTradeNo: string | null,
   rawResult: unknown,
-): Promise<void> {
+): Promise<boolean> {
   const now = new Date();
   let didTransitionToPaid = false;
   await db.transaction(async (tx) => {
@@ -527,6 +527,7 @@ async function markPaymentPaid(
       logger.error({ err, paymentRef }, "[Confirmation] post-payment email failed");
     });
   }
+  return didTransitionToPaid;
 }
 
 // Sends the purchase confirmation (with QR) for the buyer of a paid order.

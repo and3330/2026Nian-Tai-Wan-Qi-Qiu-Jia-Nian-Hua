@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, sql, inArray, or } from "drizzle-orm";
+import { eq, desc, sql, inArray, or, and, isNull } from "drizzle-orm";
 import {
   db,
   registrationsTable,
@@ -28,6 +28,8 @@ import {
   AdminGetSalesOverviewResponse,
 } from "@workspace/api-zod";
 import { sendConfirmationEmail } from "../services/email-service";
+import { markPaymentPaid } from "./payments";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -329,6 +331,140 @@ router.post("/admin/registrations/resend-confirmation", async (req, res): Promis
   }
 
   res.json({ sent, skipped, failed });
+});
+
+// Manually mark one or more orders as paid (e.g. cash on site, an offline
+// transfer, or any registration the organizer collected payment for outside the
+// online gateways). The buyer then receives their data — the purchase
+// confirmation email with the entry QR — just like an online payment.
+//
+// Two cases are handled:
+//  1. Orders that already have a payment_transactions row (an online charge was
+//     initiated but never completed): run the exact same paid flow as a real
+//     payment via markPaymentPaid (status + invoice + Slack + confirmation
+//     email). It is atomic and idempotent.
+//  2. Truly manual orders with no transaction row (or no paymentRef at all):
+//     flip the registration legs to paid, backfill paymentMethod="manual" where
+//     unset, and send each leg its confirmation email + QR.
+router.post("/admin/registrations/mark-paid", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor")) return;
+
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
+  const cleanIds = Array.from(
+    new Set(
+      (ids ?? [])
+        .map((v: unknown) => Number(v))
+        .filter((n: number) => Number.isInteger(n) && n > 0),
+    ),
+  ) as number[];
+
+  if (cleanIds.length === 0) {
+    res.status(400).json({ error: "請提供要標記已付款的訂單" });
+    return;
+  }
+
+  // Expand to whole orders: any leg sharing a paymentRef belongs to the same
+  // order, so confirming one leg confirms all of them.
+  const baseRows = await db
+    .select({ id: registrationsTable.id, paymentRef: registrationsTable.paymentRef })
+    .from(registrationsTable)
+    .where(inArray(registrationsTable.id, cleanIds));
+
+  if (baseRows.length === 0) {
+    res.status(404).json({ error: "找不到訂單" });
+    return;
+  }
+
+  const refs = Array.from(
+    new Set(baseRows.map((r) => r.paymentRef).filter((r): r is string => Boolean(r))),
+  );
+  const standaloneIds = baseRows.filter((r) => !r.paymentRef).map((r) => r.id);
+
+  const txRows =
+    refs.length > 0
+      ? await db
+          .select({ paymentRef: paymentTransactionsTable.paymentRef })
+          .from(paymentTransactionsTable)
+          .where(inArray(paymentTransactionsTable.paymentRef, refs))
+      : [];
+  const refsWithTx = new Set(txRows.map((t) => t.paymentRef));
+
+  // Only orders that have not yet been paid are eligible. This guards against
+  // marking an already-paid / refunded / failed order at the endpoint level
+  // (independent of whatever the UI offers).
+  const MARKABLE_STATUSES = ["unpaid", "pending", "awaiting_transfer"];
+
+  let confirmed = 0;
+  let failed = 0;
+
+  // Case 1: orders with a payment transaction → full paid flow. markPaymentPaid
+  // is atomic + idempotent and returns whether it actually transitioned, so a
+  // no-op (already paid / raced) does not inflate the confirmed count.
+  for (const ref of refs) {
+    if (!refsWithTx.has(ref)) continue;
+    try {
+      const didTransition = await markPaymentPaid(ref, `manual-${Date.now()}`, {
+        manual: true,
+        confirmedBy: (req as { user?: { id?: number } }).user?.id ?? null,
+        confirmedAt: new Date().toISOString(),
+      });
+      if (didTransition) confirmed += 1;
+    } catch (err) {
+      logger.error({ err, ref }, "[mark-paid] transaction order failed");
+      failed += 1;
+    }
+  }
+
+  // Case 2: truly manual orders (no transaction row) + standalone legs.
+  const manualRefs = refs.filter((r) => !refsWithTx.has(r));
+  const manualLegIds = new Set<number>(standaloneIds);
+  if (manualRefs.length > 0) {
+    const legRows = await db
+      .select({ id: registrationsTable.id })
+      .from(registrationsTable)
+      .where(inArray(registrationsTable.paymentRef, manualRefs));
+    for (const r of legRows) manualLegIds.add(r.id);
+  }
+
+  const manualIds = Array.from(manualLegIds);
+  if (manualIds.length > 0) {
+    // Atomic guard: only legs in a markable (non-paid) state flip to paid, and
+    // .returning() tells us exactly which rows actually transitioned. We send a
+    // confirmation email only for those, so a concurrent/duplicate request that
+    // matches 0 rows neither re-sends emails nor inflates the count.
+    const flipped = await db
+      .update(registrationsTable)
+      .set({ paymentStatus: "paid" })
+      .where(
+        and(
+          inArray(registrationsTable.id, manualIds),
+          inArray(registrationsTable.paymentStatus, MARKABLE_STATUSES),
+        ),
+      )
+      .returning({ id: registrationsTable.id });
+    const flippedIds = flipped.map((r) => r.id);
+    if (flippedIds.length > 0) {
+      await db
+        .update(registrationsTable)
+        .set({ paymentMethod: "manual" })
+        .where(
+          and(
+            inArray(registrationsTable.id, flippedIds),
+            isNull(registrationsTable.paymentMethod),
+          ),
+        );
+      confirmed += flippedIds.length;
+      for (const legId of flippedIds) {
+        try {
+          await sendConfirmationEmail(legId);
+        } catch (err) {
+          logger.error({ err, legId }, "[mark-paid] manual confirmation email failed");
+        }
+      }
+    }
+  }
+
+  res.json({ confirmed, failed });
 });
 
 router.get("/admin/stats", async (req, res): Promise<void> => {

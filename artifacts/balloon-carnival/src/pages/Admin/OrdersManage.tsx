@@ -171,11 +171,13 @@ export default function OrdersManage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [confirmingRef, setConfirmingRef] = useState<string | null>(null);
+  const [markingPaidRef, setMarkingPaidRef] = useState<string | null>(null);
   const [vipBusyRef, setVipBusyRef] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isBulkConfirming, setIsBulkConfirming] = useState(false);
+  const [isBulkMarking, setIsBulkMarking] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isReconciling, setIsReconciling] = useState(false);
 
@@ -234,6 +236,12 @@ export default function OrdersManage() {
   // need an email address to send to.
   const selectedResendable = selectedOrders.filter(
     (o) => normalizeStatus(o.paymentStatus) === "paid" && Boolean(o.email),
+  );
+
+  // Unpaid / processing orders can be manually marked as paid (e.g. cash on
+  // site or offline transfer) so the buyer receives their confirmation + QR.
+  const selectedMarkable = selectedOrders.filter(
+    (o) => normalizeStatus(o.paymentStatus) === "unpaid",
   );
 
   const allFilteredSelected =
@@ -403,6 +411,67 @@ export default function OrdersManage() {
       window.alert(err instanceof Error ? err.message : "確認失敗，請稍後再試");
     } finally {
       setConfirmingRef(null);
+    }
+  };
+
+  const handleMarkPaid = async (o: Order) => {
+    if (
+      !window.confirm(
+        "確認將這筆訂單標記為「已付款」？\n適用於現場收款、手動匯款等情況。系統會寄送購票確認信（含入場 QR Code）給購買人。",
+      )
+    ) {
+      return;
+    }
+    setMarkingPaidRef(o.ref);
+    try {
+      const ids = o.legs.map((l) => l.id);
+      const res = await fetch("/api/admin/registrations/mark-paid", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "標記失敗");
+      }
+      await refetch();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "標記失敗，請稍後再試");
+    } finally {
+      setMarkingPaidRef(null);
+    }
+  };
+
+  const handleBulkMarkPaid = async () => {
+    const targets = selectedMarkable;
+    if (targets.length === 0) return;
+    if (
+      !window.confirm(
+        `確認將選取的 ${targets.length} 筆訂單標記為「已付款」？\n系統會逐筆寄送購票確認信（含入場 QR Code）給購買人。`,
+      )
+    ) {
+      return;
+    }
+    setIsBulkMarking(true);
+    try {
+      const ids = targets.flatMap((o) => o.legs.map((l) => l.id));
+      const res = await fetch("/api/admin/registrations/mark-paid", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "標記失敗");
+      }
+      setSelected(new Set());
+      await refetch();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "標記失敗，請稍後再試");
+    } finally {
+      setIsBulkMarking(false);
     }
   };
 
@@ -628,6 +697,18 @@ export default function OrdersManage() {
                   : `批量確認收款（${selectedAwaiting.length}）`}
               </button>
             )}
+            {selectedMarkable.length > 0 && (
+              <button
+                onClick={handleBulkMarkPaid}
+                disabled={isBulkMarking || isBulkDeleting || isBulkConfirming || isResending}
+                className="px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                <CheckCircle2 size={16} />
+                {isBulkMarking
+                  ? "標記中..."
+                  : `標記已付款（${selectedMarkable.length}）`}
+              </button>
+            )}
             {selectedResendable.length > 0 && (
               <button
                 onClick={handleBulkResend}
@@ -795,6 +876,19 @@ export default function OrdersManage() {
                                 待編輯確認
                               </span>
                             )
+                          ) : normalizeStatus(o.paymentStatus) === "unpaid" ? (
+                            canConfirm ? (
+                              <button
+                                onClick={() => handleMarkPaid(o)}
+                                disabled={markingPaidRef === o.ref}
+                                title="現場收款 / 手動匯款：標記後寄送購票確認信（含入場 QR）"
+                                className="px-3 py-1.5 rounded-xl bg-green-600 text-white text-xs font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                              >
+                                {markingPaidRef === o.ref
+                                  ? "處理中..."
+                                  : "標記已付款"}
+                              </button>
+                            ) : null
                           ) : o.paymentStatus === "refunded" ? (
                             <span className="inline-flex items-center gap-1 text-xs text-slate-500">
                               <Undo2 size={12} /> 已退款
