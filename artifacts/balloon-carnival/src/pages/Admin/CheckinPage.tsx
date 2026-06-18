@@ -24,13 +24,42 @@ type LookupResult =
   | { kind: "error"; message: string };
 
 const SCANNER_ELEMENT_ID = "qr-scanner-container";
+const FILE_SCAN_ELEMENT_ID = "qr-file-scan-container";
+
+// Turns the raw getUserMedia / html5-qrcode error into something a non-technical
+// staffer can act on. Live camera streaming fails for many mobile reasons
+// (permission denied, no HTTPS, in-app browser like LINE/FB/IG), so we always
+// point them at the "拍照掃描" fallback which opens the native camera app.
+function describeCameraError(err: unknown): string {
+  const name = (err as { name?: string })?.name || "";
+  const msg = (err as { message?: string })?.message || String(err);
+  const insecure =
+    typeof window !== "undefined" &&
+    !window.isSecureContext &&
+    window.location.hostname !== "localhost";
+  if (insecure) {
+    return "瀏覽器基於安全限制，必須在 https 安全連線下才能開啟相機。請改用「拍照掃描」或確認網址為 https。";
+  }
+  if (name === "NotAllowedError" || /permission|denied/i.test(msg)) {
+    return "相機權限被拒絕。請到瀏覽器設定允許本網站使用相機，或改用下方「拍照掃描」。";
+  }
+  if (name === "NotFoundError" || name === "OverconstrainedError") {
+    return "找不到可用的後置相機，請改用下方「拍照掃描」。";
+  }
+  if (name === "NotReadableError") {
+    return "相機被其他程式佔用，請關閉其他相機 App 後再試，或改用下方「拍照掃描」。";
+  }
+  return `${msg || "無法啟動相機"}。若使用 LINE / FB / IG 內建瀏覽器，請改用 Safari 或 Chrome 開啟，或使用下方「拍照掃描」。`;
+}
 
 export default function CheckinPage() {
   const [tokenInput, setTokenInput] = useState("");
   const [result, setResult] = useState<LookupResult>({ kind: "idle" });
   const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [decodingFile, setDecodingFile] = useState(false);
   const scannerRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const lastScannedRef = useRef<string>("");
   const lastScanTimeRef = useRef<number>(0);
 
@@ -92,35 +121,81 @@ export default function CheckinPage() {
     setScanning(false);
   }, []);
 
+  const onDecoded = useCallback(
+    (decodedText: string) => {
+      const now = Date.now();
+      if (decodedText === lastScannedRef.current && now - lastScanTimeRef.current < 3000) {
+        return;
+      }
+      lastScannedRef.current = decodedText;
+      lastScanTimeRef.current = now;
+      setTokenInput(decodedText);
+      performLookup(decodedText);
+    },
+    [performLookup],
+  );
+
   const startScanner = useCallback(async () => {
     setCameraError(null);
     try {
       const { Html5Qrcode } = await import("html5-qrcode");
       const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID);
       scannerRef.current = scanner;
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 240, height: 240 } },
-        (decodedText: string) => {
-          const now = Date.now();
-          if (decodedText === lastScannedRef.current && now - lastScanTimeRef.current < 3000) {
-            return;
-          }
-          lastScannedRef.current = decodedText;
-          lastScanTimeRef.current = now;
-          setTokenInput(decodedText);
-          performLookup(decodedText);
-        },
-        () => {
-          // ignore decode errors (per-frame noise)
-        },
-      );
+      const config = { fps: 10, qrbox: { width: 240, height: 240 } };
+      try {
+        // Preferred path: ask directly for the rear camera.
+        await scanner.start({ facingMode: "environment" }, config, onDecoded, () => {});
+      } catch (primaryErr) {
+        // Some mobile browsers reject the facingMode constraint. Fall back to
+        // enumerating cameras and picking the rear one (or the last device,
+        // which is usually the rear camera on phones).
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || cameras.length === 0) throw primaryErr;
+        const rear =
+          cameras.find((c) => /back|rear|environment|後/i.test(c.label)) ||
+          cameras[cameras.length - 1];
+        await scanner.start(rear.id, config, onDecoded, () => {});
+      }
       setScanning(true);
     } catch (err) {
-      setCameraError((err as Error).message || "無法啟動相機");
+      try {
+        await scannerRef.current?.clear();
+      } catch {}
+      scannerRef.current = null;
+      setCameraError(describeCameraError(err));
       setScanning(false);
     }
-  }, [performLookup]);
+  }, [onDecoded]);
+
+  const handleFileScan = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file) return;
+      setCameraError(null);
+      setDecodingFile(true);
+      try {
+        const { Html5Qrcode } = await import("html5-qrcode");
+        const fileScanner = new Html5Qrcode(FILE_SCAN_ELEMENT_ID);
+        try {
+          const decodedText = await fileScanner.scanFile(file, false);
+          onDecoded(decodedText);
+        } finally {
+          try {
+            await fileScanner.clear();
+          } catch {}
+        }
+      } catch {
+        setResult({
+          kind: "error",
+          message: "照片中找不到 QR Code，請對準票券重新拍攝，或改用手動輸入 token。",
+        });
+      } finally {
+        setDecodingFile(false);
+      }
+    },
+    [onDecoded],
+  );
 
   useEffect(() => {
     return () => {
@@ -171,6 +246,32 @@ export default function CheckinPage() {
               </div>
             )}
           </div>
+
+          {/* Native-camera fallback: opens the phone's camera app to take a
+              photo of the QR, then decodes it. Works even when live streaming
+              is blocked (in-app browsers, iOS permission quirks). */}
+          <div className="mt-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileScan}
+              className="hidden"
+              data-testid="input-file-scan"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={decodingFile || scanning}
+              className="w-full py-2.5 rounded-xl border-2 border-primary/30 text-primary font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/5 transition-all disabled:opacity-50"
+              data-testid="button-file-scan"
+            >
+              <Camera size={16} />
+              {decodingFile ? "辨識中..." : "無法開啟相機？改用「拍照掃描」"}
+            </button>
+          </div>
+          <div id={FILE_SCAN_ELEMENT_ID} className="hidden" />
         </div>
 
         {/* Manual entry */}
