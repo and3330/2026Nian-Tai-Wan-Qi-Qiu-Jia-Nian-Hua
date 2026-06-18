@@ -75,7 +75,7 @@ const DEFAULT_TEMPLATES: Record<EmailTemplateKey, { subject: string; body: strin
 🔔 入場小提醒：
 • 建議提早 15 分鐘抵達
 • 請攜帶身分證明文件
-• 6 歲以下兒童可免票隨大人入場
+• 兒童與大人同票價，每位皆需購票入場
 
 期待明日與您相見！
 2026 臺灣氣球嘉年華 主辦團隊

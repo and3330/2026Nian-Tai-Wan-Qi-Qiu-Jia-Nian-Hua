@@ -119,9 +119,9 @@ export default function CarnivalPage() {
 
   const baseTotal =
     visitorTicketType === "combo"
-      ? 300 * formData.adultCount + 100 * formData.childCount
+      ? 300 * totalHeads
       : visitorTicketType === "single"
-        ? 200 * formData.adultCount + 50 * formData.childCount
+        ? 200 * totalHeads
         : 0;
   const finalTotal = appliedPromo ? appliedPromo.finalAmount : baseTotal;
 
@@ -212,7 +212,7 @@ export default function CarnivalPage() {
           : `${formData.adultCount} 張`;
 
       if (visitorTicketType === "combo") {
-        const comboTotal = 300 * formData.adultCount + 100 * formData.childCount;
+        const comboTotal = 300 * totalHeads;
         const result = await createComboMutation.mutateAsync({
           data: {
             parentName: formData.parentName,
@@ -234,7 +234,7 @@ export default function CarnivalPage() {
         totalAmount = appliedPromo ? appliedPromo.finalAmount : comboTotal;
         itemLabel = `兩日套票 × ${headLabel}（7/25 + 7/26）${appliedPromo ? ` · 折扣碼 ${appliedPromo.code}` : ""}`;
       } else {
-        const singleTotal = 200 * formData.adultCount + 50 * formData.childCount;
+        const singleTotal = 200 * totalHeads;
         const r = await createMutation.mutateAsync({
           data: {
             parentName: formData.parentName,
@@ -643,7 +643,7 @@ export default function CarnivalPage() {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      兒童票適用未滿 6 歲、身高 115 公分以下；單日 50 元、兩日套票 100 元。每位兒童皆佔 1 個入場名額，每筆訂單至少 1 位大人。
+                      兒童與大人同票價（單日每位 200 元、兩日套票每位 300 元）。每位兒童皆佔 1 個入場名額，每筆訂單至少 1 位大人。
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -781,7 +781,7 @@ export default function CarnivalPage() {
                 items: [
                   "每日限量 500 名，建議提前線上購票以確保入場",
                   "入場請出示購票確認 QR Code（電子或紙本皆可）",
-                  "兒童票（未滿 6 歲、身高 115 公分以下）單日 50 元、兩日套票 100 元，兒童亦佔 1 個入場名額",
+                  "兒童與大人同票價（單日 200 元、兩日套票 300 元），兒童亦佔 1 個入場名額",
                   "兩日套票須完成兩次報到（7/25 + 7/26 各一次）",
                   "每張票含價值 50 元精美報到小禮物（一票兌換一組）",
                   "每張票贈價值 500 元商城優惠套裝折扣碼（購票後以 Email 寄送）",

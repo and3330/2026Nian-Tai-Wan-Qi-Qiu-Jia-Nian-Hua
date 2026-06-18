@@ -123,13 +123,10 @@ const PRICE_BOOK: Record<string, number> = {
   "tournament-companion": 200,
 };
 
-// Child (未滿 6 歲、身高 115 公分以下) prices for the general carnival tickets.
-// 50/day single, 50×2=100 for the two-day combo. Types absent here charge the
-// adult price for every head (no child discount applies, e.g. tournament).
-const CARNIVAL_CHILD_PRICE: Record<string, number> = {
-  single: 50,
-  combo: 100,
-};
+// Children pay the same price as adults — no child discount. Kept as an
+// (empty) override map so any future per-type child pricing can be reintroduced
+// here; absent types fall back to the adult price for every head.
+const CARNIVAL_CHILD_PRICE: Record<string, number> = {};
 
 function resolveAmount(
   rawTicketType: string | null,

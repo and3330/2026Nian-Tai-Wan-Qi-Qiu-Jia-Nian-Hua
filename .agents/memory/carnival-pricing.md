@@ -1,19 +1,18 @@
 ---
 name: Carnival ticket pricing model
-description: Adult/child pricing model for carnival admission and the promo-validate base-amount rule for mixed-price orders.
+description: Equal-price (adult=child) model for carnival admission and the promo-validate base-amount rule.
 ---
 
 # Carnival ticket pricing model
 
-Carnival admission has two price tiers per ticket type:
-- Adult (滿6歲含以上): single 200, combo 300.
-- Child (未滿6歲、115cm以下): single 50, combo 100.
+Carnival admission charges the SAME price for adults and children (no child discount):
+- Everyone: single 200/head, combo 300/head.
 
-`ticketCount` stores TOTAL heads (adults + children); `childCount` stores children; adults = `ticketCount - childCount`. Both adults and children consume the 500/day capacity, so capacity sums `ticketCount` and needs no change. Each order requires ≥1 adult; children cannot purchase alone.
+Backend `resolveAmount` charges every head the adult unit price; the `CARNIVAL_CHILD_PRICE` override map is intentionally empty (children fall back to the adult price). Reintroduce a child tier only by adding entries there if policy changes again.
+
+`ticketCount` stores TOTAL heads (adults + children); `childCount` stores children; adults = `ticketCount - childCount`. The adult/child split is kept ONLY for headcount/capacity/stats, not pricing. Both consume the 500/day capacity, so capacity sums `ticketCount`. Each order requires ≥1 adult; children cannot purchase alone.
 
 Backward-compat: if a request omits `adultCount`, treat `ticketCount` as adults with `childCount = 0`.
 
-## Promo validate must receive authoritative baseAmount for mixed-price orders
-`POST /api/promo-codes/validate` falls back to `PROMO_PRICE_BOOK[ticketType] * ticketCount` (adult unit price × total heads) when the caller omits `baseAmount`.
-**Why:** For orders containing children, that fallback over-counts (charges adult price for children), so the previewed discount and `finalAmount` diverge from the real charge.
-**How to apply:** any caller with multiple unit prices in one order (adult+child) MUST pass `baseAmount` = the correctly-computed base total. The frontend passes `baseTotal`.
+## Promo validate base-amount rule
+`POST /api/promo-codes/validate` falls back to `PROMO_PRICE_BOOK[ticketType] * ticketCount` when the caller omits `baseAmount`. With equal pricing this fallback is now correct (one unit price per type), but callers should still pass an authoritative `baseAmount` (frontend passes `baseTotal`) to stay robust if a child tier is ever reintroduced.
