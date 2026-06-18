@@ -64,12 +64,25 @@ export default function PaymentResultPage() {
   if (!ref) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-        <AlertCircle className="w-16 h-16 text-amber-500 mb-4" />
-        <h1 className="text-2xl font-bold mb-2">缺少付款參考編號</h1>
-        <p className="text-muted-foreground mb-6">請從付款頁面進入此畫面。</p>
-        <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-bold hover:opacity-90 transition-opacity">
-          <Home size={18} /> 返回首頁
-        </Link>
+        <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
+        <h1 className="text-2xl font-bold mb-2">付款可能已完成</h1>
+        <p className="text-muted-foreground mb-2 max-w-md">
+          這個畫面沒有帶到付款編號（在 LINE 等內建瀏覽器付款後常會發生）。
+        </p>
+        <p className="text-muted-foreground mb-6 max-w-md">
+          如果您剛剛已完成刷卡，款項通常已成功收到，系統會將含入場 QR Code 的確認信寄到您填寫的 Email。您也可以用手機或 Email 查詢訂單狀態。
+        </p>
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <Link href="/lookup" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-bold hover:opacity-90 transition-opacity">
+            <ArrowRight size={18} /> 查詢我的訂單
+          </Link>
+          <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-border font-bold hover:bg-muted transition-colors">
+            <Home size={18} /> 返回首頁
+          </Link>
+        </div>
+        <a href={LINE_URL} target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <MessageCircle size={16} /> 有疑問？聯絡 LINE 客服
+        </a>
       </div>
     );
   }
