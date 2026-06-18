@@ -280,7 +280,7 @@ export default function HomePage() {
             </div>
             <div className="space-y-2 text-sm text-muted-foreground mb-6">
               <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 兩日無限暢遊・所有節目通通看</p>
-              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 含全國氣球比賽完整觀賽</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 完整參與 7/25、7/26 兩日精彩活動</p>
             </div>
             <span className="inline-flex items-center gap-2 text-secondary font-bold text-sm group-hover:gap-3 transition-all">
               選擇兩日套票 <ArrowRight size={16} />
@@ -324,7 +324,7 @@ export default function HomePage() {
 
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground">
-            親子手作坊另需現場購票 <span className="font-bold text-foreground">150 元/組</span>　・　6 歲以下兒童免票隨大人入場
+            親子手作坊另需現場購票 <span className="font-bold text-foreground">150 元/組</span>　・　未滿 6 歲、身高 115 公分以下兒童優惠票 單日 50 元 / 兩日 100 元
           </p>
         </div>
       </section>
@@ -501,7 +501,7 @@ export default function HomePage() {
             {[
               { q: "需要購買門票嗎？", a: "活動日（7/25、7/26）單日票 200 元、兩日套票 300 元，請提前在官網預約購票。每日限量 500 名，建議儘早預約。" },
               { q: "活動地點在哪裡？怎麼去？", a: "活動地點為臺北瓶蓋工廠（台北市南港區南港路二段13號）。可搭乘捷運至南港站1號出口，步行約5分鐘即可到達。" },
-              { q: "小朋友適合參加嗎？", a: "非常適合！嘉年華特別設有親子區、DIY 工作坊和兒童遊戲區。6 歲以下兒童可免預約隨大人入場。" },
+              { q: "小朋友適合參加嗎？", a: "非常適合！嘉年華特別設有親子區、DIY 工作坊和兒童遊戲區。未滿 6 歲、身高 115 公分以下兒童享優惠票價（單日 50 元 / 兩日套票 100 元），每位兒童佔 1 個入場名額。" },
               { q: "可以現場報名嗎？", a: "建議提前線上預約，確保有入場名額。若當日尚有餘額，也可現場排隊候補入場。" },
               { q: "活動有提供停車場嗎？", a: "臺北瓶蓋工廠設有地下停車場，也可利用南港車站周邊停車場。建議搭乘大眾交通工具前往。" },
             ].map((item, idx) => (
