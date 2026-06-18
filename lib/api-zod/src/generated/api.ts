@@ -242,61 +242,64 @@ export const InitiatePaymentBody = zod.object({
 });
 
 /**
- * @summary Public self-service order lookup (ref + contact)
+ * @summary Public self-service order lookup (name + phone + email)
  */
 export const LookupOrderBody = zod.object({
-  ref: zod.string().describe("Payment reference shown on the result page"),
-  contact: zod
-    .string()
-    .describe("Email or phone (digits only) used at checkout"),
+  name: zod.string().describe("Buyer name used at checkout"),
+  phone: zod.string().describe("Phone number used at checkout"),
+  email: zod.string().describe("Email used at checkout"),
 });
 
 export const LookupOrderResponse = zod.object({
-  paymentRef: zod.string(),
-  provider: zod.string(),
-  amount: zod.number(),
-  status: zod.string(),
-  itemName: zod.string(),
-  paidAt: zod.date().nullish(),
-  bankInfo: zod
-    .object({
-      bankName: zod.string().optional(),
-      accountName: zod.string().optional(),
-      accountNumber: zod.string().optional(),
-    })
-    .nullish(),
-  registrations: zod.array(
+  orders: zod.array(
     zod.object({
-      id: zod.number(),
-      parentName: zod.string(),
-      phone: zod.string().nullish(),
-      email: zod.string().nullish(),
-      ticketCount: zod.number(),
-      ticketType: zod.string().nullish(),
-      eventDate: zod
-        .string()
-        .describe(
-          "Event date in YYYY-MM-DD (Asia\/Taipei), stored and compared as a plain string.",
-        ),
-      amount: zod.number().nullish(),
-      paymentStatus: zod.string(),
-      qrToken: zod.string().nullish(),
-      checkedInAt: zod.date().nullish(),
+      paymentRef: zod.string(),
+      provider: zod.string(),
+      amount: zod.number(),
+      status: zod.string(),
+      itemName: zod.string(),
+      paidAt: zod.date().nullish(),
+      bankInfo: zod
+        .object({
+          bankName: zod.string().optional(),
+          accountName: zod.string().optional(),
+          accountNumber: zod.string().optional(),
+        })
+        .nullish(),
+      registrations: zod.array(
+        zod.object({
+          id: zod.number(),
+          parentName: zod.string(),
+          phone: zod.string().nullish(),
+          email: zod.string().nullish(),
+          ticketCount: zod.number(),
+          ticketType: zod.string().nullish(),
+          eventDate: zod
+            .string()
+            .describe(
+              "Event date in YYYY-MM-DD (Asia\/Taipei), stored and compared as a plain string.",
+            ),
+          amount: zod.number().nullish(),
+          paymentStatus: zod.string(),
+          qrToken: zod.string().nullish(),
+          checkedInAt: zod.date().nullish(),
+        }),
+      ),
+      invoice: zod
+        .union([
+          zod.object({
+            status: zod.string(),
+            invoiceType: zod.string(),
+            invoiceNumber: zod.string().nullish(),
+            invoiceDate: zod.string().nullish(),
+            randomNumber: zod.string().nullish(),
+            errorMessage: zod.string().nullish(),
+          }),
+          zod.null(),
+        ])
+        .optional(),
     }),
   ),
-  invoice: zod
-    .union([
-      zod.object({
-        status: zod.string(),
-        invoiceType: zod.string(),
-        invoiceNumber: zod.string().nullish(),
-        invoiceDate: zod.string().nullish(),
-        randomNumber: zod.string().nullish(),
-        errorMessage: zod.string().nullish(),
-      }),
-      zod.null(),
-    ])
-    .optional(),
 });
 
 /**

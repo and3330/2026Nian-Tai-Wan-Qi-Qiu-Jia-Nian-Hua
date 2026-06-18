@@ -44,7 +44,7 @@ import type {
   MobileTokenExchangeRequest,
   MobileTokenExchangeSuccess,
   NewsArticle,
-  OrderLookupResult,
+  OrderLookupResults,
   PaymentStatus,
   Registration,
   SalesOverview,
@@ -1081,7 +1081,7 @@ export const useInitiatePayment = <
 };
 
 /**
- * @summary Public self-service order lookup (ref + contact)
+ * @summary Public self-service order lookup (name + phone + email)
  */
 export const getLookupOrderUrl = () => {
   return `/api/payments/lookup`;
@@ -1090,8 +1090,8 @@ export const getLookupOrderUrl = () => {
 export const lookupOrder = async (
   lookupOrderBody: LookupOrderBody,
   options?: RequestInit,
-): Promise<OrderLookupResult> => {
-  return customFetch<OrderLookupResult>(getLookupOrderUrl(), {
+): Promise<OrderLookupResults> => {
+  return customFetch<OrderLookupResults>(getLookupOrderUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -1144,7 +1144,7 @@ export type LookupOrderMutationBody = BodyType<LookupOrderBody>;
 export type LookupOrderMutationError = ErrorType<ErrorEnvelope>;
 
 /**
- * @summary Public self-service order lookup (ref + contact)
+ * @summary Public self-service order lookup (name + phone + email)
  */
 export const useLookupOrder = <
   TError = ErrorType<ErrorEnvelope>,

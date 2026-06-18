@@ -345,6 +345,10 @@ export interface OrderLookupResult {
   invoice?: InvoiceStatus | null;
 }
 
+export interface OrderLookupResults {
+  orders: OrderLookupResult[];
+}
+
 export interface DateAvailability {
   date: string;
   totalCapacity: number;
@@ -529,10 +533,12 @@ export type HandleBrowserLoginCallbackParams = {
 };
 
 export type LookupOrderBody = {
-  /** Payment reference shown on the result page */
-  ref: string;
-  /** Email or phone (digits only) used at checkout */
-  contact: string;
+  /** Buyer name used at checkout */
+  name: string;
+  /** Phone number used at checkout */
+  phone: string;
+  /** Email used at checkout */
+  email: string;
 };
 
 export type ConfirmStripePaymentBody = {

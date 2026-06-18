@@ -7,8 +7,10 @@
  */
 
 export type LookupOrderBody = {
-  /** Payment reference shown on the result page */
-  ref: string;
-  /** Email or phone (digits only) used at checkout */
-  contact: string;
+  /** Buyer name used at checkout */
+  name: string;
+  /** Phone number used at checkout */
+  phone: string;
+  /** Email used at checkout */
+  email: string;
 };

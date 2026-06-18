@@ -45,6 +45,7 @@ export * from "./newsArticle";
 export * from "./orderLookupRegistration";
 export * from "./orderLookupResult";
 export * from "./orderLookupResultBankInfo";
+export * from "./orderLookupResults";
 export * from "./paymentStatus";
 export * from "./paymentStatusBankInfo";
 export * from "./registration";

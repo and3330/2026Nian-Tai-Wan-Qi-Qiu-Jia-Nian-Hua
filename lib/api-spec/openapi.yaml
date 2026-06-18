@@ -273,28 +273,31 @@ paths:
     post:
       operationId: lookupOrder
       tags: [payments]
-      summary: Public self-service order lookup (ref + contact)
+      summary: Public self-service order lookup (name + phone + email)
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [ref, contact]
+              required: [name, phone, email]
               properties:
-                ref:
+                name:
                   type: string
-                  description: Payment reference shown on the result page
-                contact:
+                  description: Buyer name used at checkout
+                phone:
                   type: string
-                  description: Email or phone (digits only) used at checkout
+                  description: Phone number used at checkout
+                email:
+                  type: string
+                  description: Email used at checkout
       responses:
         "200":
-          description: Order details
+          description: Matching orders
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OrderLookupResult"
+                $ref: "#/components/schemas/OrderLookupResults"
         "400":
           description: Missing fields
           content:
@@ -302,7 +305,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "404":
-          description: Not found or contact mismatch
+          description: No matching order
           content:
             application/json:
               schema:
@@ -1451,6 +1454,15 @@ components:
           oneOf:
             - $ref: "#/components/schemas/InvoiceStatus"
             - type: 'null'
+
+    OrderLookupResults:
+      type: object
+      required: [orders]
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderLookupResult"
 
     DateAvailability:
       type: object

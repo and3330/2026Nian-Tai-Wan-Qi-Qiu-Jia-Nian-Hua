@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
   Search,
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLookupOrder } from "@workspace/api-client-react";
-import type { OrderLookupResult, OrderLookupRegistration } from "@workspace/api-client-react";
+import type { OrderLookupResult, OrderLookupResults, OrderLookupRegistration } from "@workspace/api-client-react";
 
 interface RefundStatusRow {
   id: number;
@@ -38,32 +38,25 @@ const REFUND_STATUS_LABEL: Record<string, string> = {
 const QR_BASE = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/qr`;
 
 export default function OrderLookupPage() {
-  const [ref, setRef] = useState("");
-  const [contact, setContact] = useState("");
-  const [submittedKey, setSubmittedKey] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
   const lookup = useLookupOrder();
-  const [refunds, setRefunds] = useState<RefundStatusRow[]>([]);
-
-  const loadRefundStatus = async (orderRef: string) => {
-    try {
-      const res = await fetch(`/api/refund-requests/by-ref/${encodeURIComponent(orderRef)}`);
-      if (res.ok) setRefunds(await res.json());
-    } catch { /* non-blocking */ }
-  };
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const r = ref.trim();
-    const c = contact.trim();
-    if (!r || !c) return;
-    setSubmittedKey(`${r}::${c}`);
-    setRefunds([]);
-    lookup.mutate({ data: { ref: r, contact: c } }, {
-      onSuccess: () => loadRefundStatus(r),
-    });
+    const n = name.trim();
+    const p = phone.trim();
+    const em = email.trim();
+    if (!n || !p || !em) return;
+    setSubmitted(true);
+    lookup.mutate({ data: { name: n, phone: p, email: em } });
   };
 
-  const data = lookup.data as OrderLookupResult | undefined;
+  const data = lookup.data as OrderLookupResults | undefined;
+  const orders = data?.orders ?? [];
+  const phoneDigits = phone.replace(/\D/g, "");
   const errorMessage =
     lookup.error && (lookup.error as { data?: { error?: string } }).data?.error;
 
@@ -76,7 +69,7 @@ export default function OrderLookupPage() {
           </div>
           <h1 className="text-3xl md:text-4xl font-display font-bold mb-3">查詢我的訂單</h1>
           <p className="text-muted-foreground">
-            輸入訂單編號與當初購票的 Email 或手機號碼，即可查看付款狀態、QR Code 與發票資訊
+            輸入購票時填寫的姓名、手機號碼與 Email，即可查看付款狀態、QR Code 與發票資訊
           </p>
         </div>
 
@@ -87,46 +80,59 @@ export default function OrderLookupPage() {
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-bold mb-2" htmlFor="lookup-ref">
-                訂單編號
+              <label className="block text-sm font-bold mb-2" htmlFor="lookup-name">
+                姓名
               </label>
               <input
-                id="lookup-ref"
+                id="lookup-name"
                 type="text"
-                value={ref}
-                onChange={(e) => setRef(e.target.value.toUpperCase())}
-                placeholder="例如：BCAB12CDXY34"
-                className="w-full px-4 py-3 border-2 rounded-xl font-mono focus:border-primary focus:outline-none"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="購票時填寫的姓名"
+                className="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none"
                 required
-                data-testid="input-lookup-ref"
+                data-testid="input-lookup-name"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                付款完成後會收到的 BC 開頭代碼，也會顯示在確認信件中。
-              </p>
             </div>
 
             <div>
-              <label className="block text-sm font-bold mb-2" htmlFor="lookup-contact">
-                Email 或手機號碼
+              <label className="block text-sm font-bold mb-2" htmlFor="lookup-phone">
+                手機號碼
               </label>
               <input
-                id="lookup-contact"
-                type="text"
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                placeholder="購票時填寫的 Email 或手機"
+                id="lookup-phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="例如：0912345678"
                 className="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none"
                 required
-                data-testid="input-lookup-contact"
+                data-testid="input-lookup-phone"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold mb-2" htmlFor="lookup-email">
+                Email
+              </label>
+              <input
+                id="lookup-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="購票時填寫的 Email"
+                className="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none"
+                required
+                data-testid="input-lookup-email"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                為了保護您的個資，需要同時提供訂單編號與聯絡方式才能查詢。
+                為保護您的個資，需要同時提供姓名、手機號碼與 Email 才能查詢。
               </p>
             </div>
 
             <button
               type="submit"
-              disabled={lookup.isPending || !ref.trim() || !contact.trim()}
+              disabled={lookup.isPending || !name.trim() || !phone.trim() || !email.trim()}
               className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-opacity disabled:opacity-50 inline-flex items-center justify-center gap-2"
               data-testid="button-lookup-submit"
             >
@@ -143,20 +149,24 @@ export default function OrderLookupPage() {
           </div>
         </form>
 
-        {lookup.isError && submittedKey && (
+        {lookup.isError && submitted && (
           <div className="bg-destructive/5 border-2 border-destructive/20 rounded-2xl p-6 text-center" data-testid="lookup-error">
             <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-2" />
             <p className="text-destructive font-bold">{errorMessage || "查詢失敗，請稍後再試"}</p>
           </div>
         )}
 
-        {data && submittedKey && (
-          <OrderResultCard
-            data={data}
-            contact={contact}
-            refunds={refunds}
-            onRefundSubmitted={() => loadRefundStatus(data.paymentRef)}
-          />
+        {lookup.isSuccess && submitted && orders.length > 0 && (
+          <div className="space-y-6">
+            {orders.length > 1 && (
+              <p className="text-sm text-muted-foreground text-center" data-testid="lookup-order-count">
+                共找到 {orders.length} 筆訂單
+              </p>
+            )}
+            {orders.map((order) => (
+              <OrderResultCard key={order.paymentRef} data={order} contact={phoneDigits} />
+            ))}
+          </div>
         )}
 
         <div className="mt-8 text-center">
@@ -175,17 +185,25 @@ export default function OrderLookupPage() {
 function OrderResultCard({
   data,
   contact,
-  refunds,
-  onRefundSubmitted,
 }: {
   data: OrderLookupResult;
   contact: string;
-  refunds: RefundStatusRow[];
-  onRefundSubmitted: () => void;
 }) {
   const isPaid = data.status === "paid";
   const isAwaitingTransfer = data.status === "awaiting_transfer";
   const [refundOpen, setRefundOpen] = useState(false);
+  const [refunds, setRefunds] = useState<RefundStatusRow[]>([]);
+
+  const loadRefundStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/refund-requests/by-ref/${encodeURIComponent(data.paymentRef)}`);
+      if (res.ok) setRefunds(await res.json());
+    } catch { /* non-blocking */ }
+  }, [data.paymentRef]);
+
+  useEffect(() => {
+    loadRefundStatus();
+  }, [loadRefundStatus]);
 
   const activeRefund = refunds.find((r) => r.status === "pending" || r.status === "approved" || r.status === "rescheduled");
   const anyCheckedIn = data.registrations.some((r) => !!r.checkedInAt);
@@ -329,7 +347,7 @@ function OrderResultCard({
           paymentRef={data.paymentRef}
           contact={contact}
           onClose={() => setRefundOpen(false)}
-          onSubmitted={() => { setRefundOpen(false); onRefundSubmitted(); }}
+          onSubmitted={() => { setRefundOpen(false); loadRefundStatus(); }}
         />
       )}
     </div>

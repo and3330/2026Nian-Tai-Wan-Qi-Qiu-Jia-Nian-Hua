@@ -333,88 +333,114 @@ router.post("/payments/initiate", async (req, res): Promise<void> => {
 });
 
 // Public order lookup — used by the customer self-service page.
-// Requires BOTH the payment ref AND a matching contact (email or phone)
-// so a leaked ref alone cannot reveal personal information.
+// Requires name + phone + email to ALL match a registration in the order, so
+// personal information is only revealed to someone who already knows the
+// buyer's full contact details.
 router.post("/payments/lookup", async (req, res): Promise<void> => {
   try {
-    const refRaw = typeof req.body?.ref === "string" ? req.body.ref.trim() : "";
-    const contactRaw = typeof req.body?.contact === "string" ? req.body.contact.trim() : "";
-    if (!refRaw || !contactRaw) {
-      res.status(400).json({ error: "請輸入訂單編號與 Email 或手機號碼" });
+    const nameRaw = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+    const phoneRaw = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
+    const emailRaw = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+    if (!nameRaw || !phoneRaw || !emailRaw) {
+      res.status(400).json({ error: "請輸入姓名、手機號碼與 Email" });
       return;
     }
-    const [tx] = await db
-      .select()
-      .from(paymentTransactionsTable)
-      .where(eq(paymentTransactionsTable.paymentRef, refRaw));
-    if (!tx) {
-      res.status(404).json({ error: "查無此訂單，請確認訂單編號是否正確" });
-      return;
-    }
-    const regs = await db
+
+    const nameNorm = nameRaw.replace(/\s+/g, "").toLowerCase();
+    const phoneDigits = phoneRaw.replace(/\D/g, "");
+    const emailNorm = emailRaw.toLowerCase();
+    const notFound = { error: "查無此訂單，請確認姓名、手機號碼與 Email 是否正確" };
+
+    // Email is the most selective field — narrow by it in SQL, then verify name
+    // + phone in JS so formatting differences (spaces, dashes) don't block matches.
+    const candidates = await db
       .select()
       .from(registrationsTable)
-      .where(eq(registrationsTable.paymentRef, refRaw));
-    if (!regs.length) {
-      res.status(404).json({ error: "查無此訂單，請確認訂單編號是否正確" });
+      .where(sql`lower(${registrationsTable.email}) = ${emailNorm}`);
+
+    const matchedRegs = candidates.filter(
+      (r) =>
+        (r.parentName || "").replace(/\s+/g, "").toLowerCase() === nameNorm &&
+        phoneDigits.length >= 8 &&
+        (r.phone || "").replace(/\D/g, "") === phoneDigits,
+    );
+
+    // Distinct payment refs (a buyer may have several orders).
+    const refs = Array.from(
+      new Set(matchedRegs.map((r) => r.paymentRef).filter((ref): ref is string => !!ref)),
+    );
+    if (refs.length === 0) {
+      res.status(404).json(notFound);
       return;
     }
 
-    const contactNorm = contactRaw.toLowerCase();
-    const contactIsEmail = contactNorm.includes("@");
-    const contactDigits = contactRaw.replace(/\D/g, "");
-    const matched = regs.some((r) => {
-      if (contactIsEmail) {
-        return (r.email || "").toLowerCase() === contactNorm;
-      }
-      return contactDigits.length >= 8 && (r.phone || "").replace(/\D/g, "") === contactDigits;
-    });
-    if (!matched) {
-      // Identical message to the not-found case so attackers can't probe
-      // whether a payment ref exists.
-      res.status(404).json({ error: "查無此訂單，請確認訂單編號與聯絡方式是否正確" });
+    const orders = [];
+    for (const ref of refs) {
+      const [tx] = await db
+        .select()
+        .from(paymentTransactionsTable)
+        .where(eq(paymentTransactionsTable.paymentRef, ref));
+      if (!tx) continue;
+      const regs = await db
+        .select()
+        .from(registrationsTable)
+        .where(eq(registrationsTable.paymentRef, ref));
+      if (!regs.length) continue;
+      const [invoice] = await db
+        .select()
+        .from(invoicesTable)
+        .where(eq(invoicesTable.paymentRef, ref))
+        .orderBy(desc(invoicesTable.id))
+        .limit(1);
+
+      orders.push({
+        createdAt: tx.createdAt,
+        paymentRef: tx.paymentRef,
+        provider: tx.provider,
+        amount: tx.amount,
+        status: tx.status,
+        itemName: tx.itemName,
+        paidAt: tx.paidAt,
+        bankInfo: tx.provider === "bank" ? BANK_INFO : null,
+        registrations: regs.map((r) => ({
+          id: r.id,
+          parentName: r.parentName,
+          phone: maskPhone(r.phone),
+          email: maskEmail(r.email),
+          ticketCount: r.ticketCount,
+          ticketType: r.ticketType,
+          eventDate: r.eventDate,
+          amount: r.amount,
+          paymentStatus: r.paymentStatus,
+          qrToken: r.paymentStatus === "paid" ? r.qrToken : null,
+          checkedInAt: r.checkedInAt,
+        })),
+        invoice: invoice
+          ? {
+              status: invoice.status,
+              invoiceType: invoice.invoiceType,
+              invoiceNumber: invoice.invoiceNumber,
+              invoiceDate: invoice.invoiceDate,
+              randomNumber: invoice.randomNumber,
+              errorMessage: invoice.errorMessage,
+            }
+          : null,
+      });
+    }
+
+    if (orders.length === 0) {
+      res.status(404).json(notFound);
       return;
     }
 
-    const [invoice] = await db
-      .select()
-      .from(invoicesTable)
-      .where(eq(invoicesTable.paymentRef, refRaw))
-      .orderBy(desc(invoicesTable.id))
-      .limit(1);
-
-    res.json({
-      paymentRef: tx.paymentRef,
-      provider: tx.provider,
-      amount: tx.amount,
-      status: tx.status,
-      itemName: tx.itemName,
-      paidAt: tx.paidAt,
-      bankInfo: tx.provider === "bank" ? BANK_INFO : null,
-      registrations: regs.map((r) => ({
-        id: r.id,
-        parentName: r.parentName,
-        phone: maskPhone(r.phone),
-        email: maskEmail(r.email),
-        ticketCount: r.ticketCount,
-        ticketType: r.ticketType,
-        eventDate: r.eventDate,
-        amount: r.amount,
-        paymentStatus: r.paymentStatus,
-        qrToken: r.paymentStatus === "paid" ? r.qrToken : null,
-        checkedInAt: r.checkedInAt,
-      })),
-      invoice: invoice
-        ? {
-            status: invoice.status,
-            invoiceType: invoice.invoiceType,
-            invoiceNumber: invoice.invoiceNumber,
-            invoiceDate: invoice.invoiceDate,
-            randomNumber: invoice.randomNumber,
-            errorMessage: invoice.errorMessage,
-          }
-        : null,
+    // Newest order first.
+    orders.sort((a, b) => {
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
     });
+
+    res.json({ orders: orders.map(({ createdAt: _createdAt, ...rest }) => rest) });
   } catch (err) {
     logger.error({ err }, "[payments/lookup] error");
     res.status(500).json({ error: "查詢失敗，請稍後再試" });
