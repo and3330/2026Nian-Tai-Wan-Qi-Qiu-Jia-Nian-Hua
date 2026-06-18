@@ -325,6 +325,13 @@ export function buildConfirmationEmailHtml(vars: {
       ? `大人 ${adultCount} 位、兒童 ${childCount} 位（共 ${vars.ticketCount} 位）`
       : `${vars.ticketCount} 張`;
   const isCompanion = vars.ticketType === "tournament-companion";
+  const headerSubtitle = isTournament
+    ? "報名成功・款項已確認 🎉"
+    : "購票成功！期待與您相見 🎉";
+  const greetingLine = isTournament
+    ? `感謝您報名 ${EVENT_INFO.name} 戰鬥陀螺賽，我們已收到您的款項，報名手續完成！以下是您的報名資訊：`
+    : `感謝您購買 ${EVENT_INFO.name} 的入場票券，您的訂單已確認。以下是您的票券資訊：`;
+  const cardTitle = isTournament ? "🎫 報名資訊" : "🎫 票券資訊";
 
   const infoRow = (label: string, value: string) => `
     <tr>
@@ -400,7 +407,7 @@ export function buildConfirmationEmailHtml(vars: {
     <td style="background:linear-gradient(135deg,${coral} 0%,${yellow} 100%);padding:36px 32px;text-align:center;">
       <div style="font-size:34px;line-height:1;margin-bottom:10px;">🎈</div>
       <div style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:0.5px;">${EVENT_INFO.name}</div>
-      <div style="color:#fff7ed;font-size:15px;font-weight:600;margin-top:6px;">購票成功！期待與您相見 🎉</div>
+      <div style="color:#fff7ed;font-size:15px;font-weight:600;margin-top:6px;">${headerSubtitle}</div>
     </td>
   </tr>
 
@@ -408,7 +415,7 @@ export function buildConfirmationEmailHtml(vars: {
   <tr>
     <td style="padding:28px 32px 8px;">
       <p style="margin:0;color:${ink};font-size:16px;line-height:1.7;">親愛的 <strong>${parentName}</strong> 您好，</p>
-      <p style="margin:10px 0 0;color:${ink};font-size:15px;line-height:1.7;">感謝您購買 ${EVENT_INFO.name} 的入場票券，您的訂單已確認。以下是您的票券資訊：</p>
+      <p style="margin:10px 0 0;color:${ink};font-size:15px;line-height:1.7;">${greetingLine}</p>
     </td>
   </tr>
 
@@ -417,7 +424,7 @@ export function buildConfirmationEmailHtml(vars: {
     <td style="padding:16px 32px 4px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff8f1;border:1px solid #ffe3cf;border-radius:14px;padding:18px 20px;">
         <tr><td>
-          <div style="font-size:13px;font-weight:800;color:${coral};letter-spacing:1px;margin-bottom:6px;">🎫 票券資訊</div>
+          <div style="font-size:13px;font-weight:800;color:${coral};letter-spacing:1px;margin-bottom:6px;">${cardTitle}</div>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
             ${infoRow("姓名", parentName)}
             ${infoRow("聯絡電話", phone)}
@@ -571,10 +578,14 @@ export async function sendConfirmationEmail(
   if (!opts?.force && reg.confirmationEmailSentAt) return null;
   const tpl = await getTemplate("confirmation");
   const vars = buildRegistrationVars(reg);
+  const isTournament = TOURNAMENT_TICKET_TYPES.includes(reg.ticketType ?? "");
+  const subject = isTournament
+    ? `【${EVENT_INFO.name}】戰鬥陀螺賽報名成功・收款確認 - ${reg.parentName}`
+    : renderTemplate(tpl.subject, vars);
   const qrAttachment = reg.qrToken ? await buildQrAttachment(reg.qrToken) : null;
   const result = await sendEmail({
     to: reg.email,
-    subject: renderTemplate(tpl.subject, vars),
+    subject,
     body: renderTemplate(tpl.body, vars),
     qrImageUrl: vars.qrUrl,
     htmlOverride: buildConfirmationEmailHtml(vars),
