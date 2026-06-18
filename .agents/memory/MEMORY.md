@@ -9,3 +9,4 @@
 - [Date fields zod validation](date-fields-zod-validation.md) — date-only cols (mode:string) must be plain string (no format:date) in spec response schemas, else response .parse() 500s once rows exist.
 - [Rebuild libs after codegen](codegen-rebuild-libs.md) — after api-spec codegen, web tsc still errors until `pnpm run typecheck:libs` (tsc --build) regenerates lib dist .d.ts.
 - [api-server testing](api-server-testing.md) — vitest+supertest in test/ (not src/); runs vs shared dev DB with `__torTEST__` marker cleanup; mount router, not app.ts.
+- [Expose a new registration field end-to-end](api-response-schema-codegen.md) — list/lookup responses are zod-parsed (strip unknown keys); new column needs DB push + openapi.yaml + codegen + prod migration.

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, date, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, date, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -11,6 +11,7 @@ export const registrationsTable = pgTable(
     email: text("email"),
     ticketCount: integer("ticket_count").notNull(),
     childCount: integer("child_count").notNull().default(0),
+    isVip: boolean("is_vip").notNull().default(false),
     eventDate: date("event_date", { mode: "string" }).notNull(),
     ticketType: text("ticket_type"),
     amount: integer("amount"),

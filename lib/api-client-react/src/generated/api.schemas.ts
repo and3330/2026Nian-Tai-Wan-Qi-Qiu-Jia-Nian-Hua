@@ -133,6 +133,8 @@ export interface Registration {
   weekReminderSentAt?: string | null;
   /** @nullable */
   dayReminderSentAt?: string | null;
+  /** Early-bird VIP flag. Admission label only (under-6 children free at the gate); does not affect pricing or ticket counts. */
+  isVip?: boolean;
   createdAt: string;
 }
 

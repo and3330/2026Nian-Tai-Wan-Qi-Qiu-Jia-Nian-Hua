@@ -241,6 +241,57 @@ router.post("/admin/registrations/bulk-delete", async (req, res): Promise<void> 
   res.json({ deletedCount, ordersDeleted: refs.length + standaloneIds.length });
 });
 
+// Toggle the early-bird VIP flag on an order. VIP is purely an admission label
+// shown in the orders list and at check-in (staff let the buyer's under-6
+// children in free) — it does NOT change pricing, ticket counts, or trigger any
+// refund. Applied to every leg sharing the order's paymentRef so the flag shows
+// on each leg's QR at check-in. Editor+ only.
+router.post("/admin/registrations/set-vip", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor")) return;
+
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
+  const cleanIds = Array.from(
+    new Set(
+      (ids ?? [])
+        .map((v: unknown) => Number(v))
+        .filter((n: number) => Number.isInteger(n) && n > 0),
+    ),
+  ) as number[];
+  const isVip = req.body?.isVip === true;
+
+  if (cleanIds.length === 0) {
+    res.status(400).json({ error: "請提供要設定的訂單" });
+    return;
+  }
+
+  // Expand to whole orders: any leg sharing a paymentRef gets the same flag.
+  const rows = await db
+    .select({ id: registrationsTable.id, paymentRef: registrationsTable.paymentRef })
+    .from(registrationsTable)
+    .where(inArray(registrationsTable.id, cleanIds));
+
+  const refs = Array.from(
+    new Set(rows.map((r) => r.paymentRef).filter((r): r is string => Boolean(r))),
+  );
+  const standaloneIds = rows.filter((r) => !r.paymentRef).map((r) => r.id);
+
+  let updated = 0;
+  await db.transaction(async (tx) => {
+    const conds = [];
+    if (refs.length > 0) conds.push(inArray(registrationsTable.paymentRef, refs));
+    if (standaloneIds.length > 0) conds.push(inArray(registrationsTable.id, standaloneIds));
+    if (conds.length === 0) return;
+    const updatedRows = await tx
+      .update(registrationsTable)
+      .set({ isVip })
+      .where(conds.length === 1 ? conds[0] : or(...conds))
+      .returning({ id: registrationsTable.id });
+    updated = updatedRows.length;
+  });
+
+  res.json({ updated, isVip });
+});
+
 // Resend the purchase-confirmation email (with entry QR) for the given
 // registration "legs". Each leg of a two-day combo carries its own QR, so the
 // caller passes every leg id and we resend per leg. Forced: bypasses the

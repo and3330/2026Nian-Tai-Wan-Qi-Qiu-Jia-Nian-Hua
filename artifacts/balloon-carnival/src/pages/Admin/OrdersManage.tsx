@@ -16,6 +16,7 @@ import {
   Undo2,
   Trash2,
   Send,
+  Crown,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -71,6 +72,7 @@ interface Order {
   paymentStatus: string;
   createdAt: string;
   checkedInCount: number;
+  isVip: boolean;
 }
 
 function normalizeStatus(s: string | null | undefined): OrderStatus {
@@ -112,6 +114,7 @@ function buildOrders(registrations: Registration[]): Order[] {
       paymentStatus: head.paymentStatus,
       createdAt: head.createdAt as unknown as string,
       checkedInCount: legs.filter((l) => l.checkedInAt).length,
+      isVip: legs.some((l) => l.isVip),
     });
   }
 
@@ -168,6 +171,7 @@ export default function OrdersManage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [confirmingRef, setConfirmingRef] = useState<string | null>(null);
+  const [vipBusyRef, setVipBusyRef] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -399,6 +403,37 @@ export default function OrdersManage() {
       window.alert(err instanceof Error ? err.message : "確認失敗，請稍後再試");
     } finally {
       setConfirmingRef(null);
+    }
+  };
+
+  const handleToggleVip = async (o: Order) => {
+    const next = !o.isVip;
+    const ids = o.legs.map((l) => l.id);
+    if (
+      next &&
+      !window.confirm(
+        "將這筆訂單設為「早鳥VIP」？\n報到時會標示「VIP・可帶 6 歲以下兒童免費入場」，僅供現場放行使用，不會改變金額或票數。",
+      )
+    ) {
+      return;
+    }
+    setVipBusyRef(o.ref);
+    try {
+      const res = await fetch("/api/admin/registrations/set-vip", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, isVip: next }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "設定失敗");
+      }
+      await refetch();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "設定失敗，請稍後再試");
+    } finally {
+      setVipBusyRef(null);
     }
   };
 
@@ -698,6 +733,14 @@ export default function OrdersManage() {
                       </td>
                       <td className="p-4 font-medium whitespace-nowrap">
                         {o.buyerName}
+                        {o.isVip && (
+                          <span
+                            className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold align-middle"
+                            title="早鳥VIP：報到時可帶 6 歲以下兒童免費入場"
+                          >
+                            <Crown size={11} /> VIP
+                          </span>
+                        )}
                       </td>
                       <td className="p-4 whitespace-nowrap">
                         <div>{o.phone}</div>
@@ -736,32 +779,51 @@ export default function OrdersManage() {
                         )}
                       </td>
                       <td className="p-4 text-right">
-                        {o.paymentStatus === "awaiting_transfer" &&
-                        o.isRealRef ? (
-                          canConfirm ? (
-                            <button
-                              onClick={() => handleConfirmBank(o.ref)}
-                              disabled={confirmingRef === o.ref}
-                              className="px-3 py-1.5 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors whitespace-nowrap"
-                            >
-                              {confirmingRef === o.ref ? "處理中..." : "確認收款"}
-                            </button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              待編輯確認
+                        <div className="flex flex-col items-end gap-2">
+                          {o.paymentStatus === "awaiting_transfer" &&
+                          o.isRealRef ? (
+                            canConfirm ? (
+                              <button
+                                onClick={() => handleConfirmBank(o.ref)}
+                                disabled={confirmingRef === o.ref}
+                                className="px-3 py-1.5 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                              >
+                                {confirmingRef === o.ref ? "處理中..." : "確認收款"}
+                              </button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                待編輯確認
+                              </span>
+                            )
+                          ) : o.paymentStatus === "refunded" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                              <Undo2 size={12} /> 已退款
                             </span>
-                          )
-                        ) : o.paymentStatus === "refunded" ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-                            <Undo2 size={12} /> 已退款
-                          </span>
-                        ) : o.paymentStatus === "failed" ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-red-500">
-                            <XCircle size={12} /> 失敗
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
+                          ) : o.paymentStatus === "failed" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-red-500">
+                              <XCircle size={12} /> 失敗
+                            </span>
+                          ) : null}
+                          {canConfirm && (
+                            <button
+                              onClick={() => handleToggleVip(o)}
+                              disabled={vipBusyRef === o.ref}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap inline-flex items-center gap-1 disabled:opacity-50 ${
+                                o.isVip
+                                  ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                                  : "border border-amber-400 text-amber-700 hover:bg-amber-50"
+                              }`}
+                              title="早鳥VIP：報到時可帶 6 歲以下兒童免費入場（不影響金額與票數）"
+                            >
+                              <Crown size={12} />
+                              {vipBusyRef === o.ref
+                                ? "處理中..."
+                                : o.isVip
+                                  ? "取消VIP"
+                                  : "設為VIP"}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

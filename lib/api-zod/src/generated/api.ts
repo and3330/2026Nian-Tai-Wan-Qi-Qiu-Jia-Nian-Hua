@@ -449,6 +449,12 @@ export const AdminListRegistrationsResponseItem = zod.object({
   confirmationEmailSentAt: zod.date().nullish(),
   weekReminderSentAt: zod.date().nullish(),
   dayReminderSentAt: zod.date().nullish(),
+  isVip: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Early-bird VIP flag. Admission label only (under-6 children free at the gate); does not affect pricing or ticket counts.",
+    ),
   createdAt: zod.date(),
 });
 export const AdminListRegistrationsResponse = zod.array(
@@ -585,6 +591,12 @@ export const AdminLookupCheckinResponse = zod.object({
     confirmationEmailSentAt: zod.date().nullish(),
     weekReminderSentAt: zod.date().nullish(),
     dayReminderSentAt: zod.date().nullish(),
+    isVip: zod
+      .boolean()
+      .optional()
+      .describe(
+        "Early-bird VIP flag. Admission label only (under-6 children free at the gate); does not affect pricing or ticket counts.",
+      ),
     createdAt: zod.date(),
   }),
   alreadyCheckedIn: zod.boolean(),
@@ -619,6 +631,12 @@ export const AdminPerformCheckinResponse = zod.object({
     confirmationEmailSentAt: zod.date().nullish(),
     weekReminderSentAt: zod.date().nullish(),
     dayReminderSentAt: zod.date().nullish(),
+    isVip: zod
+      .boolean()
+      .optional()
+      .describe(
+        "Early-bird VIP flag. Admission label only (under-6 children free at the gate); does not affect pricing or ticket counts.",
+      ),
     createdAt: zod.date(),
   }),
   alreadyCheckedIn: zod.boolean(),

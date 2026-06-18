@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ScanLine, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff } from "lucide-react";
+import { ScanLine, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Registration = {
@@ -9,6 +9,7 @@ type Registration = {
   email: string | null;
   ticketCount: number;
   childCount?: number;
+  isVip?: boolean;
   eventDate: string;
   qrToken: string | null;
   checkedInAt: string | null;
@@ -248,6 +249,13 @@ export default function CheckinPage() {
                   )}
                 </div>
               </div>
+
+              {result.reg.isVip && (
+                <div className="mb-4 flex items-center gap-2 rounded-2xl bg-amber-100 border-2 border-amber-300 px-4 py-3 text-amber-800 font-bold">
+                  <Crown size={20} className="shrink-0" />
+                  VIP・可帶 6 歲以下兒童免費入場
+                </div>
+              )}
 
               <div className="bg-white/60 rounded-2xl p-4 grid grid-cols-2 gap-3 text-sm">
                 <div className="text-muted-foreground">姓名：</div>
