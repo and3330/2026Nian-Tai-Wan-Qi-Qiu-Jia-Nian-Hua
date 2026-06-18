@@ -18,6 +18,7 @@ import TORPage from "@/pages/TORPage";
 import SponsorsPage from "@/pages/SponsorsPage";
 import AdGuidePage from "@/pages/AdGuidePage";
 import PaymentResultPage from "@/pages/PaymentResultPage";
+import SuccessPage from "@/pages/SuccessPage";
 import OrderLookupPage from "@/pages/OrderLookupPage";
 
 // Admin Pages
@@ -78,6 +79,7 @@ function Router() {
         <Route path="/sponsors" component={SponsorsPage} />
         <Route path="/ad-guide" component={AdGuidePage} />
         <Route path="/payment/result" component={PaymentResultPage} />
+        <Route path="/success" component={SuccessPage} />
         <Route path="/lookup" component={OrderLookupPage} />
 
         <Route path="/admin/login" component={AdminLoginPage} />
