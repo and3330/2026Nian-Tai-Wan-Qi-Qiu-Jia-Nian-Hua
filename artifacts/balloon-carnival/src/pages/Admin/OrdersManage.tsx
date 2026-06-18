@@ -17,6 +17,8 @@ import {
   Trash2,
   Send,
   Crown,
+  Eye,
+  X,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -173,6 +175,7 @@ export default function OrdersManage() {
   const [confirmingRef, setConfirmingRef] = useState<string | null>(null);
   const [markingPaidRef, setMarkingPaidRef] = useState<string | null>(null);
   const [refundingRef, setRefundingRef] = useState<string | null>(null);
+  const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [vipBusyRef, setVipBusyRef] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -893,6 +896,13 @@ export default function OrdersManage() {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex flex-col items-end gap-2">
+                          <button
+                            onClick={() => setDetailOrder(o)}
+                            title="查看訂單詳情"
+                            className="px-3 py-1.5 rounded-xl border text-xs font-semibold hover:bg-muted disabled:opacity-50 transition-colors whitespace-nowrap inline-flex items-center gap-1"
+                          >
+                            <Eye size={12} /> 詳情
+                          </button>
                           {o.paymentStatus === "awaiting_transfer" &&
                           o.isRealRef ? (
                             canConfirm ? (
@@ -975,6 +985,192 @@ export default function OrdersManage() {
       <p className="text-xs text-muted-foreground">
         共 {filtered.length} 筆訂單{filter !== "all" ? "（已套用篩選）" : ""}。兩日套票會合併為一筆訂單顯示。
       </p>
+
+      {detailOrder && (
+        <OrderDetailModal
+          order={detailOrder}
+          onClose={() => setDetailOrder(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex justify-between gap-4 py-1.5 text-sm">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="text-right font-medium break-all">{value}</span>
+    </div>
+  );
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return null;
+  return new Date(value).toLocaleString("zh-TW");
+}
+
+function OrderDetailModal({
+  order,
+  onClose,
+}: {
+  order: Order;
+  onClose: () => void;
+}) {
+  const totalChildren = order.legs.reduce((s, l) => s + (l.childCount ?? 0), 0);
+  const totalInfants = order.legs.reduce((s, l) => s + (l.infantCount ?? 0), 0);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 p-6 border-b sticky top-0 bg-white rounded-t-3xl">
+          <div>
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              訂單詳情
+              {order.isVip && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold">
+                  <Crown size={11} /> VIP
+                </span>
+              )}
+            </h2>
+            <p className="font-mono text-xs text-muted-foreground mt-1">
+              {order.isRealRef ? order.ref : "（無訂單編號）"}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="關閉"
+            className="p-2 rounded-full hover:bg-muted transition-colors shrink-0"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Buyer */}
+          <section>
+            <h3 className="text-sm font-bold text-muted-foreground mb-2">
+              購買人
+            </h3>
+            <div className="rounded-2xl border p-4">
+              <DetailRow label="姓名" value={order.buyerName} />
+              <DetailRow label="電話" value={order.phone} />
+              <DetailRow label="Email" value={order.email ?? "—"} />
+            </div>
+          </section>
+
+          {/* Payment */}
+          <section>
+            <h3 className="text-sm font-bold text-muted-foreground mb-2">
+              付款資訊
+            </h3>
+            <div className="rounded-2xl border p-4">
+              <DetailRow label="狀態" value={statusBadge(order.paymentStatus)} />
+              <DetailRow
+                label="付款方式"
+                value={
+                  order.paymentMethod
+                    ? (PAYMENT_METHOD_LABELS[order.paymentMethod] ??
+                      order.paymentMethod)
+                    : "—"
+                }
+              />
+              <DetailRow
+                label="訂單金額"
+                value={
+                  <span className="text-green-600">
+                    {formatCurrency(order.amount)}
+                  </span>
+                }
+              />
+              <DetailRow
+                label="建立時間"
+                value={new Date(order.createdAt).toLocaleString("zh-TW")}
+              />
+            </div>
+          </section>
+
+          {/* Tickets */}
+          <section>
+            <h3 className="text-sm font-bold text-muted-foreground mb-2">
+              票券明細（{order.legs.length} 張）
+            </h3>
+            <div className="space-y-3">
+              {order.legs
+                .slice()
+                .sort((a, b) => a.eventDate.localeCompare(b.eventDate))
+                .map((leg) => {
+                  const emailSent = formatDateTime(leg.confirmationEmailSentAt);
+                  const checkedIn = formatDateTime(leg.checkedInAt);
+                  return (
+                    <div key={leg.id} className="rounded-2xl border p-4">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="font-bold text-primary">
+                          {formatDate(leg.eventDate)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {leg.ticketType
+                            ? (TICKET_TYPE_LABELS[leg.ticketType] ??
+                              leg.ticketType)
+                            : "—"}
+                        </span>
+                      </div>
+                      <DetailRow label="票數" value={`${leg.ticketCount} 張`} />
+                      {(leg.childCount ?? 0) > 0 && (
+                        <DetailRow
+                          label="兒童"
+                          value={`${leg.childCount} 位`}
+                        />
+                      )}
+                      {(leg.infantCount ?? 0) > 0 && (
+                        <DetailRow
+                          label="嬰兒（免費）"
+                          value={`${leg.infantCount} 位`}
+                        />
+                      )}
+                      <DetailRow
+                        label="報到"
+                        value={
+                          checkedIn ? (
+                            <span className="text-green-600">{checkedIn}</span>
+                          ) : (
+                            <span className="text-muted-foreground">未報到</span>
+                          )
+                        }
+                      />
+                      <DetailRow
+                        label="入場 QR"
+                        value={leg.qrToken ? "已產生" : "—"}
+                      />
+                      <DetailRow
+                        label="確認信"
+                        value={emailSent ?? "未寄送"}
+                      />
+                    </div>
+                  );
+                })}
+            </div>
+            {(totalChildren > 0 || totalInfants > 0) && (
+              <p className="text-xs text-muted-foreground mt-2">
+                合計兒童 {totalChildren} 位
+                {totalInfants > 0 ? `、嬰兒 ${totalInfants} 位（免費）` : ""}。
+              </p>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
