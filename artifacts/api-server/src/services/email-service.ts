@@ -75,7 +75,7 @@ const DEFAULT_TEMPLATES: Record<EmailTemplateKey, { subject: string; body: strin
 🔔 入場小提醒：
 • 建議提早 15 分鐘抵達
 • 請攜帶身分證明文件
-• 兒童與大人同票價，每位皆需購票入場
+• 兒童與大人同票價，每位皆需購票入場；1 歲以下嬰兒免費入場（仍佔 1 個入場名額並持 QR Code 報到）
 
 期待明日與您相見！
 2026 臺灣氣球嘉年華 主辦團隊
@@ -305,6 +305,7 @@ export function buildConfirmationEmailHtml(vars: {
   eventDate: string;
   ticketCount: number;
   childCount?: number;
+  infantCount?: number;
   qrUrl: string;
   ticketType?: string | null;
 }): string {
@@ -319,10 +320,14 @@ export function buildConfirmationEmailHtml(vars: {
   const qrUrl = encodeURI(vars.qrUrl);
   const isTournament = TOURNAMENT_TICKET_TYPES.includes(vars.ticketType ?? "");
   const childCount = vars.childCount ?? 0;
-  const adultCount = vars.ticketCount - childCount;
+  const infantCount = vars.infantCount ?? 0;
+  const adultCount = vars.ticketCount - childCount - infantCount;
+  const headcountParts = [`大人 ${adultCount} 位`];
+  if (childCount > 0) headcountParts.push(`兒童 ${childCount} 位`);
+  if (infantCount > 0) headcountParts.push(`1 歲以下 ${infantCount} 位（免費）`);
   const headcountLabel =
-    childCount > 0
-      ? `大人 ${adultCount} 位、兒童 ${childCount} 位（共 ${vars.ticketCount} 位）`
+    childCount > 0 || infantCount > 0
+      ? `${headcountParts.join("、")}（共 ${vars.ticketCount} 位）`
       : `${vars.ticketCount} 張`;
   const isCompanion = vars.ticketType === "tournament-companion";
   const headerSubtitle = isTournament
@@ -549,6 +554,7 @@ export function buildRegistrationVars(reg: {
   eventDate: string;
   ticketCount: number;
   childCount?: number | null;
+  infantCount?: number | null;
   qrToken: string | null;
   ticketType?: string | null;
 }): RegistrationEmailVars {
@@ -558,6 +564,7 @@ export function buildRegistrationVars(reg: {
     eventDate: reg.eventDate,
     ticketCount: reg.ticketCount,
     childCount: reg.childCount ?? 0,
+    infantCount: reg.infantCount ?? 0,
     qrUrl: reg.qrToken ? getQrImageUrl(reg.qrToken) : "",
     ticketType: reg.ticketType ?? "",
   };

@@ -104,11 +104,37 @@ export const ListExhibitionsResponse = zod.array(ListExhibitionsResponseItem);
 
 export const createRegistrationBodyTicketCountMax = 10;
 
+export const createRegistrationBodyAdultCountMax = 10;
+
+export const createRegistrationBodyChildCountMin = 0;
+export const createRegistrationBodyChildCountMax = 10;
+
+export const createRegistrationBodyInfantCountMin = 0;
+export const createRegistrationBodyInfantCountMax = 10;
+
 export const CreateRegistrationBody = zod.object({
   parentName: zod.string().min(1),
   phone: zod.string().min(1),
   email: zod.string().email().optional(),
   ticketCount: zod.number().min(1).max(createRegistrationBodyTicketCountMax),
+  adultCount: zod
+    .number()
+    .min(1)
+    .max(createRegistrationBodyAdultCountMax)
+    .optional(),
+  childCount: zod
+    .number()
+    .min(createRegistrationBodyChildCountMin)
+    .max(createRegistrationBodyChildCountMax)
+    .optional(),
+  infantCount: zod
+    .number()
+    .min(createRegistrationBodyInfantCountMin)
+    .max(createRegistrationBodyInfantCountMax)
+    .optional()
+    .describe(
+      "Infants under 1 year — free admission, still occupies a capacity slot.",
+    ),
   eventDate: zod.date(),
   ticketType: zod
     .string()
@@ -128,6 +154,14 @@ export const CreateRegistrationBody = zod.object({
 
 export const createComboRegistrationBodyTicketCountMax = 10;
 
+export const createComboRegistrationBodyAdultCountMax = 10;
+
+export const createComboRegistrationBodyChildCountMin = 0;
+export const createComboRegistrationBodyChildCountMax = 10;
+
+export const createComboRegistrationBodyInfantCountMin = 0;
+export const createComboRegistrationBodyInfantCountMax = 10;
+
 export const createComboRegistrationBodyEventDatesMin = 2;
 
 export const CreateComboRegistrationBody = zod.object({
@@ -138,6 +172,24 @@ export const CreateComboRegistrationBody = zod.object({
     .number()
     .min(1)
     .max(createComboRegistrationBodyTicketCountMax),
+  adultCount: zod
+    .number()
+    .min(1)
+    .max(createComboRegistrationBodyAdultCountMax)
+    .optional(),
+  childCount: zod
+    .number()
+    .min(createComboRegistrationBodyChildCountMin)
+    .max(createComboRegistrationBodyChildCountMax)
+    .optional(),
+  infantCount: zod
+    .number()
+    .min(createComboRegistrationBodyInfantCountMin)
+    .max(createComboRegistrationBodyInfantCountMax)
+    .optional()
+    .describe(
+      "Infants under 1 year — free admission, still occupies a capacity slot.",
+    ),
   eventDates: zod
     .array(zod.date())
     .min(createComboRegistrationBodyEventDatesMin),
@@ -434,6 +486,8 @@ export const AdminListRegistrationsResponseItem = zod.object({
   phone: zod.string(),
   email: zod.string().nullish(),
   ticketCount: zod.number(),
+  childCount: zod.number().optional(),
+  infantCount: zod.number().optional(),
   eventDate: zod
     .string()
     .describe(
@@ -576,6 +630,8 @@ export const AdminLookupCheckinResponse = zod.object({
     phone: zod.string(),
     email: zod.string().nullish(),
     ticketCount: zod.number(),
+    childCount: zod.number().optional(),
+    infantCount: zod.number().optional(),
     eventDate: zod
       .string()
       .describe(
@@ -616,6 +672,8 @@ export const AdminPerformCheckinResponse = zod.object({
     phone: zod.string(),
     email: zod.string().nullish(),
     ticketCount: zod.number(),
+    childCount: zod.number().optional(),
+    infantCount: zod.number().optional(),
     eventDate: zod
       .string()
       .describe(

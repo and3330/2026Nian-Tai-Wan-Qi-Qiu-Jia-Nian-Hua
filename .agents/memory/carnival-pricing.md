@@ -10,7 +10,9 @@ Carnival admission charges the SAME price for adults and children (no child disc
 
 Backend `resolveAmount` charges every head the adult unit price; the `CARNIVAL_CHILD_PRICE` override map is intentionally empty (children fall back to the adult price). Reintroduce a child tier only by adding entries there if policy changes again.
 
-`ticketCount` stores TOTAL heads (adults + children); `childCount` stores children; adults = `ticketCount - childCount`. The adult/child split is kept ONLY for headcount/capacity/stats, not pricing. Both consume the 500/day capacity, so capacity sums `ticketCount`. Each order requires ≥1 adult; children cannot purchase alone.
+Infants under 1 are FREE (Option B): they occupy a capacity slot and get their own QR/email headcount line, but are excluded from the payable amount. `infantCount` stores them.
+
+`ticketCount` stores TOTAL heads (adults + children + infants); `childCount` and `infantCount` store the splits; adults = `ticketCount - childCount - infantCount`. Pricing charges only adults+children (use a "paidHeads = adult+child" figure); capacity uses the full `ticketCount` ("totalHeads"). Frontend mirrors this: `totalHeads` for availability, `paidHeads` for price. The 3 count selectors mutually clamp so adult+child+infant ≤ 10 (capacity per order). Each order requires ≥1 adult; children/infants cannot purchase alone.
 
 Backward-compat: if a request omits `adultCount`, treat `ticketCount` as adults with `childCount = 0`.
 

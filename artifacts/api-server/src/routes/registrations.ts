@@ -14,10 +14,13 @@ type CreateRegistrationInput = {
   parentName: string;
   phone: string;
   email?: string | null;
-  // Total heads admitted by this order (adults + children). Capacity counts this.
+  // Total heads admitted by this order (adults + children + infants). Capacity
+  // counts this — infants under 1 占名額 but pay nothing.
   ticketCount: number;
-  // How many of the heads are children (未滿 6 歲). adults = ticketCount - childCount.
+  // How many of the heads are children (同票價). adults = ticketCount - childCount - infantCount.
   childCount: number;
+  // How many of the heads are infants under 1 year — free admission.
+  infantCount: number;
   eventDate: string;
 };
 
@@ -40,9 +43,11 @@ function parseRegistrationBody(body: any): { ok: true; data: CreateRegistrationI
         ? body.ticketCount
         : NaN;
   const childCount = typeof body.childCount === "number" ? body.childCount : 0;
+  const infantCount = typeof body.infantCount === "number" ? body.infantCount : 0;
   if (!Number.isInteger(adultCount) || adultCount < 1) return { ok: false, error: "每筆訂單至少需要 1 位大人" };
   if (!Number.isInteger(childCount) || childCount < 0) return { ok: false, error: "childCount is invalid" };
-  const ticketCount = adultCount + childCount;
+  if (!Number.isInteger(infantCount) || infantCount < 0) return { ok: false, error: "infantCount is invalid" };
+  const ticketCount = adultCount + childCount + infantCount;
   if (ticketCount < 1 || ticketCount > 10) return { ok: false, error: "總人數需介於 1 到 10 人之間" };
 
   let eventDateStr: string;
@@ -58,6 +63,7 @@ function parseRegistrationBody(body: any): { ok: true; data: CreateRegistrationI
       email: email && typeof email === "string" && email.trim() ? email.trim() : null,
       ticketCount,
       childCount,
+      infantCount,
       eventDate: eventDateStr,
     },
   };
@@ -132,6 +138,7 @@ function resolveAmount(
   rawTicketType: string | null,
   ticketCount: number,
   childCount: number,
+  infantCount: number,
   amountPerOrder: number | null,
 ): { ok: true; ticketType: string | null; amount: number | null } | { ok: false; error: string } {
   let amount: number | null = null;
@@ -139,8 +146,10 @@ function resolveAmount(
     const adultPrice = PRICE_BOOK[rawTicketType];
     const childPrice = CARNIVAL_CHILD_PRICE[rawTicketType] ?? adultPrice;
     const children = childCount ?? 0;
-    const adults = ticketCount - children;
-    if (adults < 0) return { ok: false, error: "childCount exceeds total tickets" };
+    const infants = infantCount ?? 0;
+    const adults = ticketCount - children - infants;
+    if (adults < 0) return { ok: false, error: "childCount/infantCount exceeds total tickets" };
+    // Infants under 1 are free; only adults + children are charged.
     amount = adultPrice * adults + childPrice * children;
     if (amountPerOrder != null && amountPerOrder !== amount) {
       return { ok: false, error: "Amount does not match ticket type pricing" };
@@ -188,7 +197,7 @@ router.post("/registrations", async (req, res): Promise<void> => {
     return;
   }
 
-  const { parentName, phone, email, ticketCount, childCount, eventDate } = parsed.data;
+  const { parentName, phone, email, ticketCount, childCount, infantCount, eventDate } = parsed.data;
 
   if (!EVENT_DATES.includes(eventDate)) {
     res.status(400).json({ error: "Invalid event date" });
@@ -198,7 +207,7 @@ router.post("/registrations", async (req, res): Promise<void> => {
   const rawTicketType = typeof req.body?.ticketType === "string" ? req.body.ticketType.trim() : null;
   const rawAmount = req.body?.amount;
   const amountPerOrder = typeof rawAmount === "number" && Number.isFinite(rawAmount) ? Math.round(rawAmount) : null;
-  const priced = resolveAmount(rawTicketType, ticketCount, childCount, amountPerOrder);
+  const priced = resolveAmount(rawTicketType, ticketCount, childCount, infantCount, amountPerOrder);
   if (!priced.ok) {
     res.status(400).json({ error: priced.error });
     return;
@@ -241,6 +250,7 @@ router.post("/registrations", async (req, res): Promise<void> => {
           email: email ?? null,
           ticketCount,
           childCount,
+          infantCount,
           eventDate,
           ticketType: priced.ticketType,
           amount: finalAmount,
@@ -314,12 +324,12 @@ router.post("/registrations/combo", async (req, res): Promise<void> => {
     res.status(400).json({ error: baseParsed.error });
     return;
   }
-  const { parentName, phone, email, ticketCount, childCount } = baseParsed.data;
+  const { parentName, phone, email, ticketCount, childCount, infantCount } = baseParsed.data;
 
   const rawTicketType = typeof body.ticketType === "string" ? (body.ticketType as string).trim() : null;
   const rawAmount = body.amount;
   const amountPerOrder = typeof rawAmount === "number" && Number.isFinite(rawAmount) ? Math.round(rawAmount) : null;
-  const priced = resolveAmount(rawTicketType, ticketCount, childCount, amountPerOrder);
+  const priced = resolveAmount(rawTicketType, ticketCount, childCount, infantCount, amountPerOrder);
   if (!priced.ok) {
     res.status(400).json({ error: priced.error });
     return;
@@ -370,6 +380,7 @@ router.post("/registrations/combo", async (req, res): Promise<void> => {
             email: email ?? null,
             ticketCount,
             childCount,
+            infantCount,
             eventDate: d,
             // Only the first leg carries the ticketType + amount so the
             // payment total isn't double-counted.

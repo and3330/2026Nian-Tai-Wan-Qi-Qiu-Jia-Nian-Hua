@@ -73,6 +73,22 @@ export interface CreateRegistrationBody {
    * @maximum 10
    */
   ticketCount: number;
+  /**
+   * @minimum 1
+   * @maximum 10
+   */
+  adultCount?: number;
+  /**
+   * @minimum 0
+   * @maximum 10
+   */
+  childCount?: number;
+  /**
+   * Infants under 1 year — free admission, still occupies a capacity slot.
+   * @minimum 0
+   * @maximum 10
+   */
+  infantCount?: number;
   eventDate: string;
   /**
    * One of single, combo, four-day-pass, workshop, competition
@@ -97,6 +113,22 @@ export interface CreateComboRegistrationBody {
    * @maximum 10
    */
   ticketCount: number;
+  /**
+   * @minimum 1
+   * @maximum 10
+   */
+  adultCount?: number;
+  /**
+   * @minimum 0
+   * @maximum 10
+   */
+  childCount?: number;
+  /**
+   * Infants under 1 year — free admission, still occupies a capacity slot.
+   * @minimum 0
+   * @maximum 10
+   */
+  infantCount?: number;
   /** @minItems 2 */
   eventDates: string[];
   /** @nullable */
@@ -112,6 +144,8 @@ export interface Registration {
   /** @nullable */
   email?: string | null;
   ticketCount: number;
+  childCount?: number;
+  infantCount?: number;
   /** Event date in YYYY-MM-DD (Asia/Taipei), stored and compared as a plain string. */
   eventDate: string;
   /** @nullable */

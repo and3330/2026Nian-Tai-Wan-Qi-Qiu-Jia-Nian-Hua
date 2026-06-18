@@ -17,6 +17,22 @@ export interface CreateComboRegistrationBody {
    * @maximum 10
    */
   ticketCount: number;
+  /**
+   * @minimum 1
+   * @maximum 10
+   */
+  adultCount?: number;
+  /**
+   * @minimum 0
+   * @maximum 10
+   */
+  childCount?: number;
+  /**
+   * Infants under 1 year — free admission, still occupies a capacity slot.
+   * @minimum 0
+   * @maximum 10
+   */
+  infantCount?: number;
   /** @minItems 2 */
   eventDates: Date[];
   /** @nullable */

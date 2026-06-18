@@ -9,6 +9,7 @@ type Registration = {
   email: string | null;
   ticketCount: number;
   childCount?: number;
+  infantCount?: number;
   isVip?: boolean;
   eventDate: string;
   qrToken: string | null;
@@ -369,8 +370,12 @@ export default function CheckinPage() {
                 </>)}
                 <div className="text-muted-foreground">入場人數：</div>
                 <div className="font-bold">
-                  {result.reg.childCount && result.reg.childCount > 0
-                    ? `共 ${result.reg.ticketCount} 位（大人 ${result.reg.ticketCount - result.reg.childCount}、兒童 ${result.reg.childCount}）`
+                  {(result.reg.childCount && result.reg.childCount > 0) || (result.reg.infantCount && result.reg.infantCount > 0)
+                    ? `共 ${result.reg.ticketCount} 位（${[
+                        `大人 ${result.reg.ticketCount - (result.reg.childCount ?? 0) - (result.reg.infantCount ?? 0)}`,
+                        ...(result.reg.childCount && result.reg.childCount > 0 ? [`兒童 ${result.reg.childCount}`] : []),
+                        ...(result.reg.infantCount && result.reg.infantCount > 0 ? [`1 歲以下 ${result.reg.infantCount}`] : []),
+                      ].join("、")}）`
                     : `${result.reg.ticketCount} 位`}
                 </div>
                 <div className="text-muted-foreground">入場日期：</div>

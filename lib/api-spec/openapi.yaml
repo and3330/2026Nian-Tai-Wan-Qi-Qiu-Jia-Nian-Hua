@@ -1128,6 +1128,19 @@ components:
           type: number
           minimum: 1
           maximum: 10
+        adultCount:
+          type: number
+          minimum: 1
+          maximum: 10
+        childCount:
+          type: number
+          minimum: 0
+          maximum: 10
+        infantCount:
+          type: number
+          minimum: 0
+          maximum: 10
+          description: Infants under 1 year — free admission, still occupies a capacity slot.
         eventDate:
           type: string
           format: date
@@ -1155,6 +1168,19 @@ components:
           type: number
           minimum: 1
           maximum: 10
+        adultCount:
+          type: number
+          minimum: 1
+          maximum: 10
+        childCount:
+          type: number
+          minimum: 0
+          maximum: 10
+        infantCount:
+          type: number
+          minimum: 0
+          maximum: 10
+          description: Infants under 1 year — free admission, still occupies a capacity slot.
         eventDates:
           type: array
           minItems: 2
@@ -1202,6 +1228,10 @@ components:
         email:
           type: [string, 'null']
         ticketCount:
+          type: number
+        childCount:
+          type: number
+        infantCount:
           type: number
         eventDate:
           type: string

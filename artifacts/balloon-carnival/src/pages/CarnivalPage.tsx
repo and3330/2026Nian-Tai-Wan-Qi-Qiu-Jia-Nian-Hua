@@ -92,6 +92,7 @@ export default function CarnivalPage() {
     email: "",
     adultCount: 1,
     childCount: 0,
+    infantCount: 0,
     eventDate: ""
   });
   const [success, setSuccess] = useState(false);
@@ -115,13 +116,16 @@ export default function CarnivalPage() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
-  const totalHeads = formData.adultCount + formData.childCount;
+  // totalHeads counts every attendee for capacity (infants under 1 占名額);
+  // paidHeads excludes free infants and drives the price.
+  const totalHeads = formData.adultCount + formData.childCount + formData.infantCount;
+  const paidHeads = formData.adultCount + formData.childCount;
 
   const baseTotal =
     visitorTicketType === "combo"
-      ? 300 * totalHeads
+      ? 300 * paidHeads
       : visitorTicketType === "single"
-        ? 200 * totalHeads
+        ? 200 * paidHeads
         : 0;
   const finalTotal = appliedPromo ? appliedPromo.finalAmount : baseTotal;
 
@@ -207,12 +211,16 @@ export default function CarnivalPage() {
       let totalAmount = 0;
       let itemLabel = "";
       const headLabel =
-        formData.childCount > 0
-          ? `大人 ${formData.adultCount}、兒童 ${formData.childCount}`
+        formData.childCount > 0 || formData.infantCount > 0
+          ? [
+              `大人 ${formData.adultCount}`,
+              ...(formData.childCount > 0 ? [`兒童 ${formData.childCount}`] : []),
+              ...(formData.infantCount > 0 ? [`1 歲以下 ${formData.infantCount}（免費）`] : []),
+            ].join("、")
           : `${formData.adultCount} 張`;
 
       if (visitorTicketType === "combo") {
-        const comboTotal = 300 * totalHeads;
+        const comboTotal = 300 * paidHeads;
         const result = await createComboMutation.mutateAsync({
           data: {
             parentName: formData.parentName,
@@ -220,6 +228,7 @@ export default function CarnivalPage() {
             email: formData.email || undefined,
             adultCount: formData.adultCount,
             childCount: formData.childCount,
+            infantCount: formData.infantCount,
             ticketCount: totalHeads,
             eventDates: ["2026-07-25", "2026-07-26"],
             ticketType: "combo",
@@ -234,7 +243,7 @@ export default function CarnivalPage() {
         totalAmount = appliedPromo ? appliedPromo.finalAmount : comboTotal;
         itemLabel = `兩日套票 × ${headLabel}（7/25 + 7/26）${appliedPromo ? ` · 折扣碼 ${appliedPromo.code}` : ""}`;
       } else {
-        const singleTotal = 200 * totalHeads;
+        const singleTotal = 200 * paidHeads;
         const r = await createMutation.mutateAsync({
           data: {
             parentName: formData.parentName,
@@ -242,6 +251,7 @@ export default function CarnivalPage() {
             email: formData.email || undefined,
             adultCount: formData.adultCount,
             childCount: formData.childCount,
+            infantCount: formData.infantCount,
             ticketCount: totalHeads,
             eventDate: formData.eventDate,
             ticketType: "single",
@@ -452,8 +462,12 @@ export default function CarnivalPage() {
                 <div className="font-bold text-right text-primary">{visitorTicketType === "combo" ? "兩日套票 300 元" : "單日票 200 元"}</div>
                 <div className="text-muted-foreground">票數：</div>
                 <div className="font-bold text-right">
-                  {formData.childCount > 0
-                    ? `大人 ${formData.adultCount}、兒童 ${formData.childCount}（共 ${totalHeads} 位）`
+                  {formData.childCount > 0 || formData.infantCount > 0
+                    ? `${[
+                        `大人 ${formData.adultCount}`,
+                        ...(formData.childCount > 0 ? [`兒童 ${formData.childCount}`] : []),
+                        ...(formData.infantCount > 0 ? [`1 歲以下 ${formData.infantCount}（免費）`] : []),
+                      ].join("、")}（共 ${totalHeads} 位）`
                     : `${formData.adultCount} 張`}
                 </div>
                 <div className="text-muted-foreground">入場日期：</div>
@@ -487,7 +501,7 @@ export default function CarnivalPage() {
             )}
 
             <button
-              onClick={() => { setSuccess(false); setVisitorTicketType(""); setConfirmedTokens([]); setFormData({ parentName: "", phone: "", email: "", adultCount: 1, childCount: 0, eventDate: "" }); }}
+              onClick={() => { setSuccess(false); setVisitorTicketType(""); setConfirmedTokens([]); setFormData({ parentName: "", phone: "", email: "", adultCount: 1, childCount: 0, infantCount: 0, eventDate: "" }); }}
               className="mt-10 text-green-600 font-bold hover:underline"
             >
               繼續購票
@@ -606,7 +620,7 @@ export default function CarnivalPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-3">
                       <div className="space-y-2">
                         <label className="text-sm font-bold text-foreground flex items-center gap-2">
                           <Ticket size={16} className="text-primary" /> 大人票數 <span className="text-destructive">*</span>
@@ -615,13 +629,17 @@ export default function CarnivalPage() {
                           value={formData.adultCount}
                           onChange={e => {
                             const adultCount = parseInt(e.target.value);
-                            setFormData(f => ({ ...f, adultCount, childCount: Math.min(f.childCount, 10 - adultCount) }));
+                            setFormData(f => {
+                              const childCount = Math.min(f.childCount, 10 - adultCount);
+                              const infantCount = Math.min(f.infantCount, 10 - adultCount - childCount);
+                              return { ...f, adultCount, childCount, infantCount };
+                            });
                             clearPromo();
                           }}
                           data-testid="select-adult-count"
-                          className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg appearance-none cursor-pointer"
+                          className="w-full px-4 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg appearance-none cursor-pointer"
                         >
-                          {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
+                          {Array.from({ length: 10 - formData.childCount - formData.infantCount }, (_, i) => i + 1).map(num => (
                             <option key={num} value={num}>{num} 位</option>
                           ))}
                         </select>
@@ -632,18 +650,37 @@ export default function CarnivalPage() {
                         </label>
                         <select
                           value={formData.childCount}
-                          onChange={e => { setFormData(f => ({ ...f, childCount: parseInt(e.target.value) })); clearPromo(); }}
+                          onChange={e => {
+                            const childCount = parseInt(e.target.value);
+                            setFormData(f => ({ ...f, childCount, infantCount: Math.min(f.infantCount, 10 - f.adultCount - childCount) }));
+                            clearPromo();
+                          }}
                           data-testid="select-child-count"
-                          className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg appearance-none cursor-pointer"
+                          className="w-full px-4 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg appearance-none cursor-pointer"
                         >
-                          {Array.from({ length: 11 - formData.adultCount }, (_, i) => i).map(num => (
+                          {Array.from({ length: 11 - formData.adultCount - formData.infantCount }, (_, i) => i).map(num => (
+                            <option key={num} value={num}>{num} 位</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                          <Ticket size={16} className="text-primary" /> 1 歲以下
+                        </label>
+                        <select
+                          value={formData.infantCount}
+                          onChange={e => { setFormData(f => ({ ...f, infantCount: parseInt(e.target.value) })); clearPromo(); }}
+                          data-testid="select-infant-count"
+                          className="w-full px-4 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg appearance-none cursor-pointer"
+                        >
+                          {Array.from({ length: 11 - formData.adultCount - formData.childCount }, (_, i) => i).map(num => (
                             <option key={num} value={num}>{num} 位</option>
                           ))}
                         </select>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      兒童與大人同票價（單日每位 200 元、兩日套票每位 300 元）。每位兒童皆佔 1 個入場名額，每筆訂單至少 1 位大人。
+                      兒童與大人同票價（單日每位 200 元、兩日套票每位 300 元）。1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code。每筆訂單至少 1 位大人。
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -781,7 +818,7 @@ export default function CarnivalPage() {
                 items: [
                   "每日限量 500 名，建議提前線上購票以確保入場",
                   "入場請出示購票確認 QR Code（電子或紙本皆可）",
-                  "兒童與大人同票價（單日 200 元、兩日套票 300 元），兒童亦佔 1 個入場名額",
+                  "兒童與大人同票價（單日 200 元、兩日套票 300 元），兒童亦佔 1 個入場名額；1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code",
                   "兩日套票須完成兩次報到（7/25 + 7/26 各一次）",
                   "每張票含價值 50 元精美報到小禮物（一票兌換一組）",
                   "每張票贈價值 500 元商城優惠套裝折扣碼（購票後以 Email 寄送）",
