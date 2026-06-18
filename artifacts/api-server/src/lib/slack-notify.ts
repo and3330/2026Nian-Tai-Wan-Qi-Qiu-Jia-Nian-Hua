@@ -14,6 +14,7 @@ export interface PurchaseNotification {
   email?: string | null;
   ticketType?: string | null;
   ticketCount: number;
+  childCount?: number | null;
   eventDate?: string | null;
   amount?: number | null;
   paymentMethod?: string | null;
@@ -43,13 +44,21 @@ function paymentMethodLabel(method?: string | null): string {
 export async function sendPurchaseSlackNotification(
   info: PurchaseNotification,
 ): Promise<void> {
+  const people = info.ticketCount;
+  const children = info.childCount ?? 0;
+  const adults = Math.max(0, people - children);
+  const headcountLine =
+    children > 0
+      ? `• 人數：共 ${people} 位（大人 ${adults}、兒童 ${children}）`
+      : `• 人數：共 ${people} 位`;
+
   const lines = [
     info.awaitingTransfer ? "🏦 *新訂單（待匯款）*" : "🎈 *新購票通知*",
     `• 姓名：${info.parentName}`,
     `• 電話：${info.phone}`,
     info.email ? `• Email：${info.email}` : null,
     `• 票種：${ticketTypeLabel(info.ticketType)}`,
-    `• 票數：${info.ticketCount} 張`,
+    headcountLine,
     info.ticketType === "combo"
       ? "• 入場日期：7/25 + 7/26"
       : info.eventDate

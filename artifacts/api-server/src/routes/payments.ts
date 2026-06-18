@@ -299,12 +299,18 @@ router.post("/payments/initiate", async (req, res): Promise<void> => {
     }
 
     // method === "bank"
+    // A combo order has one row per day for the SAME people, so we take the
+    // per-day headcount (max across rows) rather than summing, which would
+    // double-count a two-day order.
+    const bankPeople = Math.max(0, ...registrations.map((r) => r.ticketCount || 0));
+    const bankChildren = Math.max(0, ...registrations.map((r) => r.childCount || 0));
     notifyPurchaseSlack({
       parentName: registrations[0]?.parentName ?? "",
       phone: registrations[0]?.phone ?? "",
       email: payerEmail,
       ticketType: registrations[0]?.ticketType,
-      ticketCount: registrations.reduce((sum, r) => sum + (r.ticketCount || 0), 0),
+      ticketCount: bankPeople,
+      childCount: bankChildren,
       eventDate: registrations[0]?.eventDate,
       amount: totalAmount,
       paymentMethod: "bank",
@@ -552,13 +558,17 @@ async function notifyPurchaseForPaymentRef(paymentRef: string): Promise<void> {
     .from(paymentTransactionsTable)
     .where(eq(paymentTransactionsTable.paymentRef, paymentRef));
   const first = regs[0];
-  const totalTickets = regs.reduce((sum, r) => sum + (r.ticketCount || 0), 0);
+  // Combo orders store one row per day for the SAME people; take the per-day
+  // headcount (max across rows) instead of summing, to avoid double-counting.
+  const people = Math.max(0, ...regs.map((r) => r.ticketCount || 0));
+  const children = Math.max(0, ...regs.map((r) => r.childCount || 0));
   notifyPurchaseSlack({
     parentName: first.parentName,
     phone: first.phone,
     email: first.email,
     ticketType: first.ticketType,
-    ticketCount: totalTickets,
+    ticketCount: people,
+    childCount: children,
     eventDate: first.eventDate,
     amount: tx?.amount ?? first.amount,
     paymentMethod: first.paymentMethod,
