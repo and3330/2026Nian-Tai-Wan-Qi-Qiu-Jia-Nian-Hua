@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useAdminListInvoices,
   type AdminInvoice,
@@ -79,6 +79,8 @@ export default function InvoicesManage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [busyRef, setBusyRef] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
 
   // Backend retry/void operate on the LATEST invoice per paymentRef. The list is
   // sorted newest-first by id, so the first id seen per ref is the latest one —
@@ -125,6 +127,105 @@ export default function InvoicesManage() {
       );
     });
   }, [invoices, filter, search]);
+
+  // A row is issuable only when it is the latest invoice for its order, not
+  // already issued/voided, and the order is paid — same rule the action buttons use.
+  const isIssuable = (inv: AdminInvoice) =>
+    latestIdByRef.get(inv.paymentRef) === inv.id &&
+    inv.status !== "issued" &&
+    inv.status !== "voided" &&
+    inv.paymentStatus === "paid";
+
+  const eligibleRows = useMemo(
+    () => filtered.filter(isIssuable),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, latestIdByRef],
+  );
+  const selectedCount = eligibleRows.filter((inv) => selectedIds.has(inv.id)).length;
+  const allEligibleSelected =
+    eligibleRows.length > 0 && selectedCount === eligibleRows.length;
+
+  // Drop any selected ids that are no longer issuable (after refetch/filter
+  // change) so the hidden selection count can't drift from what's visible.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const valid = new Set(eligibleRows.map((inv) => inv.id));
+      let changed = false;
+      const next = new Set<number>();
+      for (const id of prev) {
+        if (valid.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [eligibleRows]);
+
+  const toggleOne = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelectedIds((prev) => {
+      if (eligibleRows.length > 0 && eligibleRows.every((inv) => prev.has(inv.id))) {
+        return new Set();
+      }
+      return new Set(eligibleRows.map((inv) => inv.id));
+    });
+  };
+
+  const handleBatchIssue = async () => {
+    const targets = eligibleRows.filter((inv) => selectedIds.has(inv.id));
+    if (targets.length === 0) return;
+    if (
+      !window.confirm(
+        `要批量開立 ${targets.length} 張電子發票嗎？\n系統會逐筆向綠界送出開立要求。`,
+      )
+    ) {
+      return;
+    }
+    setBatchBusy(true);
+    let ok = 0;
+    const errors: string[] = [];
+    for (const inv of targets) {
+      try {
+        const res = await fetch(
+          `/api/payments/invoices/${encodeURIComponent(inv.paymentRef)}/retry`,
+          { method: "POST", credentials: "include" },
+        );
+        const result = (await res.json().catch(() => ({}))) as {
+          status?: string;
+          errorMessage?: string | null;
+          error?: string;
+        };
+        if (res.ok && result.status === "issued") {
+          ok += 1;
+        } else {
+          errors.push(
+            `${inv.paymentRef}：${result.errorMessage || result.error || "未成功"}`,
+          );
+        }
+      } catch (err) {
+        errors.push(
+          `${inv.paymentRef}：${err instanceof Error ? err.message : "連線錯誤"}`,
+        );
+      }
+    }
+    setBatchBusy(false);
+    setSelectedIds(new Set());
+    await refetch();
+    window.alert(
+      `批量開立完成：成功 ${ok} 張，失敗 ${errors.length} 張。` +
+        (errors.length
+          ? `\n\n失敗明細：\n${errors.slice(0, 10).join("\n")}${errors.length > 10 ? "\n…" : ""}`
+          : ""),
+    );
+  };
 
   const handleRetry = async (inv: AdminInvoice) => {
     if (
@@ -207,14 +308,26 @@ export default function InvoicesManage() {
             檢視所有電子發票開立紀錄與發票號碼，並可手動開立、重試或作廢
           </p>
         </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isRefetching}
-          className="border px-4 py-2.5 rounded-full font-semibold flex items-center gap-2 hover:bg-muted transition-all disabled:opacity-50 self-start md:self-auto"
-        >
-          <RefreshCw size={16} className={isRefetching ? "animate-spin" : ""} />
-          重新整理
-        </button>
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          {canManage && (
+            <button
+              onClick={handleBatchIssue}
+              disabled={batchBusy || selectedCount === 0}
+              className="bg-primary text-white px-4 py-2.5 rounded-full font-semibold flex items-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-50"
+            >
+              <ReceiptText size={16} className={batchBusy ? "animate-pulse" : ""} />
+              {batchBusy ? "開立中..." : `批量開立${selectedCount > 0 ? `（${selectedCount}）` : ""}`}
+            </button>
+          )}
+          <button
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="border px-4 py-2.5 rounded-full font-semibold flex items-center gap-2 hover:bg-muted transition-all disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={isRefetching ? "animate-spin" : ""} />
+            重新整理
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -289,6 +402,18 @@ export default function InvoicesManage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-muted-foreground">
+                {canManage && (
+                  <th className="px-4 py-3 font-semibold w-10">
+                    <input
+                      type="checkbox"
+                      aria-label="全選可開立發票"
+                      checked={allEligibleSelected}
+                      disabled={eligibleRows.length === 0 || batchBusy}
+                      onChange={toggleAll}
+                      className="w-4 h-4 accent-primary cursor-pointer disabled:cursor-not-allowed"
+                    />
+                  </th>
+                )}
                 <th className="px-4 py-3 font-semibold">發票號碼</th>
                 <th className="px-4 py-3 font-semibold">訂單編號</th>
                 <th className="px-4 py-3 font-semibold">買受人</th>
@@ -312,6 +437,22 @@ export default function InvoicesManage() {
                   inv.paymentStatus === "paid";
                 return (
                   <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30">
+                    {canManage && (
+                      <td className="px-4 py-3">
+                        {canIssue ? (
+                          <input
+                            type="checkbox"
+                            aria-label={`選擇訂單 ${inv.paymentRef}`}
+                            checked={selectedIds.has(inv.id)}
+                            disabled={batchBusy}
+                            onChange={() => toggleOne(inv.id)}
+                            className="w-4 h-4 accent-primary cursor-pointer disabled:cursor-not-allowed"
+                          />
+                        ) : (
+                          <span className="block w-4" />
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-3 font-mono font-semibold whitespace-nowrap">
                       {inv.invoiceNumber ?? (
                         <span className="text-muted-foreground font-sans font-normal">
@@ -366,7 +507,7 @@ export default function InvoicesManage() {
                           {canIssue && (
                             <button
                               onClick={() => handleRetry(inv)}
-                              disabled={busy}
+                              disabled={busy || batchBusy}
                               className="inline-flex items-center gap-1 border border-primary text-primary px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-primary/10 disabled:opacity-50 whitespace-nowrap"
                             >
                               <ReceiptText size={13} />
@@ -376,7 +517,7 @@ export default function InvoicesManage() {
                           {isLatest && inv.status === "issued" && (
                             <button
                               onClick={() => handleVoid(inv)}
-                              disabled={busy}
+                              disabled={busy || batchBusy}
                               className="inline-flex items-center gap-1 border border-red-400 text-red-600 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
                             >
                               <XCircle size={13} />
