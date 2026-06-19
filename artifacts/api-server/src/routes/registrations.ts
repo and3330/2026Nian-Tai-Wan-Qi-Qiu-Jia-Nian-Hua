@@ -186,14 +186,6 @@ async function lockDate(tx: DbExecutor, date: string): Promise<void> {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`reg:${date}`}))`);
 }
 
-async function countForDate(tx: DbExecutor, date: string): Promise<number> {
-  const [row] = await tx
-    .select({ total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)` })
-    .from(registrationsTable)
-    .where(sql`${registrationsTable.eventDate} = ${date} AND ${isPaidLeg} AND ${isCarnivalLeg}`);
-  return Number(row?.total ?? 0);
-}
-
 // Counts confirmed-or-pending tournament participants (the 600-tier "本人"
 // legs). Companion general tickets do NOT consume the 128-slot competitor cap.
 async function countTournamentParticipants(tx: DbExecutor | typeof db): Promise<number> {
@@ -234,14 +226,9 @@ router.post("/registrations", async (req, res): Promise<void> => {
 
   try {
     const result = await db.transaction(async (tx) => {
-      await lockDate(tx, eventDate);
-      const currentCount = await countForDate(tx, eventDate);
-      const cap = capacityForDate(eventDate);
-      const remaining = Math.max(0, cap - currentCount);
-      if (currentCount + ticketCount > cap) {
-        return { soldOut: true as const, remaining, date: eventDate };
-      }
-
+      // Capacity is intentionally soft: even when a date reaches its listed
+      // cap we keep accepting purchases. The cap only drives the "名額有限"
+      // display (see getDateCounts), never a hard sold-out block here.
       let finalAmount = priced.amount;
       let promoCode: string | null = null;
       let discountAmount: number | null = null;
@@ -281,16 +268,6 @@ router.post("/registrations", async (req, res): Promise<void> => {
 
     if ("promoFail" in result && result.promoFail) {
       res.status(400).json({ error: result.error, code: result.code ?? "PROMO_INVALID" });
-      return;
-    }
-
-    if (result.soldOut) {
-      res.status(409).json({
-        error: `${result.date} 票券已售完，剩餘 ${result.remaining} 張`,
-        code: "SOLD_OUT",
-        eventDate: result.date,
-        remaining: result.remaining,
-      });
       return;
     }
 
@@ -358,17 +335,8 @@ router.post("/registrations/combo", async (req, res): Promise<void> => {
     const result = await db.transaction(async (tx) => {
       // Always lock dates in sorted order to prevent deadlocks between
       // concurrent transactions that touch overlapping dates.
-      const sortedDates = [...normalizedDates].sort();
-      for (const d of sortedDates) await lockDate(tx, d);
-
-      for (const d of normalizedDates) {
-        const count = await countForDate(tx, d);
-        const cap = capacityForDate(d);
-        if (count + ticketCount > cap) {
-          return { soldOut: true as const, date: d, remaining: Math.max(0, cap - count) };
-        }
-      }
-
+      // Capacity is intentionally soft for combos too: a listed-full date never
+      // blocks the purchase; the cap only drives the "名額有限" display.
       let finalAmount = priced.amount;
       let promoCode: string | null = null;
       let discountAmount: number | null = null;
@@ -416,16 +384,6 @@ router.post("/registrations/combo", async (req, res): Promise<void> => {
 
     if ("promoFail" in result && result.promoFail) {
       res.status(400).json({ error: result.error, code: result.code ?? "PROMO_INVALID" });
-      return;
-    }
-
-    if (result.soldOut) {
-      res.status(409).json({
-        error: `${result.date} 票券已售完，剩餘 ${result.remaining} 張，請改選其他票種`,
-        code: "SOLD_OUT",
-        eventDate: result.date,
-        remaining: result.remaining,
-      });
       return;
     }
 

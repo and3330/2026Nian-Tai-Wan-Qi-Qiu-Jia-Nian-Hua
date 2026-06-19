@@ -172,24 +172,8 @@ export default function CarnivalPage() {
     return d.getDate() >= 25;
   });
 
-  const selectedDateInfo = publicDates?.find(a => a.date === formData.eventDate);
-  const isSelectedDateFull = selectedDateInfo ? selectedDateInfo.remaining <= 0 : false;
-  const isSelectedDateInsufficient = selectedDateInfo
-    ? selectedDateInfo.remaining < totalHeads
-    : false;
-
-  // For combo tickets, both 7/25 and 7/26 must each have enough remaining seats.
-  const day25 = publicDates?.find(a => a.date === "2026-07-25");
-  const day26 = publicDates?.find(a => a.date === "2026-07-26");
-  const comboInsufficientDate =
-    visitorTicketType === "combo"
-      ? day25 && day25.remaining < totalHeads
-        ? day25
-        : day26 && day26.remaining < totalHeads
-          ? day26
-          : null
-      : null;
-  const comboBlocked = !!comboInsufficientDate;
+  // Capacity is soft: dates never sell out, so there is no full/insufficient
+  // blocking on either single or combo purchases.
 
   const extractApiError = (err: unknown): { message: string; code?: string } => {
     const e = err as { data?: { error?: string; code?: string }; status?: number };
@@ -365,7 +349,7 @@ export default function CarnivalPage() {
             </div>
             <div className="min-w-0">
               <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">每日名額</div>
-              <div className="font-bold text-foreground text-sm">限量 500 名</div>
+              <div className="font-bold text-foreground text-sm">名額有限</div>
             </div>
           </div>
         </div>
@@ -378,7 +362,7 @@ export default function CarnivalPage() {
           </div>
           <h2 className="font-display text-4xl mb-4">一般觀眾購票</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            7/25（六）、7/26（日）公開活動日入場，每日限量 500 名
+            7/25（六）、7/26（日）公開活動日入場，名額有限，建議盡早購票
           </p>
         </div>
 
@@ -525,20 +509,19 @@ export default function CarnivalPage() {
               ) : (
                 <div className="space-y-4">
                   {publicDates?.map((day) => {
-                    const isFull = day.remaining <= 0;
-                    const isInsufficient = !isFull && day.remaining < totalHeads;
+                    // Capacity is soft — a listed-full date still accepts
+                    // purchases, so cards are never disabled. When at/over the
+                    // listed cap we show "名額有限" instead of a remaining count.
+                    const isLimited = day.remaining <= 0;
                     const isLow = day.remaining > 0 && day.remaining < 50;
                     const isSelected = formData.eventDate === day.date;
                     return (
                       <button
                         key={day.date}
                         type="button"
-                        disabled={isFull || isInsufficient}
                         onClick={() => setFormData({...formData, eventDate: day.date})}
                         className={cn(
                           "w-full text-left p-5 rounded-2xl border-2 transition-all flex flex-col gap-2 relative overflow-hidden",
-                          isFull ? "bg-muted border-border opacity-60 cursor-not-allowed" :
-                          isInsufficient ? "bg-amber-50 border-amber-200 opacity-70 cursor-not-allowed" :
                           isSelected ? "bg-primary/5 border-primary shadow-md" : "bg-card border-border hover:border-primary/50 hover:shadow-sm",
                         )}
                         data-testid={`date-${day.date}`}
@@ -548,10 +531,8 @@ export default function CarnivalPage() {
                           <span className={cn("font-bold text-lg", isSelected ? "text-primary" : "text-foreground")}>
                             {new Date(day.date).toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' })}
                           </span>
-                          {isFull ? (
-                            <span className="px-3 py-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full">已額滿</span>
-                          ) : isInsufficient ? (
-                            <span className="px-3 py-1 bg-amber-200 text-amber-900 text-xs font-bold rounded-full">剩餘不足</span>
+                          {isLimited ? (
+                            <span className="px-3 py-1 bg-amber-200 text-amber-900 text-xs font-bold rounded-full">名額有限</span>
                           ) : isLow ? (
                             <span className="px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full">即將額滿</span>
                           ) : (
@@ -560,11 +541,13 @@ export default function CarnivalPage() {
                         </div>
                         <div className="w-full bg-muted rounded-full h-2 mt-2 overflow-hidden">
                           <div
-                            className={cn("h-full rounded-full transition-all duration-1000", isFull ? "bg-destructive" : isLow ? "bg-accent" : "bg-primary")}
-                            style={{ width: `${(day.registered / day.totalCapacity) * 100}%` }}
+                            className={cn("h-full rounded-full transition-all duration-1000", isLimited ? "bg-amber-400" : isLow ? "bg-accent" : "bg-primary")}
+                            style={{ width: `${Math.min(100, (day.registered / day.totalCapacity) * 100)}%` }}
                           ></div>
                         </div>
-                        <div className="text-xs text-muted-foreground text-right mt-1">剩餘 <AnimatedNumber value={day.remaining} className="font-bold text-foreground" /> / {day.totalCapacity}</div>
+                        <div className="text-xs text-muted-foreground text-right mt-1">
+                          {isLimited ? <span className="font-bold text-amber-700">名額有限</span> : <>剩餘 <AnimatedNumber value={day.remaining} className="font-bold text-foreground" /> / {day.totalCapacity}</>}
+                        </div>
                       </button>
                     );
                   })}
@@ -572,7 +555,7 @@ export default function CarnivalPage() {
               )}
               <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm flex gap-3 border border-blue-100">
                 <AlertCircle className="shrink-0 mt-0.5" size={18} />
-                <p>系統會即時扣減庫存，若選定日期額滿將無法送出。每筆最多限購 10 張。</p>
+                <p>每筆最多限購 10 張。名額有限，建議盡早線上購票以確保入場。</p>
               </div>
             </div>
             )}
@@ -754,38 +737,19 @@ export default function CarnivalPage() {
                     </div>
                   )}
 
-                  {comboBlocked && comboInsufficientDate && (
-                    <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 text-sm text-amber-900 flex gap-3">
-                      <AlertCircle className="shrink-0 mt-0.5" size={18} />
-                      <p data-testid="combo-blocked-warning">
-                        {comboInsufficientDate.date} 僅剩 {comboInsufficientDate.remaining} 張，
-                        無法滿足兩日套票 × {totalHeads} 的數量。請改選單日票或減少張數。
-                      </p>
-                    </div>
-                  )}
-                  {visitorTicketType === "single" && isSelectedDateInsufficient && !isSelectedDateFull && (
-                    <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 text-sm text-amber-900 flex gap-3">
-                      <AlertCircle className="shrink-0 mt-0.5" size={18} />
-                      <p>該日僅剩 {selectedDateInfo?.remaining} 張，請減少張數。</p>
-                    </div>
-                  )}
                   <div className="pt-6">
                     <button
                       type="submit"
                       disabled={
                         createMutation.isPending ||
                         createComboMutation.isPending ||
-                        (visitorTicketType === "single" && (isSelectedDateFull || isSelectedDateInsufficient || !formData.eventDate)) ||
-                        (visitorTicketType === "combo" && comboBlocked)
+                        (visitorTicketType === "single" && !formData.eventDate)
                       }
                       className="w-full py-5 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-primary to-primary/90 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all flex items-center justify-center gap-2"
                       data-testid="button-submit-purchase"
                     >
                       {(createMutation.isPending || createComboMutation.isPending) ? "處理中..." :
                        visitorTicketType === "single" && !formData.eventDate ? "請選擇入場日期" :
-                       visitorTicketType === "single" && isSelectedDateFull ? "選定日期已額滿" :
-                       visitorTicketType === "single" && isSelectedDateInsufficient ? `該日僅剩 ${selectedDateInfo?.remaining} 張` :
-                       visitorTicketType === "combo" && comboBlocked ? "兩日套票剩餘不足" :
                        "確認送出購票"}
                     </button>
                   </div>
@@ -816,7 +780,7 @@ export default function CarnivalPage() {
                 color: "text-primary",
                 bg: "bg-primary/10",
                 items: [
-                  "每日限量 500 名，建議提前線上購票以確保入場",
+                  "名額有限，建議提前線上購票以確保入場",
                   "入場請出示購票確認 QR Code（電子或紙本皆可）",
                   "兒童與大人同票價（單日 200 元、兩日套票 300 元），兒童亦佔 1 個入場名額；1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code",
                   "兩日套票須完成兩次報到（7/25 + 7/26 各一次）",

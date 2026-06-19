@@ -178,9 +178,9 @@ export default function HomePage() {
                     <span className="text-muted-foreground mr-1">{new Date(day.date).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}</span>
                     <span className={cn(
                       "font-bold",
-                      day.remaining <= 0 ? "text-destructive" : day.remaining < 50 ? "text-amber-600" : "text-emerald-600"
+                      day.remaining <= 0 ? "text-amber-600" : day.remaining < 50 ? "text-amber-600" : "text-emerald-600"
                     )}>
-                      {day.remaining <= 0 ? "已額滿" : <>剩 <AnimatedNumber value={day.remaining} /></>}
+                      {day.remaining <= 0 ? "名額有限" : <>剩 <AnimatedNumber value={day.remaining} /></>}
                     </span>
                   </span>
                 ))}
@@ -499,7 +499,7 @@ export default function HomePage() {
           </div>
           <div className="space-y-4">
             {[
-              { q: "需要購買門票嗎？", a: "活動日（7/25、7/26）單日票 200 元、兩日套票 300 元，請提前在官網預約購票。每日限量 500 名，建議儘早預約。" },
+              { q: "需要購買門票嗎？", a: "活動日（7/25、7/26）單日票 200 元、兩日套票 300 元，請提前在官網預約購票。名額有限，建議儘早預約。" },
               { q: "活動地點在哪裡？怎麼去？", a: "活動地點為臺北瓶蓋工廠（台北市南港區南港路二段13號）。可搭乘捷運至南港站1號出口，步行約5分鐘即可到達。" },
               { q: "小朋友適合參加嗎？", a: "非常適合！嘉年華特別設有親子區、DIY 工作坊和兒童遊戲區。兒童與大人同票價（單日 200 元 / 兩日套票 300 元），每位兒童佔 1 個入場名額；1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code。" },
               { q: "可以現場報名嗎？", a: "建議提前線上預約，確保有入場名額。若當日尚有餘額，也可現場排隊候補入場。" },
@@ -535,7 +535,7 @@ export default function HomePage() {
             >
               <Ticket size={22} /> 立即購票入場
             </Link>
-            <p className="text-sm text-muted-foreground mt-4">每日限量 500 名・額滿為止</p>
+            <p className="text-sm text-muted-foreground mt-4">名額有限・建議儘早購票</p>
           </div>
         </div>
       </section>
