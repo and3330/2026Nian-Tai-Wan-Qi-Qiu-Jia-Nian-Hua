@@ -526,6 +526,48 @@ export interface SalesOverview {
   tournamentSales: CategorySales;
 }
 
+export interface AdminInvoice {
+  id: number;
+  paymentRef: string;
+  /** pending | issued | failed | voided */
+  status: string;
+  /** personal | company | donation */
+  invoiceType: string;
+  /** @nullable */
+  invoiceNumber?: string | null;
+  /** @nullable */
+  invoiceDate?: string | null;
+  /** @nullable */
+  randomNumber?: string | null;
+  amount: number;
+  /** @nullable */
+  buyerName?: string | null;
+  /** @nullable */
+  buyerEmail?: string | null;
+  /** @nullable */
+  carrierType?: string | null;
+  /** @nullable */
+  carrierNum?: string | null;
+  /** @nullable */
+  taxId?: string | null;
+  /** @nullable */
+  companyTitle?: string | null;
+  /** @nullable */
+  loveCode?: string | null;
+  /** @nullable */
+  errorMessage?: string | null;
+  /**
+   * Status of the underlying payment transaction (paid/pending/etc), or null if missing.
+   * @nullable
+   */
+  paymentStatus?: string | null;
+  createdAt: string;
+  /** @nullable */
+  issuedAt?: string | null;
+  /** @nullable */
+  voidedAt?: string | null;
+}
+
 /**
  * Opaque session token
  */

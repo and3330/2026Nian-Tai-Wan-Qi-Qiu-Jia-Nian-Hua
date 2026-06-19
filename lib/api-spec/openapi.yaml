@@ -595,6 +595,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /admin/invoices:
+    get:
+      operationId: adminListInvoices
+      tags: [admin]
+      summary: List all e-invoice records (admin)
+      responses:
+        "200":
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminInvoice"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /admin/registrations/export:
     get:
       operationId: adminExportRegistrations
@@ -1761,3 +1782,59 @@ components:
         payerCount:
           type: number
           description: Number of distinct paying people (distinct paymentRef among paid rows), not ticket count.
+    AdminInvoice:
+      type: object
+      required:
+        - id
+        - paymentRef
+        - status
+        - invoiceType
+        - amount
+        - createdAt
+      properties:
+        id:
+          type: number
+        paymentRef:
+          type: string
+        status:
+          type: string
+          description: pending | issued | failed | voided
+        invoiceType:
+          type: string
+          description: personal | company | donation
+        invoiceNumber:
+          type: [string, 'null']
+        invoiceDate:
+          type: [string, 'null']
+        randomNumber:
+          type: [string, 'null']
+        amount:
+          type: number
+        buyerName:
+          type: [string, 'null']
+        buyerEmail:
+          type: [string, 'null']
+        carrierType:
+          type: [string, 'null']
+        carrierNum:
+          type: [string, 'null']
+        taxId:
+          type: [string, 'null']
+        companyTitle:
+          type: [string, 'null']
+        loveCode:
+          type: [string, 'null']
+        errorMessage:
+          type: [string, 'null']
+        paymentStatus:
+          type: [string, 'null']
+          description: Status of the underlying payment transaction (paid/pending/etc), or null if missing.
+        createdAt:
+          type: string
+          format: date-time
+        issuedAt:
+          type: [string, 'null']
+          format: date-time
+        voidedAt:
+          type: [string, 'null']
+          format: date-time

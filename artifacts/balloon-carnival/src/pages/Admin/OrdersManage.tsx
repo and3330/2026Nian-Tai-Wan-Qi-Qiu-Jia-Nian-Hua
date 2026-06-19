@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import {
   useAdminListRegistrations,
+  useAdminListInvoices,
   type Registration,
+  type AdminInvoice,
 } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import {
@@ -19,6 +21,7 @@ import {
   Crown,
   Eye,
   X,
+  ReceiptText,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -169,6 +172,7 @@ export default function OrdersManage() {
     refetch,
     isRefetching,
   } = useAdminListRegistrations({});
+  const { data: invoices, refetch: refetchInvoices } = useAdminListInvoices();
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -223,6 +227,15 @@ export default function OrdersManage() {
     for (const o of orders) m.set(o.ref, o);
     return m;
   }, [orders]);
+
+  // Latest invoice per payment ref (admin list is sorted newest-first by id).
+  const invoiceByRef = useMemo(() => {
+    const m = new Map<string, AdminInvoice>();
+    for (const inv of invoices ?? []) {
+      if (!m.has(inv.paymentRef)) m.set(inv.paymentRef, inv);
+    }
+    return m;
+  }, [invoices]);
 
   const selectedOrders = useMemo(
     () =>
@@ -989,6 +1002,9 @@ export default function OrdersManage() {
       {detailOrder && (
         <OrderDetailModal
           order={detailOrder}
+          invoice={invoiceByRef.get(detailOrder.ref) ?? null}
+          canManage={canConfirm}
+          onInvoiceChanged={() => refetchInvoices()}
           onClose={() => setDetailOrder(null)}
         />
       )}
@@ -1016,15 +1032,125 @@ function formatDateTime(value: string | null | undefined) {
   return new Date(value).toLocaleString("zh-TW");
 }
 
+const INVOICE_STATUS_LABELS: Record<string, string> = {
+  pending: "待開立",
+  issued: "已開立",
+  failed: "開立失敗",
+  voided: "已作廢",
+};
+
+const INVOICE_TYPE_LABELS: Record<string, string> = {
+  personal: "個人",
+  company: "公司（統編）",
+  donation: "捐贈",
+};
+
+function invoiceStatusBadge(status: string) {
+  const label = INVOICE_STATUS_LABELS[status] ?? status;
+  const tone =
+    status === "issued"
+      ? "bg-green-100 text-green-700"
+      : status === "failed"
+        ? "bg-red-100 text-red-700"
+        : status === "voided"
+          ? "bg-slate-200 text-slate-600"
+          : "bg-amber-100 text-amber-700";
+  return (
+    <span
+      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${tone}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 function OrderDetailModal({
   order,
+  invoice,
+  canManage,
+  onInvoiceChanged,
   onClose,
 }: {
   order: Order;
+  invoice: AdminInvoice | null;
+  canManage: boolean;
+  onInvoiceChanged: () => void;
   onClose: () => void;
 }) {
   const totalChildren = order.legs.reduce((s, l) => s + (l.childCount ?? 0), 0);
   const totalInfants = order.legs.reduce((s, l) => s + (l.infantCount ?? 0), 0);
+  const [invoiceBusy, setInvoiceBusy] = useState(false);
+  const isPaid = normalizeStatus(order.paymentStatus) === "paid";
+
+  const handleIssueInvoice = async () => {
+    if (
+      !window.confirm(
+        `要為這筆訂單${invoice?.status === "failed" ? "重新" : ""}開立電子發票嗎？\n系統會向綠界送出開立要求並回填發票號碼。`,
+      )
+    ) {
+      return;
+    }
+    setInvoiceBusy(true);
+    try {
+      const res = await fetch(
+        `/api/payments/invoices/${encodeURIComponent(order.ref)}/retry`,
+        { method: "POST", credentials: "include" },
+      );
+      const result = (await res.json().catch(() => ({}))) as {
+        status?: string;
+        invoiceNumber?: string | null;
+        errorMessage?: string | null;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(result?.error || "開立失敗");
+      onInvoiceChanged();
+      if (result.status === "issued") {
+        window.alert(`開立成功，發票號碼：${result.invoiceNumber ?? "—"}`);
+      } else {
+        window.alert(
+          `尚未開立成功（狀態：${result.status ? (INVOICE_STATUS_LABELS[result.status] ?? result.status) : "未知"}）。\n${result.errorMessage ?? "請確認此訂單已填寫發票資訊。"}`,
+        );
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "開立失敗，請稍後再試");
+    } finally {
+      setInvoiceBusy(false);
+    }
+  };
+
+  const handleVoidInvoice = async () => {
+    const reason = window.prompt(
+      `要作廢發票「${invoice?.invoiceNumber}」嗎？請輸入作廢原因：`,
+      "訂單取消",
+    );
+    if (reason === null) return;
+    setInvoiceBusy(true);
+    try {
+      const res = await fetch(
+        `/api/payments/invoices/${encodeURIComponent(order.ref)}/void`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: reason || "訂單取消" }),
+        },
+      );
+      const result = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        message?: string;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(result?.error || "作廢失敗");
+      onInvoiceChanged();
+      window.alert(
+        result.success ? "發票已作廢。" : `作廢未成功：${result.message ?? "請稍後再試"}`,
+      );
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "作廢失敗，請稍後再試");
+    } finally {
+      setInvoiceBusy(false);
+    }
+  };
 
   return (
     <div
@@ -1099,6 +1225,110 @@ function OrderDetailModal({
                 label="建立時間"
                 value={new Date(order.createdAt).toLocaleString("zh-TW")}
               />
+            </div>
+          </section>
+
+          {/* Invoice */}
+          <section>
+            <h3 className="text-sm font-bold text-muted-foreground mb-2">
+              電子發票
+            </h3>
+            <div className="rounded-2xl border p-4">
+              {invoice ? (
+                <>
+                  <DetailRow
+                    label="狀態"
+                    value={invoiceStatusBadge(invoice.status)}
+                  />
+                  <DetailRow
+                    label="發票號碼"
+                    value={
+                      invoice.invoiceNumber ? (
+                        <span className="font-mono">{invoice.invoiceNumber}</span>
+                      ) : (
+                        <span className="text-muted-foreground">尚未取號</span>
+                      )
+                    }
+                  />
+                  <DetailRow
+                    label="發票類型"
+                    value={
+                      INVOICE_TYPE_LABELS[invoice.invoiceType] ??
+                      invoice.invoiceType
+                    }
+                  />
+                  {invoice.taxId && (
+                    <DetailRow
+                      label="統一編號"
+                      value={`${invoice.taxId}${invoice.companyTitle ? `（${invoice.companyTitle}）` : ""}`}
+                    />
+                  )}
+                  {invoice.loveCode && (
+                    <DetailRow label="愛心碼" value={invoice.loveCode} />
+                  )}
+                  {invoice.carrierNum && (
+                    <DetailRow label="載具" value={invoice.carrierNum} />
+                  )}
+                  {invoice.invoiceDate && (
+                    <DetailRow label="開立日期" value={invoice.invoiceDate} />
+                  )}
+                  {invoice.status === "voided" && invoice.voidedAt && (
+                    <DetailRow
+                      label="作廢時間"
+                      value={formatDateTime(invoice.voidedAt)}
+                    />
+                  )}
+                  {invoice.status === "failed" && invoice.errorMessage && (
+                    <DetailRow
+                      label="失敗原因"
+                      value={
+                        <span className="text-red-600">
+                          {invoice.errorMessage}
+                        </span>
+                      }
+                    />
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  此訂單沒有發票資料{isPaid ? "" : "（訂單尚未付款）"}。
+                </p>
+              )}
+
+              {canManage &&
+                (invoice ? (
+                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
+                    {invoice.status !== "issued" &&
+                      invoice.status !== "voided" &&
+                      isPaid && (
+                        <button
+                          onClick={handleIssueInvoice}
+                          disabled={invoiceBusy}
+                          className="inline-flex items-center gap-1.5 border border-primary text-primary px-4 py-2 rounded-full text-sm font-semibold hover:bg-primary/10 disabled:opacity-50"
+                        >
+                          <ReceiptText size={15} />
+                          {invoice.status === "failed" ? "重試開立" : "開立發票"}
+                        </button>
+                      )}
+                    {invoice.status === "issued" && (
+                      <button
+                        onClick={handleVoidInvoice}
+                        disabled={invoiceBusy}
+                        className="inline-flex items-center gap-1.5 border border-red-400 text-red-600 px-4 py-2 rounded-full text-sm font-semibold hover:bg-red-50 disabled:opacity-50"
+                      >
+                        <XCircle size={15} />
+                        作廢發票
+                      </button>
+                    )}
+                    {!isPaid &&
+                      invoice.status !== "issued" &&
+                      invoice.status !== "voided" && (
+                        <p className="text-xs text-muted-foreground self-center">
+                          訂單付款後才能開立發票。
+                        </p>
+                      )}
+                  </div>
+                ) : null)}
             </div>
           </section>
 

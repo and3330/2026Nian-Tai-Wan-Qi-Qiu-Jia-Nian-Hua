@@ -13,6 +13,7 @@ import {
 import {
   AdminListRegistrationsQueryParams,
   AdminListRegistrationsResponse,
+  AdminListInvoicesResponse,
   AdminExportRegistrationsQueryParams,
   AdminCreateNewsBody,
   AdminUpdateNewsParams,
@@ -119,6 +120,43 @@ router.get("/admin/registrations", async (req, res): Promise<void> => {
       .orderBy(desc(registrationsTable.createdAt));
   }
   res.json(AdminListRegistrationsResponse.parse(rows));
+});
+
+router.get("/admin/invoices", async (req, res): Promise<void> => {
+  // Invoice records contain buyer PII (name/email) and tax IDs. Editor+ only.
+  if (!requireAuth(req, res, "editor")) return;
+
+  const rows = await db
+    .select({
+      id: invoicesTable.id,
+      paymentRef: invoicesTable.paymentRef,
+      status: invoicesTable.status,
+      invoiceType: invoicesTable.invoiceType,
+      invoiceNumber: invoicesTable.invoiceNumber,
+      invoiceDate: invoicesTable.invoiceDate,
+      randomNumber: invoicesTable.randomNumber,
+      amount: invoicesTable.amount,
+      buyerName: invoicesTable.buyerName,
+      buyerEmail: invoicesTable.buyerEmail,
+      carrierType: invoicesTable.carrierType,
+      carrierNum: invoicesTable.carrierNum,
+      taxId: invoicesTable.taxId,
+      companyTitle: invoicesTable.companyTitle,
+      loveCode: invoicesTable.loveCode,
+      errorMessage: invoicesTable.errorMessage,
+      paymentStatus: paymentTransactionsTable.status,
+      createdAt: invoicesTable.createdAt,
+      issuedAt: invoicesTable.issuedAt,
+      voidedAt: invoicesTable.voidedAt,
+    })
+    .from(invoicesTable)
+    .leftJoin(
+      paymentTransactionsTable,
+      eq(paymentTransactionsTable.paymentRef, invoicesTable.paymentRef),
+    )
+    .orderBy(desc(invoicesTable.id));
+
+  res.json(AdminListInvoicesResponse.parse(rows));
 });
 
 router.get("/admin/registrations/export", async (req, res): Promise<void> => {

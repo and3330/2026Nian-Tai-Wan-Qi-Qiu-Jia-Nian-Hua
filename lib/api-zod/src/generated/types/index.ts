@@ -7,6 +7,7 @@
  */
 
 export * from "./adminExportRegistrationsParams";
+export * from "./adminInvoice";
 export * from "./adminListRegistrationsParams";
 export * from "./authorizationSessionHeaderParameter";
 export * from "./authUser";

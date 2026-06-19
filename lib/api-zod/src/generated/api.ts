@@ -519,6 +519,40 @@ export const AdminListRegistrationsResponse = zod.array(
 );
 
 /**
+ * @summary List all e-invoice records (admin)
+ */
+export const AdminListInvoicesResponseItem = zod.object({
+  id: zod.number(),
+  paymentRef: zod.string(),
+  status: zod.string().describe("pending | issued | failed | voided"),
+  invoiceType: zod.string().describe("personal | company | donation"),
+  invoiceNumber: zod.string().nullish(),
+  invoiceDate: zod.string().nullish(),
+  randomNumber: zod.string().nullish(),
+  amount: zod.number(),
+  buyerName: zod.string().nullish(),
+  buyerEmail: zod.string().nullish(),
+  carrierType: zod.string().nullish(),
+  carrierNum: zod.string().nullish(),
+  taxId: zod.string().nullish(),
+  companyTitle: zod.string().nullish(),
+  loveCode: zod.string().nullish(),
+  errorMessage: zod.string().nullish(),
+  paymentStatus: zod
+    .string()
+    .nullish()
+    .describe(
+      "Status of the underlying payment transaction (paid\/pending\/etc), or null if missing.",
+    ),
+  createdAt: zod.date(),
+  issuedAt: zod.date().nullish(),
+  voidedAt: zod.date().nullish(),
+});
+export const AdminListInvoicesResponse = zod.array(
+  AdminListInvoicesResponseItem,
+);
+
+/**
  * @summary Export registrations as CSV
  */
 export const AdminExportRegistrationsQueryParams = zod.object({

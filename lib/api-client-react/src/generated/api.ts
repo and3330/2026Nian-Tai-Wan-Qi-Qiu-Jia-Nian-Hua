@@ -18,6 +18,7 @@ import type {
 
 import type {
   AdminExportRegistrationsParams,
+  AdminInvoice,
   AdminListRegistrationsParams,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
@@ -2177,6 +2178,81 @@ export function useAdminListRegistrations<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getAdminListRegistrationsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all e-invoice records (admin)
+ */
+export const getAdminListInvoicesUrl = () => {
+  return `/api/admin/invoices`;
+};
+
+export const adminListInvoices = async (
+  options?: RequestInit,
+): Promise<AdminInvoice[]> => {
+  return customFetch<AdminInvoice[]>(getAdminListInvoicesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAdminListInvoicesQueryKey = () => {
+  return [`/api/admin/invoices`] as const;
+};
+
+export const getAdminListInvoicesQueryOptions = <
+  TData = Awaited<ReturnType<typeof adminListInvoices>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListInvoices>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getAdminListInvoicesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof adminListInvoices>>
+  > = ({ signal }) => adminListInvoices({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof adminListInvoices>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AdminListInvoicesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof adminListInvoices>>
+>;
+export type AdminListInvoicesQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary List all e-invoice records (admin)
+ */
+
+export function useAdminListInvoices<
+  TData = Awaited<ReturnType<typeof adminListInvoices>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListInvoices>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAdminListInvoicesQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

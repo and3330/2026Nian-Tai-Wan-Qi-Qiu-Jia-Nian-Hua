@@ -25,6 +25,7 @@ import AdminLayout from "@/pages/AdminLayout";
 import AdminLoginPage from "@/pages/AdminLoginPage";
 import AdminDashboard from "@/pages/Admin/Dashboard";
 import AdminOrdersManage from "@/pages/Admin/OrdersManage";
+import AdminInvoicesManage from "@/pages/Admin/InvoicesManage";
 import AdminTournamentManage from "@/pages/Admin/TournamentManage";
 import AdminNewsManage from "@/pages/Admin/NewsManage";
 import AdminContestantsManage from "@/pages/Admin/ContestantsManage";
@@ -86,6 +87,9 @@ function Router() {
         </Route>
         <Route path="/admin/orders">
           {() => <AdminLayout><AdminOrdersManage /></AdminLayout>}
+        </Route>
+        <Route path="/admin/invoices">
+          {() => <AdminLayout><AdminInvoicesManage /></AdminLayout>}
         </Route>
         <Route path="/admin/tournament">
           {() => <AdminLayout><AdminTournamentManage /></AdminLayout>}
