@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Clock,
   ScanLine,
+  Mail,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -37,9 +38,11 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
 export default function TournamentManage() {
   const { hasRole } = useAuth();
   const canCheckin = hasRole("checkin");
+  const canEdit = hasRole("editor");
   const { data, isLoading, isError, refetch, isFetching } = useAdminListRegistrations({});
   const [search, setSearch] = useState("");
   const [checkingToken, setCheckingToken] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const legs = useMemo<Registration[]>(() => {
@@ -99,6 +102,52 @@ export default function TournamentManage() {
       setActionError("報到失敗，請稍後再試");
     } finally {
       setCheckingToken(null);
+    }
+  };
+
+  // Re-send the post-payment confirmation email (with check-in QR) for a single
+  // tournament leg. Reuses the shared resend endpoint (editor-gated); it only
+  // delivers for paid legs that have a QR + email, others are reported skipped.
+  const handleResend = async (r: Registration) => {
+    if (!r.email) return;
+    if (
+      !window.confirm(
+        `確定要重新發送「${r.parentName}」的報名確認信（含報到 QR Code）至 ${r.email}？`,
+      )
+    ) {
+      return;
+    }
+    setActionError(null);
+    setResendingId(r.id);
+    try {
+      const res = await fetch("/api/admin/registrations/resend-confirmation", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [r.id] }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        sent?: number;
+        skipped?: number;
+        failed?: number;
+        error?: string;
+      };
+      if (!res.ok) {
+        throw new Error(data?.error || "重新發送失敗");
+      }
+      if (data.sent) {
+        window.alert("已重新發送報名確認信。");
+      } else if (data.skipped) {
+        window.alert("此筆無法發送（缺少報到 QR 或 Email）。");
+      } else {
+        window.alert("重新發送失敗，請稍後再試。");
+      }
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "重新發送失敗，請稍後再試",
+      );
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -288,19 +337,43 @@ export default function TournamentManage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {canCheckin && rowCheckinable ? (
-                        <button
-                          type="button"
-                          onClick={() => handleCheckin(r.qrToken)}
-                          disabled={checkingToken === r.qrToken}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 disabled:opacity-50"
-                          data-testid={`button-checkin-${r.id}`}
-                        >
-                          <ScanLine size={14} /> {checkingToken === r.qrToken ? "處理中…" : "報到"}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+                      {(() => {
+                        const showCheckin = canCheckin && rowCheckinable;
+                        const showResend =
+                          canEdit &&
+                          r.paymentStatus === "paid" &&
+                          !!r.email &&
+                          !!r.qrToken;
+                        if (!showCheckin && !showResend) {
+                          return <span className="text-xs text-muted-foreground">—</span>;
+                        }
+                        return (
+                          <div className="flex items-center justify-end gap-2 flex-wrap">
+                            {showResend && (
+                              <button
+                                type="button"
+                                onClick={() => handleResend(r)}
+                                disabled={resendingId === r.id}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-bold hover:bg-indigo-50 disabled:opacity-50"
+                                data-testid={`button-resend-${r.id}`}
+                              >
+                                <Mail size={14} /> {resendingId === r.id ? "寄送中…" : "重發確認信"}
+                              </button>
+                            )}
+                            {showCheckin && (
+                              <button
+                                type="button"
+                                onClick={() => handleCheckin(r.qrToken)}
+                                disabled={checkingToken === r.qrToken}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 disabled:opacity-50"
+                                data-testid={`button-checkin-${r.id}`}
+                              >
+                                <ScanLine size={14} /> {checkingToken === r.qrToken ? "處理中…" : "報到"}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                   </tr>
                 );
