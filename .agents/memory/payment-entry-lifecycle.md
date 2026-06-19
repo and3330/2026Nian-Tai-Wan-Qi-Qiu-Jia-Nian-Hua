@@ -33,6 +33,15 @@ Before `/payments/initiate` creates a NEW NewebPay order, it must check whether 
 **Why:** Our `paymentStatus` lags the gateway — NewebPay charges the card, then confirms asynchronously (notify/return). A buyer who retries in that window passes the `paymentStatus !== 'paid'` guard and gets charged a second time. This was the root cause of "付款成功卻要重複刷一次".
 **How to apply:** Only fires on retries (first-time orders have null `paymentRef`, so no added latency). On a transient QueryTradeInfo failure, log and fall through to allow the legitimate retry (don't hard-block). Only the local `paymentStatus === 'paid'` short-circuit alone is insufficient.
 
+## NewebPay callback Status=SUCCESS is NOT proof of payment (VACC/CVS 取號 trap)
+A signed MPG notify/return reports `Status=SUCCESS` in two different situations: (a) a credit-card charge was collected, and (b) a VACC (ATM) / CVS (超商) order merely finished 取號 — an account/store code was issued but NO money has arrived. Marking (b) as paid issues QR tickets + invoices before the buyer ever pays.
+**Why:** All three methods (CREDIT/VACC/CVS) are enabled on every order, so 取號 SUCCESS callbacks WILL arrive. Trusting `Status==='SUCCESS'` alone (the old notify/return code) was a real "free ticket before payment" hole.
+**How to apply:** Callback settlement must confirm against authoritative QueryTradeInfo (`TradeStatus==='1'` AND exact Amt match) before the paid-transition — same gate as reconcile. The signed-callback fallback (when QueryTradeInfo is unreachable) is allowed ONLY when the decrypted Result carries a real `PayTime` (absent at 取號) AND an exact amount match — never on `Status` alone. For credit-card eventual-consistency lag, re-query QueryTradeInfo once after a short delay, but only when the callback already "looks paid" (so 取號 never waits/passes).
+
+## Callback base URLs (Return/Notify) come from PUBLIC_BASE_URL, not proxy headers
+NewebPay ReturnURL/NotifyURL (and Stripe success/cancel) must be the canonical public origin. Prefer `process.env.PUBLIC_BASE_URL` (set in production = https://2026balloon.tw); fall back to x-forwarded headers only in dev where it's unset.
+**Why:** Deriving callback URLs purely from request headers is fragile — a misconfigured proxy yields wrong/internal callback URLs and the gateway can't reach us. email-service already trusts PUBLIC_BASE_URL; payments now matches.
+
 ## Refund = status flip only; capacity release is implicit; money is offline
 Refunding an order (both the buyer-submitted refund-request approval AND the admin "退票" button in 訂單管理) just sets every leg's `paymentStatus = 'refunded'` for the whole order (by `paymentRef`). It does NOT call NewebPay/Stripe refund APIs — the actual money is returned offline by staff.
 **Why:** No gateway refund integration exists; both refund paths deliberately keep the same offline-money model so they behave identically.

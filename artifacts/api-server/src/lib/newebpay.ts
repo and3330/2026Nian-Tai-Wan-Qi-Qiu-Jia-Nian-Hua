@@ -98,19 +98,23 @@ export interface NewebPayCallbackResult {
   tradeNo: string;
   paid: boolean;
   amount: number | null;
+  // Present only when NewebPay has actually collected the money. For VACC/CVS,
+  // the 取號 (virtual-account / store-code issued) callback reports
+  // Status=SUCCESS but carries NO PayTime, so callers must not treat it as paid.
+  payTime: string | null;
   rawData: Record<string, unknown> | null;
 }
 
 export function verifyNewebPayCallback(body: Record<string, string>): NewebPayCallbackResult {
   try {
     if (!body.TradeInfo || !body.TradeSha) {
-      return { valid: false, orderNo: "", tradeNo: "", paid: false, amount: null, rawData: null };
+      return { valid: false, orderNo: "", tradeNo: "", paid: false, amount: null, payTime: null, rawData: null };
     }
     const cfg = getConfig();
     const tradeSha = sha256Hash(`HashKey=${cfg.hashKey}&${body.TradeInfo}&HashIV=${cfg.hashIV}`);
     const valid = tradeSha === body.TradeSha;
     if (!valid) {
-      return { valid: false, orderNo: "", tradeNo: "", paid: false, amount: null, rawData: null };
+      return { valid: false, orderNo: "", tradeNo: "", paid: false, amount: null, payTime: null, rawData: null };
     }
 
     const decrypted = aesDecrypt(body.TradeInfo, cfg.hashKey, cfg.hashIV);
@@ -128,16 +132,19 @@ export function verifyNewebPayCallback(body: Record<string, string>): NewebPayCa
     const result: Record<string, unknown> = data.Result ?? {};
     const amtRaw = result.Amt;
     const amount = amtRaw == null ? null : parseInt(String(amtRaw), 10);
+    const payTimeRaw = result.PayTime;
+    const payTime = payTimeRaw == null || String(payTimeRaw).trim() === "" ? null : String(payTimeRaw);
     return {
       valid: true,
       orderNo: String(result.MerchantOrderNo || ""),
       tradeNo: String(result.TradeNo || ""),
       paid: data.Status === "SUCCESS",
       amount: Number.isNaN(amount as number) ? null : amount,
+      payTime,
       rawData: data,
     };
   } catch {
-    return { valid: false, orderNo: "", tradeNo: "", paid: false, amount: null, rawData: null };
+    return { valid: false, orderNo: "", tradeNo: "", paid: false, amount: null, payTime: null, rawData: null };
   }
 }
 

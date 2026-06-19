@@ -2,7 +2,12 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import express from "express";
 import { eq, inArray, sql, desc, and, ne } from "drizzle-orm";
 import { db, registrationsTable, paymentTransactionsTable, invoicesTable } from "@workspace/db";
-import { createNewebPayOrder, verifyNewebPayCallback, queryNewebPayTrade } from "../lib/newebpay";
+import {
+  createNewebPayOrder,
+  verifyNewebPayCallback,
+  queryNewebPayTrade,
+  type NewebPayCallbackResult,
+} from "../lib/newebpay";
 import { getStripeClient, isStripeConfigured } from "../lib/stripe-client";
 import { issueInvoice, voidInvoice, type InvoiceIssueOptions } from "../lib/ecpay-invoice";
 import { notifyPurchaseSlack } from "../lib/slack-notify";
@@ -18,6 +23,11 @@ const BANK_INFO = {
 };
 
 function getBaseUrl(req: express.Request): string {
+  // Prefer the explicitly configured public origin so NewebPay/Stripe callback
+  // URLs are always the canonical https://2026balloon.tw, independent of proxy
+  // headers. Falls back to forwarded headers in dev where PUBLIC_BASE_URL is unset.
+  const configured = process.env.PUBLIC_BASE_URL?.trim();
+  if (configured) return configured.replace(/\/+$/, "");
   const forwardedProto = req.headers["x-forwarded-proto"];
   const forwardedHost = req.headers["x-forwarded-host"];
   const proto = (Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto) || req.protocol;
@@ -792,27 +802,84 @@ router.post("/payments/:ref/confirm-bank", async (req, res): Promise<void> => {
   }
 });
 
+// Settle a NewebPay order from a verified MPG callback, but ONLY when the money
+// has genuinely been collected.
+//
+// CRITICAL: a signed MPG callback reports Status=SUCCESS in two very different
+// situations — (a) a credit-card payment was actually charged, and (b) a VACC
+// (ATM 虛擬帳號) / CVS (超商代碼) order merely finished 取號, i.e. an account or
+// store code was issued but NO money has arrived yet. Treating (b) as paid would
+// issue tickets + QR + invoices before the buyer ever pays. To avoid that we
+// confirm against NewebPay's authoritative QueryTradeInfo (TradeStatus "1" =
+// 已付款) before marking paid. If QueryTradeInfo is momentarily unreachable we
+// fall back to the signed callback, but only when it carries a real PayTime
+// (never present at the 取號 stage) and the amount matches.
+async function settleNewebPayFromCallback(result: NewebPayCallbackResult): Promise<boolean> {
+  if (!result.valid || !result.orderNo) return false;
+  const [tx] = await db
+    .select()
+    .from(paymentTransactionsTable)
+    .where(eq(paymentTransactionsTable.paymentRef, result.orderNo));
+  if (!tx) return false;
+  if (tx.status === "paid") return true;
+
+  // A signed callback that carries a real PayTime AND an exactly matching amount
+  // is a strong (but not yet authoritative) sign of a genuine credit-card
+  // payment. VACC/CVS 取號 callbacks have NO PayTime, so they never qualify here.
+  const callbackLooksPaid =
+    result.paid && Boolean(result.payTime) && result.amount != null && result.amount === tx.amount;
+
+  // Authoritative confirmation via QueryTradeInfo (TradeStatus "1" = 已付款).
+  // We retry once after a short delay, but ONLY when the callback already looks
+  // genuinely paid — this covers the brief eventual-consistency window after a
+  // credit-card charge without ever waiting on a 取號 (which can't look paid).
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const q = await queryNewebPayTrade(result.orderNo, tx.amount);
+      if (q.ok) {
+        if (q.paid && q.amount === tx.amount) {
+          await markPaymentPaid(result.orderNo, q.tradeNo || result.tradeNo, q.raw ?? result.rawData);
+          return true;
+        }
+        if (callbackLooksPaid && attempt === 0) {
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+        logger.info(
+          { paymentRef: result.orderNo, tradeStatus: q.tradeStatus },
+          "[NewebPay] callback SUCCESS but QueryTradeInfo not paid (likely 取號) — skipping",
+        );
+        return false;
+      }
+      logger.warn({ paymentRef: result.orderNo, message: q.message }, "[NewebPay] QueryTradeInfo not ok");
+      break;
+    } catch (err) {
+      logger.warn({ err, paymentRef: result.orderNo }, "[NewebPay] QueryTradeInfo confirm failed");
+      break;
+    }
+  }
+
+  // Fallback (QueryTradeInfo unreachable/errored): trust the SIGNED callback only
+  // when it represents a real payment (has PayTime) and the amount matches
+  // exactly — never a 取號 callback.
+  if (callbackLooksPaid) {
+    await markPaymentPaid(result.orderNo, result.tradeNo, result.rawData);
+    return true;
+  }
+  return false;
+}
+
 // NewebPay sends URL-encoded form bodies; rely on express.urlencoded middleware
 // already applied at the app level.
 router.post("/payments/newebpay/notify", async (req, res): Promise<void> => {
   try {
     const result = verifyNewebPayCallback(req.body);
     logger.info(
-      { paid: result.paid, valid: result.valid, orderNo: result.orderNo },
+      { paid: result.paid, valid: result.valid, orderNo: result.orderNo, hasPayTime: Boolean(result.payTime) },
       "[NewebPay Notify]",
     );
     if (result.valid && result.paid && result.orderNo) {
-      const [tx] = await db
-        .select()
-        .from(paymentTransactionsTable)
-        .where(eq(paymentTransactionsTable.paymentRef, result.orderNo));
-      if (tx && tx.status !== "paid") {
-        if (result.amount != null && result.amount !== tx.amount) {
-          logger.warn({ expected: tx.amount, actual: result.amount }, "[NewebPay] amount mismatch");
-        } else {
-          await markPaymentPaid(result.orderNo, result.tradeNo, result.rawData);
-        }
-      }
+      await settleNewebPayFromCallback(result);
     }
     res.send("OK");
   } catch (error: unknown) {
@@ -824,20 +891,16 @@ router.post("/payments/newebpay/notify", async (req, res): Promise<void> => {
 router.post("/payments/newebpay/return", async (req, res): Promise<void> => {
   try {
     const result = verifyNewebPayCallback(req.body);
+    let settled = false;
     if (result.valid && result.paid && result.orderNo) {
-      const [tx] = await db
-        .select()
-        .from(paymentTransactionsTable)
-        .where(eq(paymentTransactionsTable.paymentRef, result.orderNo));
-      if (tx && tx.status !== "paid") {
-        if (result.amount == null || result.amount === tx.amount) {
-          await markPaymentPaid(result.orderNo, result.tradeNo, result.rawData);
-        }
-      }
+      settled = await settleNewebPayFromCallback(result);
     }
     const baseUrl = getBaseUrl(req);
     const ref = result.orderNo || "";
-    const status = result.valid && result.paid ? "success" : "failed";
+    // The result page polls the DB for the real status, so this param is cosmetic.
+    // Only claim success when the order actually settled; an unsettled-but-valid
+    // SUCCESS (e.g. VACC/CVS 取號) is reported as pending, a bad signature as failed.
+    const status = settled ? "success" : result.valid && result.paid ? "pending" : "failed";
     res.redirect(`${baseUrl}/payment/result?ref=${encodeURIComponent(ref)}&provider=newebpay&status=${status}`);
   } catch (error: unknown) {
     logger.error({ err: error }, "[NewebPay Return Error]");
