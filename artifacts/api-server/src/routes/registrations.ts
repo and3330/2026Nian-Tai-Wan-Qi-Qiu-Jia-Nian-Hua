@@ -71,11 +71,11 @@ function parseRegistrationBody(body: any): { ok: true; data: CreateRegistrationI
 
 const EVENT_DATES = ["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"];
 const DEFAULT_DAILY_CAPACITY = 500;
-// Per-date overrides — 7/24 and 7/25 hold 1000 people each; other days fall
+// Per-date overrides — 7/25 and 7/26 hold 1000 people each; other days fall
 // back to the default capacity.
 const DATE_CAPACITY: Record<string, number> = {
-  "2026-07-24": 1000,
   "2026-07-25": 1000,
+  "2026-07-26": 1000,
 };
 function capacityForDate(date: string): number {
   return DATE_CAPACITY[date] ?? DEFAULT_DAILY_CAPACITY;
