@@ -70,7 +70,22 @@ function parseRegistrationBody(body: any): { ok: true; data: CreateRegistrationI
 }
 
 const EVENT_DATES = ["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"];
-const DAILY_CAPACITY = 500;
+const DEFAULT_DAILY_CAPACITY = 500;
+// Per-date overrides — 7/24 and 7/25 hold 1000 people each; other days fall
+// back to the default capacity.
+const DATE_CAPACITY: Record<string, number> = {
+  "2026-07-24": 1000,
+  "2026-07-25": 1000,
+};
+function capacityForDate(date: string): number {
+  return DATE_CAPACITY[date] ?? DEFAULT_DAILY_CAPACITY;
+}
+
+// Only PAID registrations consume a seat. Unpaid orders (pending /
+// awaiting_transfer) do NOT count toward the daily headcount shown on the
+// home page or toward the sold-out check, so an abandoned checkout never
+// blocks a real buyer.
+const isPaidLeg = sql`${registrationsTable.paymentStatus} = 'paid'`;
 
 // 戰鬥陀螺賽（線上報名）— a separate inventory from the 500-per-day carnival
 // admission. Tournament rows live on 7/26 too, but are counted independently so
@@ -93,7 +108,7 @@ async function getDateCounts(): Promise<Record<string, number>> {
       total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)`,
     })
     .from(registrationsTable)
-    .where(sql`${registrationsTable.paymentStatus} <> 'refunded' AND ${isCarnivalLeg}`)
+    .where(sql`${isPaidLeg} AND ${isCarnivalLeg}`)
     .groupBy(registrationsTable.eventDate);
 
   const counts: Record<string, number> = {};
@@ -107,11 +122,12 @@ router.get("/registrations/availability", async (req, res): Promise<void> => {
   const counts = await getDateCounts();
   const availability = EVENT_DATES.map((date) => {
     const registered = counts[date] || 0;
+    const totalCapacity = capacityForDate(date);
     return {
       date: new Date(date),
-      totalCapacity: DAILY_CAPACITY,
+      totalCapacity,
       registered,
-      remaining: DAILY_CAPACITY - registered,
+      remaining: Math.max(0, totalCapacity - registered),
     };
   });
   res.json(GetRegistrationAvailabilityResponse.parse(availability));
@@ -174,7 +190,7 @@ async function countForDate(tx: DbExecutor, date: string): Promise<number> {
   const [row] = await tx
     .select({ total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)` })
     .from(registrationsTable)
-    .where(sql`${registrationsTable.eventDate} = ${date} AND ${registrationsTable.paymentStatus} <> 'refunded' AND ${isCarnivalLeg}`);
+    .where(sql`${registrationsTable.eventDate} = ${date} AND ${isPaidLeg} AND ${isCarnivalLeg}`);
   return Number(row?.total ?? 0);
 }
 
@@ -220,8 +236,9 @@ router.post("/registrations", async (req, res): Promise<void> => {
     const result = await db.transaction(async (tx) => {
       await lockDate(tx, eventDate);
       const currentCount = await countForDate(tx, eventDate);
-      const remaining = Math.max(0, DAILY_CAPACITY - currentCount);
-      if (currentCount + ticketCount > DAILY_CAPACITY) {
+      const cap = capacityForDate(eventDate);
+      const remaining = Math.max(0, cap - currentCount);
+      if (currentCount + ticketCount > cap) {
         return { soldOut: true as const, remaining, date: eventDate };
       }
 
@@ -346,8 +363,9 @@ router.post("/registrations/combo", async (req, res): Promise<void> => {
 
       for (const d of normalizedDates) {
         const count = await countForDate(tx, d);
-        if (count + ticketCount > DAILY_CAPACITY) {
-          return { soldOut: true as const, date: d, remaining: Math.max(0, DAILY_CAPACITY - count) };
+        const cap = capacityForDate(d);
+        if (count + ticketCount > cap) {
+          return { soldOut: true as const, date: d, remaining: Math.max(0, cap - count) };
         }
       }
 
