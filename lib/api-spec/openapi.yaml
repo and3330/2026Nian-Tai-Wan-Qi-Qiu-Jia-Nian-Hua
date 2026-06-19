@@ -1708,6 +1708,8 @@ components:
         - dailySalesTrend
         - ticketTypeBreakdown
         - sessionAvailability
+        - carnivalSales
+        - tournamentSales
       properties:
         ticketPriceTwd:
           type: number
@@ -1743,3 +1745,19 @@ components:
           description: Per-session capacity / remaining seats.
           items:
             $ref: '#/components/schemas/SessionAvailability'
+        carnivalSales:
+          $ref: '#/components/schemas/CategorySales'
+        tournamentSales:
+          $ref: '#/components/schemas/CategorySales'
+    CategorySales:
+      type: object
+      required:
+        - revenue
+        - payerCount
+      properties:
+        revenue:
+          type: number
+          description: Cumulative paid revenue for this category (sum of registration.amount).
+        payerCount:
+          type: number
+          description: Number of distinct paying people (distinct paymentRef among paid rows), not ticket count.

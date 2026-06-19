@@ -12,6 +12,7 @@ export * from "./authorizationSessionHeaderParameter";
 export * from "./authUser";
 export * from "./authUserEnvelope";
 export * from "./beginBrowserLoginParams";
+export * from "./categorySales";
 export * from "./checkinLookupResponse";
 export * from "./comboRegistrationResult";
 export * from "./confirmStripePayment200";

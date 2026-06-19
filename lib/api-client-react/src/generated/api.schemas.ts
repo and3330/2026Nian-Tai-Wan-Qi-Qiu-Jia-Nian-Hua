@@ -496,6 +496,13 @@ export interface SessionAvailability {
   fillPercentage: number;
 }
 
+export interface CategorySales {
+  /** Cumulative paid revenue for this category (sum of registration.amount). */
+  revenue: number;
+  /** Number of distinct paying people (distinct paymentRef among paid rows), not ticket count. */
+  payerCount: number;
+}
+
 export interface SalesOverview {
   /** Reference single-day ticket price in TWD (for display only; revenue is summed from registration.amount). */
   ticketPriceTwd: number;
@@ -515,6 +522,8 @@ export interface SalesOverview {
   ticketTypeBreakdown: TicketTypeBreakdown[];
   /** Per-session capacity / remaining seats. */
   sessionAvailability: SessionAvailability[];
+  carnivalSales: CategorySales;
+  tournamentSales: CategorySales;
 }
 
 /**

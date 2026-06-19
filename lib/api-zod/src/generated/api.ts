@@ -795,6 +795,30 @@ export const AdminGetSalesOverviewResponse = zod.object({
       }),
     )
     .describe("Per-session capacity \/ remaining seats."),
+  carnivalSales: zod.object({
+    revenue: zod
+      .number()
+      .describe(
+        "Cumulative paid revenue for this category (sum of registration.amount).",
+      ),
+    payerCount: zod
+      .number()
+      .describe(
+        "Number of distinct paying people (distinct paymentRef among paid rows), not ticket count.",
+      ),
+  }),
+  tournamentSales: zod.object({
+    revenue: zod
+      .number()
+      .describe(
+        "Cumulative paid revenue for this category (sum of registration.amount).",
+      ),
+    payerCount: zod
+      .number()
+      .describe(
+        "Number of distinct paying people (distinct paymentRef among paid rows), not ticket count.",
+      ),
+  }),
 });
 
 /**

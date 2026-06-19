@@ -267,6 +267,28 @@ export default function AdminDashboard() {
         />
       </div>
 
+      {/* Category split: 購買票券 vs 報名陀螺 — cumulative revenue + paying people */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CategorySalesCard
+          loading={overviewLoading}
+          icon={<Ticket size={22} />}
+          tone="orange"
+          title="購買票券"
+          revenue={overview ? overview.carnivalSales.revenue : 0}
+          payerCount={overview ? overview.carnivalSales.payerCount : 0}
+          ready={!!overview}
+        />
+        <CategorySalesCard
+          loading={overviewLoading}
+          icon={<Users size={22} />}
+          tone="purple"
+          title="報名陀螺"
+          revenue={overview ? overview.tournamentSales.revenue : 0}
+          payerCount={overview ? overview.tournamentSales.payerCount : 0}
+          ready={!!overview}
+        />
+      </div>
+
       {/* Daily sales trend (line chart) + ticket type distribution (pie) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-3xl border shadow-sm lg:col-span-2">
@@ -639,6 +661,67 @@ function KpiCard({
           )}
           {sub && !loading && (
             <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategorySalesCard({
+  loading,
+  ready,
+  icon,
+  tone,
+  title,
+  revenue,
+  payerCount,
+}: {
+  loading: boolean;
+  ready: boolean;
+  icon: React.ReactNode;
+  tone: "orange" | "purple";
+  title: string;
+  revenue: number;
+  payerCount: number;
+}) {
+  const toneClasses: Record<string, string> = {
+    orange: "bg-orange-100 text-orange-600",
+    purple: "bg-purple-100 text-purple-600",
+  };
+  return (
+    <div className="bg-white p-6 rounded-3xl border shadow-sm">
+      <div className="flex items-center gap-3 mb-4">
+        <div
+          className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${toneClasses[tone]}`}
+        >
+          {icon}
+        </div>
+        <h2 className="text-lg font-bold">{title}</h2>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <p className="text-muted-foreground font-medium text-sm">
+            累積售票額
+          </p>
+          {loading || !ready ? (
+            <div className="h-8 mt-2 bg-muted/50 animate-pulse rounded" />
+          ) : (
+            <div className="text-2xl font-display text-foreground mt-1 truncate">
+              {formatCurrency(revenue)}
+            </div>
+          )}
+        </div>
+        <div>
+          <p className="text-muted-foreground font-medium text-sm">
+            實際付款人數
+          </p>
+          {loading || !ready ? (
+            <div className="h-8 mt-2 bg-muted/50 animate-pulse rounded" />
+          ) : (
+            <div className="text-2xl font-display text-foreground mt-1 truncate">
+              {formatNumber(payerCount)} 人
+            </div>
           )}
         </div>
       </div>

@@ -671,6 +671,38 @@ router.get("/admin/sales-overview", async (req, res): Promise<void> => {
   const totalTicketsSold = Number(paidTotals?.tickets ?? 0);
   const totalRevenue = Number(paidTotals?.revenue ?? 0);
 
+  // Category split: 購買票券 (carnival admission & general tickets) vs 報名陀螺
+  // (tournament). For each we report cumulative paid revenue and the number of
+  // distinct PAYING PEOPLE — counted by order key among paid rows, so a single
+  // order with multiple tickets counts as one payer (人數, not 票數).
+  const isTournamentLeg = sql`${registrationsTable.ticketType} IN ('tournament', 'tournament-companion')`;
+  // Distinct payers, keyed by paymentRef when present (combo legs share one ref =
+  // one payer) and falling back to the row id so paid rows without a paymentRef
+  // (e.g. offline / admin manual confirms) are still counted as a person.
+  const payerKey = sql`COALESCE(${registrationsTable.paymentRef}, 'reg:' || ${registrationsTable.id}::text)`;
+  const [carnivalSalesRow] = await db
+    .select({
+      revenue: sql<number>`COALESCE(SUM(${registrationsTable.amount}), 0)`,
+      payerCount: sql<number>`COUNT(DISTINCT ${payerKey})`,
+    })
+    .from(registrationsTable)
+    .where(and(eq(registrationsTable.paymentStatus, "paid"), isCarnivalLeg));
+  const [tournamentSalesRow] = await db
+    .select({
+      revenue: sql<number>`COALESCE(SUM(${registrationsTable.amount}), 0)`,
+      payerCount: sql<number>`COUNT(DISTINCT ${payerKey})`,
+    })
+    .from(registrationsTable)
+    .where(and(eq(registrationsTable.paymentStatus, "paid"), isTournamentLeg));
+  const carnivalSales = {
+    revenue: Number(carnivalSalesRow?.revenue ?? 0),
+    payerCount: Number(carnivalSalesRow?.payerCount ?? 0),
+  };
+  const tournamentSales = {
+    revenue: Number(tournamentSalesRow?.revenue ?? 0),
+    payerCount: Number(tournamentSalesRow?.payerCount ?? 0),
+  };
+
   const totalCapacity = EVENT_DATES.length * DAILY_CAPACITY;
   const totalRegistered = EVENT_DATES.reduce(
     (sum, d) => sum + (sessionRegistered[d] || 0),
@@ -736,6 +768,8 @@ router.get("/admin/sales-overview", async (req, res): Promise<void> => {
       ...s,
       eventDate: new Date(s.eventDate),
     })),
+    carnivalSales,
+    tournamentSales,
   };
 
   res.json(AdminGetSalesOverviewResponse.parse(overview));

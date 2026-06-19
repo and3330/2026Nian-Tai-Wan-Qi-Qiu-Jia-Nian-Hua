@@ -5,6 +5,7 @@
  * 2026 Taiwan Balloon Carnival API
  * OpenAPI spec version: 0.1.0
  */
+import type { CategorySales } from "./categorySales";
 import type { SalesTrendPoint } from "./salesTrendPoint";
 import type { SessionAvailability } from "./sessionAvailability";
 import type { TicketTypeBreakdown } from "./ticketTypeBreakdown";
@@ -28,4 +29,6 @@ export interface SalesOverview {
   ticketTypeBreakdown: TicketTypeBreakdown[];
   /** Per-session capacity / remaining seats. */
   sessionAvailability: SessionAvailability[];
+  carnivalSales: CategorySales;
+  tournamentSales: CategorySales;
 }
