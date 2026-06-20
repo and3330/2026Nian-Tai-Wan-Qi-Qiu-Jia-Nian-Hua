@@ -186,7 +186,6 @@ export const EVENT_INFO = {
   lineUrl: "https://lin.ee/OUbPwpi",
   transport: [
     "捷運：搭乘板南線至「南港站」1 號出口，步行約 5 分鐘",
-    "接駁車：活動期間提供免費接駁車，往返捷運南港站",
     "開車：現場停車位有限，建議搭乘大眾運輸前往",
   ],
 } as const;
