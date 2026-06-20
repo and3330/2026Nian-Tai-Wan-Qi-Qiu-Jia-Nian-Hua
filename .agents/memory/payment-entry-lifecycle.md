@@ -17,8 +17,13 @@ For paid orders the buyer's confirmation (which carries the QR) must fire on the
 **Why:** Sending a valid entry QR before payment lets an unpaid buyer present a "購票成功" ticket.
 
 ## Paid transition must be atomic + idempotent
-The status flip to `paid` and all downstream side effects (invoice issuance, Slack notify, confirmation email) must run exactly once per order. Use a conditional `UPDATE ... WHERE status <> 'paid'` and only fire side effects when it actually changed a row.
+The status flip to `paid` and all downstream side effects (Slack notify, confirmation email) must run exactly once per order. Use a conditional `UPDATE ... WHERE status <> 'paid'` and only fire side effects when it actually changed a row.
 **Why:** NewebPay sends both a server notify AND a browser return; Stripe sends webhook + a client-poll confirm fallback; bank transfer adds a manual admin confirm. Several can race for the same order.
+
+## E-invoices are NOT auto-issued on payment — admins issue them manually/in batches
+The paid-transition records the buyer's invoice preferences (an `invoicesTable` row stays `status='pending'`) but deliberately does NOT call ECPay to issue the e-invoice. Staff issue invoices from the admin 發票管理 page — per-order「開立發票」or「批量開立」, both hitting `POST /payments/invoices/:ref/retry` (editor-gated), which calls `issueInvoiceForPayment`.
+**Why:** Organizer wants to review orders before issuing real government e-invoices, and avoid auto-issuing the moment payment lands. (Earlier the paid-transition fire-and-forget auto-issued.)
+**How to apply:** Do NOT re-add an `issueInvoiceForPayment` call inside the paid-transition (`markPaymentPaid`). Keep recording the pending invoice row at `/payments/initiate` so the manual/batch flow has data. `issueInvoiceForPayment` must stay referenced only by the retry endpoint. Production vs test issuance is decided purely by whether `ECPAY_INVOICE_HASH_KEY` (+ MERCHANT_ID/HASH_IV) is set; unset = ECPay stage/sandbox (test merchant 2000132), set = real einvoice.ecpay.com.tw.
 
 ## Every method funnels through one paid-transition
 NewebPay, Stripe, and the admin bank-transfer confirm all call the same paid-transition function, so they share invoice + Slack + email behavior and the idempotency guard. Bank transfer has no automatic callback — it is confirmed manually from the admin dashboard's "待確認匯款" list (editor role).

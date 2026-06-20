@@ -549,10 +549,11 @@ export async function markPaymentPaid(
     didTransitionToPaid = true;
   });
   if (didTransitionToPaid) {
-    // Fire-and-forget invoice issuance — failures should not roll back payment.
-    issueInvoiceForPayment(paymentRef).catch((err) => {
-      logger.error({ err, paymentRef }, "[ECPay Invoice] async issuance failed");
-    });
+    // NOTE: invoices are intentionally NOT auto-issued on payment. The buyer's
+    // invoice preferences are recorded (invoicesTable row stays "pending") and
+    // an admin issues them manually/in batches from the 發票管理 page
+    // (POST /payments/invoices/:ref/retry). This avoids issuing real e-invoices
+    // automatically and lets staff review orders before issuing.
     // Fire-and-forget Slack purchase notification.
     notifyPurchaseForPaymentRef(paymentRef).catch((err) => {
       logger.error({ err, paymentRef }, "[Slack] purchase notification lookup failed");
