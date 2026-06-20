@@ -25,6 +25,16 @@ The paid-transition records the buyer's invoice preferences (an `invoicesTable` 
 **Why:** Organizer wants to review orders before issuing real government e-invoices, and avoid auto-issuing the moment payment lands. (Earlier the paid-transition fire-and-forget auto-issued.)
 **How to apply:** Do NOT re-add an `issueInvoiceForPayment` call inside the paid-transition (`markPaymentPaid`). Keep recording the pending invoice row at `/payments/initiate` so the manual/batch flow has data. `issueInvoiceForPayment` must stay referenced only by the retry endpoint. Production vs test issuance is decided purely by whether `ECPAY_INVOICE_HASH_KEY` (+ MERCHANT_ID/HASH_IV) is set; unset = ECPay stage/sandbox (test merchant 2000132), set = real einvoice.ecpay.com.tw.
 
+## Clearing/changing PRODUCTION invoice data must go through an in-app admin action, never executeSql
+The agent's `executeSql` is READ-ONLY against production, so test/sandbox invoice records that pile up on the live site cannot be cleaned by the agent directly — the deployed app must expose the action (e.g. an admin "重設為待開立" button) for staff to run.
+**Why:** Going live, the live DB had ~168 issued + ~92 pending invoices for REAL customers that were auto-issued in ECPay sandbox (pre-prod-keys + old auto-issue). Owner needed them re-issued as real invoices.
+**How to apply:** Prefer RESET (issued→pending, null out invoiceNumber/invoiceDate/randomNumber/errorMessage/rawResponse/issuedAt) over DELETE — deleting loses the buyer's invoice prefs (carrier/統編/捐贈碼) the real re-issue needs, and leaves paying customers with no invoice. Correct go-live order: (1) deploy with prod ECPay keys + no-auto-issue code, (2) RESET the test-issued rows, (3) batch 開立 → ECPay emails real invoices.
+
+## RESET ≠ VOID — reset is local-only and risks double-issuing a REAL invoice
+`POST /payments/invoices/:ref/reset` (editor-gated, latest row only) flips an `issued` invoice back to `pending` WITHOUT calling ECPay. It exists to clear sandbox/test invoices. For a real official invoice that was actually issued at ECPay, use VOID (`/void`) instead.
+**Why:** Resetting then re-issuing a genuinely-issued government invoice creates a second official invoice for one order = tax/accounting problem. Reset only erases our local evidence, not the ECPay invoice.
+**How to apply:** Keep reset SELECTION-based (explicit checkboxes), latest-row-only, with a strong confirm warning "測試發票專用". Do NOT make a blanket "reset all" that could sweep real invoices. The reset checkbox shares the same selection set as batch-issue, but each action only operates on its matching status subset (issue→pending/failed, reset→issued).
+
 ## Every method funnels through one paid-transition
 NewebPay, Stripe, and the admin bank-transfer confirm all call the same paid-transition function, so they share invoice + Slack + email behavior and the idempotency guard. Bank transfer has no automatic callback — it is confirmed manually from the admin dashboard's "待確認匯款" list (editor role).
 

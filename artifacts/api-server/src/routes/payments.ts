@@ -769,6 +769,49 @@ router.post("/payments/invoices/:ref/void", async (req, res): Promise<void> => {
   }
 });
 
+// Reset an "issued" invoice record back to "pending" so it can be re-issued.
+// Intended to clear TEST/sandbox invoice records (issued before going live in
+// production) — it only touches the local DB record, it does NOT call ECPay.
+// For a real, official invoice that was already issued, use Void instead.
+router.post("/payments/invoices/:ref/reset", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res, "editor")) return;
+  try {
+    const ref = req.params.ref;
+    const [invoice] = await db
+      .select()
+      .from(invoicesTable)
+      .where(eq(invoicesTable.paymentRef, ref))
+      .orderBy(desc(invoicesTable.id))
+      .limit(1);
+    if (!invoice) {
+      res.status(404).json({ error: "No invoice found for this payment" });
+      return;
+    }
+    if (invoice.status !== "issued") {
+      res
+        .status(400)
+        .json({ error: "Only issued invoices can be reset to pending" });
+      return;
+    }
+    await db
+      .update(invoicesTable)
+      .set({
+        status: "pending",
+        invoiceNumber: null,
+        invoiceDate: null,
+        randomNumber: null,
+        errorMessage: null,
+        rawResponse: null,
+        issuedAt: null,
+      })
+      .where(eq(invoicesTable.id, invoice.id));
+    res.json({ success: true });
+  } catch (error: unknown) {
+    logger.error({ err: error }, "[invoice/reset] error");
+    res.status(500).json({ error: "Failed to reset invoice" });
+  }
+});
+
 // Admin manually confirms a bank-transfer order once the money is received.
 // Runs the exact same downstream flow as an online payment: mark paid →
 // issue invoice → Slack notify → send the buyer their confirmation email + QR.

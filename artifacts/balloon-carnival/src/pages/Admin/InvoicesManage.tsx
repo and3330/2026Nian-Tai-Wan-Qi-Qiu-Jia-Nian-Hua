@@ -13,6 +13,7 @@ import {
   Clock,
   Ban,
   FileWarning,
+  RotateCcw,
 } from "lucide-react";
 
 function formatCurrency(value: number) {
@@ -141,16 +142,40 @@ export default function InvoicesManage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [filtered, latestIdByRef],
   );
-  const selectedCount = eligibleRows.filter((inv) => selectedIds.has(inv.id)).length;
-  const allEligibleSelected =
-    eligibleRows.length > 0 && selectedCount === eligibleRows.length;
+  // Issued invoices (latest per order) that can be reset back to 待開立.
+  // Used to clear TEST invoices before re-issuing real ones in production.
+  const resettableRows = useMemo(
+    () =>
+      filtered.filter(
+        (inv) =>
+          latestIdByRef.get(inv.paymentRef) === inv.id &&
+          inv.status === "issued",
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, latestIdByRef],
+  );
 
-  // Drop any selected ids that are no longer issuable (after refetch/filter
+  // A row is selectable if it can be issued (pending/failed) OR reset (issued).
+  // Actions only ever apply to the matching subset of the current selection.
+  const selectableRows = useMemo(
+    () => [...eligibleRows, ...resettableRows],
+    [eligibleRows, resettableRows],
+  );
+
+  const selectedCount = eligibleRows.filter((inv) => selectedIds.has(inv.id)).length;
+  const selectedResetCount = resettableRows.filter((inv) =>
+    selectedIds.has(inv.id),
+  ).length;
+  const allSelectableSelected =
+    selectableRows.length > 0 &&
+    selectableRows.every((inv) => selectedIds.has(inv.id));
+
+  // Drop any selected ids that are no longer selectable (after refetch/filter
   // change) so the hidden selection count can't drift from what's visible.
   useEffect(() => {
     setSelectedIds((prev) => {
       if (prev.size === 0) return prev;
-      const valid = new Set(eligibleRows.map((inv) => inv.id));
+      const valid = new Set(selectableRows.map((inv) => inv.id));
       let changed = false;
       const next = new Set<number>();
       for (const id of prev) {
@@ -159,7 +184,7 @@ export default function InvoicesManage() {
       }
       return changed ? next : prev;
     });
-  }, [eligibleRows]);
+  }, [selectableRows]);
 
   const toggleOne = (id: number) => {
     setSelectedIds((prev) => {
@@ -172,10 +197,13 @@ export default function InvoicesManage() {
 
   const toggleAll = () => {
     setSelectedIds((prev) => {
-      if (eligibleRows.length > 0 && eligibleRows.every((inv) => prev.has(inv.id))) {
+      if (
+        selectableRows.length > 0 &&
+        selectableRows.every((inv) => prev.has(inv.id))
+      ) {
         return new Set();
       }
-      return new Set(eligibleRows.map((inv) => inv.id));
+      return new Set(selectableRows.map((inv) => inv.id));
     });
   };
 
@@ -299,6 +327,77 @@ export default function InvoicesManage() {
     }
   };
 
+  const resetOne = async (paymentRef: string) => {
+    const res = await fetch(
+      `/api/payments/invoices/${encodeURIComponent(paymentRef)}/reset`,
+      { method: "POST", credentials: "include" },
+    );
+    const result = (await res.json().catch(() => ({}))) as {
+      success?: boolean;
+      error?: string;
+    };
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || "重設失敗");
+    }
+  };
+
+  const handleReset = async (inv: AdminInvoice) => {
+    if (
+      !window.confirm(
+        `要將發票「${inv.invoiceNumber}」重設為「待開立」嗎？\n\n` +
+          `⚠️ 此功能僅用於清除「測試發票」紀錄，重設後即可重新開立正式發票。\n` +
+          `若這是已開立的「正式發票」，請改用「作廢」，不要用重設。`,
+      )
+    ) {
+      return;
+    }
+    setBusyRef(inv.paymentRef);
+    try {
+      await resetOne(inv.paymentRef);
+      await refetch();
+      window.alert("已重設為待開立。");
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "重設失敗，請稍後再試");
+    } finally {
+      setBusyRef(null);
+    }
+  };
+
+  const handleBulkReset = async () => {
+    const targets = resettableRows.filter((inv) => selectedIds.has(inv.id));
+    if (targets.length === 0) return;
+    if (
+      !window.confirm(
+        `要將 ${targets.length} 張「已開立」發票重設為「待開立」嗎？\n\n` +
+          `⚠️ 此功能僅用於清除「測試發票」紀錄。重設後可重新開立正式發票。\n` +
+          `若清單中包含已開立的「正式發票」，請勿使用此功能（正式發票應改用「作廢」）。`,
+      )
+    ) {
+      return;
+    }
+    setBatchBusy(true);
+    let ok = 0;
+    const errors: string[] = [];
+    for (const inv of targets) {
+      try {
+        await resetOne(inv.paymentRef);
+        ok += 1;
+      } catch (err) {
+        errors.push(
+          `${inv.paymentRef}：${err instanceof Error ? err.message : "連線錯誤"}`,
+        );
+      }
+    }
+    setBatchBusy(false);
+    await refetch();
+    window.alert(
+      `重設完成：成功 ${ok} 張，失敗 ${errors.length} 張。` +
+        (errors.length
+          ? `\n\n失敗明細：\n${errors.slice(0, 10).join("\n")}${errors.length > 10 ? "\n…" : ""}`
+          : ""),
+    );
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -309,6 +408,17 @@ export default function InvoicesManage() {
           </p>
         </div>
         <div className="flex items-center gap-3 self-start md:self-auto">
+          {canManage && resettableRows.length > 0 && (
+            <button
+              onClick={handleBulkReset}
+              disabled={batchBusy || selectedResetCount === 0}
+              title="將勾選的已開立測試發票改回待開立，以便重新開立正式發票"
+              className="border border-amber-400 text-amber-700 px-4 py-2.5 rounded-full font-semibold flex items-center gap-2 hover:bg-amber-50 transition-all disabled:opacity-50"
+            >
+              <RotateCcw size={16} className={batchBusy ? "animate-spin" : ""} />
+              {`重設為待開立${selectedResetCount > 0 ? `（${selectedResetCount}）` : ""}`}
+            </button>
+          )}
           {canManage && (
             <button
               onClick={handleBatchIssue}
@@ -406,9 +516,9 @@ export default function InvoicesManage() {
                   <th className="px-4 py-3 font-semibold w-10">
                     <input
                       type="checkbox"
-                      aria-label="全選可開立發票"
-                      checked={allEligibleSelected}
-                      disabled={eligibleRows.length === 0 || batchBusy}
+                      aria-label="全選可開立／可重設發票"
+                      checked={allSelectableSelected}
+                      disabled={selectableRows.length === 0 || batchBusy}
                       onChange={toggleAll}
                       className="w-4 h-4 accent-primary cursor-pointer disabled:cursor-not-allowed"
                     />
@@ -435,11 +545,13 @@ export default function InvoicesManage() {
                   inv.status !== "issued" &&
                   inv.status !== "voided" &&
                   inv.paymentStatus === "paid";
+                const canReset = isLatest && inv.status === "issued";
+                const canSelect = canIssue || canReset;
                 return (
                   <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30">
                     {canManage && (
                       <td className="px-4 py-3">
-                        {canIssue ? (
+                        {canSelect ? (
                           <input
                             type="checkbox"
                             aria-label={`選擇訂單 ${inv.paymentRef}`}
@@ -515,14 +627,25 @@ export default function InvoicesManage() {
                             </button>
                           )}
                           {isLatest && inv.status === "issued" && (
-                            <button
-                              onClick={() => handleVoid(inv)}
-                              disabled={busy || batchBusy}
-                              className="inline-flex items-center gap-1 border border-red-400 text-red-600 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
-                            >
-                              <XCircle size={13} />
-                              作廢
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleReset(inv)}
+                                disabled={busy || batchBusy}
+                                title="清除測試發票：改回待開立"
+                                className="inline-flex items-center gap-1 border border-amber-400 text-amber-700 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-amber-50 disabled:opacity-50 whitespace-nowrap"
+                              >
+                                <RotateCcw size={13} />
+                                重設
+                              </button>
+                              <button
+                                onClick={() => handleVoid(inv)}
+                                disabled={busy || batchBusy}
+                                className="inline-flex items-center gap-1 border border-red-400 text-red-600 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
+                              >
+                                <XCircle size={13} />
+                                作廢
+                              </button>
+                            </>
                           )}
                           {!isLatest ? (
                             <span className="text-xs text-muted-foreground">
