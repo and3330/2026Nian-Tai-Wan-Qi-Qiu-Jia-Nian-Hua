@@ -22,6 +22,7 @@ import {
   Eye,
   X,
   ReceiptText,
+  Mail,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -181,6 +182,9 @@ export default function OrdersManage() {
   const [refundingRef, setRefundingRef] = useState<string | null>(null);
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [vipBusyRef, setVipBusyRef] = useState<string | null>(null);
+  const [editEmailOrder, setEditEmailOrder] = useState<Order | null>(null);
+  const [editEmailValue, setEditEmailValue] = useState("");
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -551,6 +555,73 @@ export default function OrdersManage() {
       window.alert(err instanceof Error ? err.message : "設定失敗，請稍後再試");
     } finally {
       setVipBusyRef(null);
+    }
+  };
+
+  const openEditEmail = (o: Order) => {
+    setEditEmailOrder(o);
+    setEditEmailValue(o.email ?? "");
+  };
+
+  const handleSaveEmail = async () => {
+    const o = editEmailOrder;
+    if (!o) return;
+    const email = editEmailValue.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      window.alert("請輸入有效的 Email 地址");
+      return;
+    }
+    setIsSavingEmail(true);
+    try {
+      const ids = o.legs.map((l) => l.id);
+      const res = await fetch("/api/admin/registrations/set-email", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, email }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "儲存失敗");
+      }
+      await refetch();
+      setEditEmailOrder(null);
+
+      // After filling in the Email, offer to send the buyer their confirmation
+      // mail. Only paid orders have a QR + confirmation worth sending.
+      if (
+        normalizeStatus(o.paymentStatus) === "paid" &&
+        window.confirm(
+          "Email 已更新。要立即寄送購票確認信（含入場 QR Code）給這位顧客嗎？",
+        )
+      ) {
+        const sendRes = await fetch(
+          "/api/admin/registrations/resend-confirmation",
+          {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids }),
+          },
+        );
+        const data = (await sendRes.json().catch(() => ({}))) as {
+          sent?: number;
+          skipped?: number;
+          failed?: number;
+        };
+        if (!sendRes.ok) {
+          throw new Error("確認信寄送失敗");
+        }
+        window.alert(
+          `已寄送 ${data.sent ?? 0} 封確認信。` +
+            (data.skipped ? `\n略過 ${data.skipped} 封（無 QR 或無 Email）。` : "") +
+            (data.failed ? `\n失敗 ${data.failed} 封，請稍後再試。` : ""),
+        );
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "操作失敗，請稍後再試");
+    } finally {
+      setIsSavingEmail(false);
     }
   };
 
@@ -984,6 +1055,24 @@ export default function OrdersManage() {
                                   : "設為VIP"}
                             </button>
                           )}
+                          {canConfirm && (
+                            <button
+                              onClick={() => openEditEmail(o)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${
+                                o.email
+                                  ? "border hover:bg-muted"
+                                  : "border border-blue-400 text-blue-600 hover:bg-blue-50"
+                              }`}
+                              title={
+                                o.email
+                                  ? "修改這筆訂單的 Email"
+                                  : "這筆訂單沒有 Email，點此補上後可寄送確認信"
+                              }
+                            >
+                              <Mail size={12} />
+                              {o.email ? "改 Email" : "補 Email"}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1007,6 +1096,65 @@ export default function OrdersManage() {
           onInvoiceChanged={() => refetchInvoices()}
           onClose={() => setDetailOrder(null)}
         />
+      )}
+
+      {editEmailOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-background p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <Mail size={18} />
+                {editEmailOrder.email ? "修改 Email" : "補上 Email"}
+              </h3>
+              <button
+                onClick={() => setEditEmailOrder(null)}
+                className="rounded-lg p-1 hover:bg-muted"
+                title="關閉"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="mb-3 text-sm text-muted-foreground">
+              訂購人：
+              <span className="font-medium text-foreground">
+                {editEmailOrder.buyerName}
+              </span>
+              （{editEmailOrder.phone}）
+            </p>
+            <input
+              type="email"
+              value={editEmailValue}
+              onChange={(e) => setEditEmailValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !isSavingEmail) handleSaveEmail();
+              }}
+              placeholder="customer@example.com"
+              autoFocus
+              className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              {normalizeStatus(editEmailOrder.paymentStatus) === "paid"
+                ? "儲存後可立即寄送購票確認信（含入場 QR Code）給顧客。"
+                : "此訂單尚未付款，補上 Email 後，確認付款時會自動寄送購票確認信。"}
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setEditEmailOrder(null)}
+                disabled={isSavingEmail}
+                className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSaveEmail}
+                disabled={isSavingEmail}
+                className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {isSavingEmail ? "處理中..." : "儲存"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

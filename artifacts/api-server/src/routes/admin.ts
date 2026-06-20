@@ -332,6 +332,63 @@ router.post("/admin/registrations/set-vip", async (req, res): Promise<void> => {
   res.json({ updated, isVip });
 });
 
+// Set (or correct) the buyer Email on an order. Some orders — especially manual /
+// bank-transfer ones — were created without an Email, so the buyer never gets the
+// purchase-confirmation mail. Staff fill it in here, then resend the confirmation.
+// Applied to the whole order (every leg sharing the paymentRef) so combo legs stay
+// consistent. Editor+ only.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+router.post("/admin/registrations/set-email", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor")) return;
+
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
+  const cleanIds = Array.from(
+    new Set(
+      (ids ?? [])
+        .map((v: unknown) => Number(v))
+        .filter((n: number) => Number.isInteger(n) && n > 0),
+    ),
+  ) as number[];
+
+  const rawEmail = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+
+  if (cleanIds.length === 0) {
+    res.status(400).json({ error: "請提供要設定的訂單" });
+    return;
+  }
+  if (!EMAIL_RE.test(rawEmail)) {
+    res.status(400).json({ error: "請輸入有效的 Email 地址" });
+    return;
+  }
+
+  // Expand to whole orders: any leg sharing a paymentRef gets the same Email.
+  const rows = await db
+    .select({ id: registrationsTable.id, paymentRef: registrationsTable.paymentRef })
+    .from(registrationsTable)
+    .where(inArray(registrationsTable.id, cleanIds));
+
+  const refs = Array.from(
+    new Set(rows.map((r) => r.paymentRef).filter((r): r is string => Boolean(r))),
+  );
+  const standaloneIds = rows.filter((r) => !r.paymentRef).map((r) => r.id);
+
+  let updated = 0;
+  await db.transaction(async (tx) => {
+    const conds = [];
+    if (refs.length > 0) conds.push(inArray(registrationsTable.paymentRef, refs));
+    if (standaloneIds.length > 0) conds.push(inArray(registrationsTable.id, standaloneIds));
+    if (conds.length === 0) return;
+    const updatedRows = await tx
+      .update(registrationsTable)
+      .set({ email: rawEmail })
+      .where(conds.length === 1 ? conds[0] : or(...conds))
+      .returning({ id: registrationsTable.id });
+    updated = updatedRows.length;
+  });
+
+  res.json({ updated, email: rawEmail });
+});
+
 // Directly refund a paid order from the back office (manual / offline refund).
 // Marks every leg sharing the order's paymentRef as "refunded", which releases
 // its seats back to capacity (all capacity queries exclude 'refunded'). This
