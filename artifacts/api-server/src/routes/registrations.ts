@@ -27,10 +27,10 @@ type CreateRegistrationInput = {
 function parseRegistrationBody(body: any): { ok: true; data: CreateRegistrationInput } | { ok: false; error: string } {
   if (!body || typeof body !== "object") return { ok: false, error: "Invalid body" };
   const { parentName, phone, email, eventDate } = body;
-  if (typeof parentName !== "string" || !parentName.trim()) return { ok: false, error: "parentName is required" };
-  if (typeof phone !== "string" || !phone.trim()) return { ok: false, error: "phone is required" };
-  if (email != null && (typeof email !== "string" || (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))))
-    return { ok: false, error: "email format is invalid" };
+  if (typeof parentName !== "string" || !parentName.trim()) return { ok: false, error: "請填寫姓名" };
+  if (typeof phone !== "string" || !phone.trim()) return { ok: false, error: "請填寫手機號碼" };
+  if (typeof email !== "string" || !email.trim()) return { ok: false, error: "請填寫 Email" };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return { ok: false, error: "Email 格式不正確" };
 
   // Headcount: prefer the explicit adult/child split; fall back to a legacy
   // `ticketCount` (treated as all adults) for older clients. Every order needs

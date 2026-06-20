@@ -209,7 +209,7 @@ export default function CarnivalPage() {
           data: {
             parentName: formData.parentName,
             phone: formData.phone,
-            email: formData.email || undefined,
+            email: formData.email,
             adultCount: formData.adultCount,
             childCount: formData.childCount,
             infantCount: formData.infantCount,
@@ -232,7 +232,7 @@ export default function CarnivalPage() {
           data: {
             parentName: formData.parentName,
             phone: formData.phone,
-            email: formData.email || undefined,
+            email: formData.email,
             adultCount: formData.adultCount,
             childCount: formData.childCount,
             infantCount: formData.infantCount,
@@ -592,11 +592,11 @@ export default function CarnivalPage() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Mail size={16} className="text-primary" /> Email
-                      <span className="text-xs text-muted-foreground font-normal">(填寫後將寄送購票確認信與 QR Code)</span>
+                      <Mail size={16} className="text-primary" /> Email <span className="text-destructive">*</span>
+                      <span className="text-xs text-muted-foreground font-normal">(將寄送購票確認信與 QR Code)</span>
                     </label>
                     <input
-                      type="email" value={formData.email}
+                      required type="email" value={formData.email}
                       onChange={e => setFormData({...formData, email: e.target.value})}
                       placeholder="例如：name@example.com"
                       className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg"
