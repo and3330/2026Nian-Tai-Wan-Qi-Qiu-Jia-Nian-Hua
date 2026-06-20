@@ -268,7 +268,16 @@ export function Layout({ children }: LayoutProps) {
             <p>Email：service@cms-edu.com</p>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-4 mt-12 pt-8 border-t border-white/10 text-sm text-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-white/10 relative z-10">
+          <h3 className="font-bold text-white mb-4">公司資料</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+            <p>公司名稱：摸氣球企業有限公司</p>
+            <p>統一編號：53451453</p>
+            <p>代表人：孫宇立</p>
+            <p>公司登記地址：新北市新店區平等街 50 號 1 樓</p>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 mt-8 pt-8 border-t border-white/10 text-sm text-center relative z-10">
           &copy; 2026 臺灣氣球嘉年華 Taiwan Balloon Carnival. All rights reserved.
         </div>
       </footer>
