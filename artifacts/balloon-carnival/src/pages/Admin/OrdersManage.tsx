@@ -190,8 +190,18 @@ export default function OrdersManage() {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isBulkConfirming, setIsBulkConfirming] = useState(false);
   const [isBulkMarking, setIsBulkMarking] = useState(false);
+  const [isBulkIssuing, setIsBulkIssuing] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isReconciling, setIsReconciling] = useState(false);
+
+  // Only one bulk action may run at a time — concurrent batch mutations would
+  // race on the same orders and produce confusing partial results.
+  const anyBulkBusy =
+    isBulkDeleting ||
+    isBulkConfirming ||
+    isBulkMarking ||
+    isBulkIssuing ||
+    isResending;
 
   const orders = useMemo(
     () => buildOrders(registrations ?? []),
@@ -265,6 +275,15 @@ export default function OrdersManage() {
     (o) => normalizeStatus(o.paymentStatus) === "unpaid",
   );
 
+  // Paid orders whose (latest) invoice is still pending or previously failed —
+  // i.e. an official e-invoice can be issued for them. Refunded orders and ones
+  // already issued/voided are excluded.
+  const selectedIssuable = selectedOrders.filter((o) => {
+    if (normalizeStatus(o.paymentStatus) !== "paid") return false;
+    const inv = invoiceByRef.get(o.ref);
+    return inv != null && (inv.status === "pending" || inv.status === "failed");
+  });
+
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((o) => selected.has(o.ref));
 
@@ -290,6 +309,7 @@ export default function OrdersManage() {
   };
 
   const handleBulkDelete = async () => {
+    if (anyBulkBusy) return;
     const sel = selectedOrders;
     if (sel.length === 0) return;
     const ids = sel.flatMap((o) => o.legs.map((l) => l.id));
@@ -329,6 +349,7 @@ export default function OrdersManage() {
   };
 
   const handleBulkConfirm = async () => {
+    if (anyBulkBusy) return;
     const targets = selectedAwaiting;
     if (targets.length === 0) return;
     if (
@@ -367,6 +388,7 @@ export default function OrdersManage() {
   };
 
   const handleBulkResend = async () => {
+    if (anyBulkBusy) return;
     const targets = selectedResendable;
     if (targets.length === 0) return;
     if (
@@ -406,6 +428,59 @@ export default function OrdersManage() {
       );
     } finally {
       setIsResending(false);
+    }
+  };
+
+  const handleBulkIssueInvoice = async () => {
+    if (anyBulkBusy) return;
+    const targets = selectedIssuable;
+    if (targets.length === 0) return;
+    if (
+      !window.confirm(
+        `要為這 ${targets.length} 筆訂單批量開立電子發票嗎？\n系統會逐筆向綠界送出開立要求，並寄送發票通知給顧客。`,
+      )
+    ) {
+      return;
+    }
+    setIsBulkIssuing(true);
+    let ok = 0;
+    const errors: string[] = [];
+    try {
+      for (const o of targets) {
+        try {
+          const res = await fetch(
+            `/api/payments/invoices/${encodeURIComponent(o.ref)}/retry`,
+            { method: "POST", credentials: "include" },
+          );
+          const result = (await res.json().catch(() => ({}))) as {
+            status?: string;
+            errorMessage?: string | null;
+            error?: string;
+          };
+          if (res.ok && result.status === "issued") {
+            ok += 1;
+          } else {
+            errors.push(
+              `${o.buyerName}：${result.errorMessage || result.error || "未成功"}`,
+            );
+          }
+        } catch (err) {
+          errors.push(
+            `${o.buyerName}：${err instanceof Error ? err.message : "連線錯誤"}`,
+          );
+        }
+      }
+      setSelected(new Set());
+      await refetch();
+      await refetchInvoices();
+      window.alert(
+        `批量開立完成：成功 ${ok} 張，失敗 ${errors.length} 張。` +
+          (errors.length
+            ? `\n\n失敗明細：\n${errors.slice(0, 10).join("\n")}${errors.length > 10 ? "\n…" : ""}`
+            : ""),
+      );
+    } finally {
+      setIsBulkIssuing(false);
     }
   };
 
@@ -496,6 +571,7 @@ export default function OrdersManage() {
   };
 
   const handleBulkMarkPaid = async () => {
+    if (anyBulkBusy) return;
     const targets = selectedMarkable;
     if (targets.length === 0) return;
     if (
@@ -807,7 +883,7 @@ export default function OrdersManage() {
             {selectedAwaiting.length > 0 && (
               <button
                 onClick={handleBulkConfirm}
-                disabled={isBulkConfirming || isBulkDeleting || isResending}
+                disabled={anyBulkBusy}
                 className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 <Banknote size={16} />
@@ -819,7 +895,7 @@ export default function OrdersManage() {
             {selectedMarkable.length > 0 && (
               <button
                 onClick={handleBulkMarkPaid}
-                disabled={isBulkMarking || isBulkDeleting || isBulkConfirming || isResending}
+                disabled={anyBulkBusy}
                 className="px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 <CheckCircle2 size={16} />
@@ -828,10 +904,23 @@ export default function OrdersManage() {
                   : `標記已付款（${selectedMarkable.length}）`}
               </button>
             )}
+            {selectedIssuable.length > 0 && (
+              <button
+                onClick={handleBulkIssueInvoice}
+                disabled={anyBulkBusy}
+                title="為已付款且尚未開立發票的訂單批量開立電子發票"
+                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                <ReceiptText size={16} />
+                {isBulkIssuing
+                  ? "開立中..."
+                  : `批量開立發票（${selectedIssuable.length}）`}
+              </button>
+            )}
             {selectedResendable.length > 0 && (
               <button
                 onClick={handleBulkResend}
-                disabled={isResending || isBulkDeleting || isBulkConfirming}
+                disabled={anyBulkBusy}
                 className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 <Send size={16} />
@@ -842,7 +931,7 @@ export default function OrdersManage() {
             )}
             <button
               onClick={handleBulkDelete}
-              disabled={isBulkDeleting || isBulkConfirming || isResending}
+              disabled={anyBulkBusy}
               className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors flex items-center gap-2"
             >
               <Trash2 size={16} />
