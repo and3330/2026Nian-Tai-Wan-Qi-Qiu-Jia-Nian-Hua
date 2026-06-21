@@ -273,7 +273,7 @@ export default function TORPage() {
             data-testid="button-zoom-image"
           >
             <img
-              src="https://cmsedu.b-cdn.net/S__74825753.jpg"
+              src="https://cmsedu.b-cdn.net/%E7%AC%AC%E5%9B%9B%E5%B1%86%E9%87%8D%E6%93%8A%E7%9B%83%E6%AF%94%E8%B3%BD%E6%B5%B7%E5%A0%B1.jpg"
               alt="第四屆重擊盃 戰鬥陀螺挑戰賽"
               className="w-full rounded-3xl shadow-sm transition-transform group-hover:scale-[1.01]"
               loading="lazy"
@@ -301,7 +301,7 @@ export default function TORPage() {
             <X size={24} />
           </button>
           <img
-            src="https://cmsedu.b-cdn.net/S__74825753.jpg"
+            src="https://cmsedu.b-cdn.net/%E7%AC%AC%E5%9B%9B%E5%B1%86%E9%87%8D%E6%93%8A%E7%9B%83%E6%AF%94%E8%B3%BD%E6%B5%B7%E5%A0%B1.jpg"
             alt="第四屆重擊盃 戰鬥陀螺挑戰賽"
             className="max-w-full max-h-full object-contain rounded-xl"
             onClick={(e) => e.stopPropagation()}
