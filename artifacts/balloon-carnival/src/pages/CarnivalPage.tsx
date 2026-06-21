@@ -297,12 +297,12 @@ export default function CarnivalPage() {
         <div className="max-w-6xl mx-auto px-0 md:px-4 pt-0 md:pt-12 pb-6 md:pb-12">
           <button
             type="button"
-            onClick={() => setZoomedImage(`${import.meta.env.BASE_URL}images/hero-bg-v2.png`)}
+            onClick={() => setZoomedImage("https://cmsedu.b-cdn.net/ChatGPT%20Image%202026%E5%B9%B46%E6%9C%8822%E6%97%A5%20%E4%B8%8A%E5%8D%8802_05_51.png")}
             className="group relative md:rounded-3xl overflow-hidden md:shadow-xl md:shadow-primary/10 md:border md:border-white/60 bg-white block w-full cursor-zoom-in focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30"
             aria-label="放大查看活動主視覺"
           >
             <img
-              src={`${import.meta.env.BASE_URL}images/hero-bg-v2.png`}
+              src={"https://cmsedu.b-cdn.net/ChatGPT%20Image%202026%E5%B9%B46%E6%9C%8822%E6%97%A5%20%E4%B8%8A%E5%8D%8802_05_51.png"}
               alt="2026 臺灣氣球嘉年華"
               className="w-full h-auto block transition-transform duration-300 group-hover:scale-[1.02]"
             />
