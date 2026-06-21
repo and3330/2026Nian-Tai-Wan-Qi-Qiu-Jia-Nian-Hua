@@ -4,6 +4,6 @@ export const modules: ModuleMap = {
   "./components/mockups/SocialPostFamily.tsx": () => import("../components/mockups/SocialPostFamily.tsx"),
   "./components/mockups/SocialPostUrgency.tsx": () => import("../components/mockups/SocialPostUrgency.tsx"),
   "./components/mockups/balloon-immersive/Home.tsx": () => import("../components/mockups/balloon-immersive/Home.tsx"),
-  "./components/mockups/balloon-playful/Home.tsx": () => import("../components/mockups/balloon-playful/Home.tsx"),
-  "./components/mockups/balloon-minimal/Home.tsx": () => import("../components/mockups/balloon-minimal/Home.tsx")
+  "./components/mockups/balloon-minimal/Home.tsx": () => import("../components/mockups/balloon-minimal/Home.tsx"),
+  "./components/mockups/balloon-playful/Home.tsx": () => import("../components/mockups/balloon-playful/Home.tsx")
 };
