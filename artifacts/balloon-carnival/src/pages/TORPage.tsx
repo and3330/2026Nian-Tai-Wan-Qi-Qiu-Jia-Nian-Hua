@@ -35,6 +35,11 @@ type Availability = {
   soldOut: boolean;
 };
 
+type Roster = {
+  count: number;
+  names: string[];
+};
+
 type CreatedRegistration = {
   id: number;
   qrToken: string | null;
@@ -75,6 +80,7 @@ const timelineItems = [
 export default function TORPage() {
   const [availability, setAvailability] = useState<Availability | null>(null);
   const [loadingAvail, setLoadingAvail] = useState(true);
+  const [roster, setRoster] = useState<Roster | null>(null);
 
   const [imageZoomed, setImageZoomed] = useState(false);
 
@@ -119,6 +125,13 @@ export default function TORPage() {
     loadAvailability();
     const t = setInterval(loadAvailability, 30000);
     return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/registrations/tournament/roster")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setRoster(d); })
+      .catch(() => {});
   }, []);
 
   const soldOut = availability?.soldOut ?? false;
@@ -657,6 +670,37 @@ export default function TORPage() {
             </form>
           </>
         )}
+      </section>
+
+      <section className="pb-16 md:pb-20 px-4 max-w-3xl mx-auto w-full">
+        <div className="rounded-3xl border-2 border-border bg-white p-6 sm:p-8">
+          <div className="flex items-center gap-2 mb-1">
+            <ScrollText size={20} className="text-indigo-600" />
+            <h2 className="text-xl md:text-2xl font-display font-bold">目前競賽名單</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-5">
+            已完成付款的參賽選手{roster ? ` · 共 ${roster.count} 位` : ""}（姓名隱碼保護）
+          </p>
+          {!roster ? (
+            <div className="text-sm text-muted-foreground">載入中…</div>
+          ) : roster.count === 0 ? (
+            <div className="rounded-xl bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
+              目前尚無已付款的參賽選手，快來搶下第一個名額！
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {roster.names.map((name, i) => (
+                <div
+                  key={i}
+                  className="rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm font-bold text-center text-foreground"
+                  data-testid={`roster-name-${i}`}
+                >
+                  {name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );

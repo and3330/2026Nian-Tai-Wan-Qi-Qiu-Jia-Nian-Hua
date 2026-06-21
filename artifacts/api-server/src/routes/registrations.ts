@@ -492,6 +492,33 @@ router.get("/registrations/tournament/availability", async (req, res): Promise<v
   });
 });
 
+// Middle-masks a competitor name for the public roster (王小明 → 王○明, 林明 → 林○).
+// Single-character names are returned as-is.
+function maskCompetitorName(name: string): string {
+  const n = (name ?? "").trim();
+  if (n.length <= 1) return n;
+  if (n.length === 2) return `${n[0]}○`;
+  return `${n[0]}${"○".repeat(n.length - 2)}${n[n.length - 1]}`;
+}
+
+// Public competitor roster for the /tor page. Lists ONLY paid participant legs
+// (the 600-tier "本人"); companions and not-yet-paid sign-ups are excluded. Names
+// are middle-masked since this is a public page. Ordered by sign-up time.
+router.get("/registrations/tournament/roster", async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({ name: registrationsTable.parentName })
+    .from(registrationsTable)
+    .where(
+      and(
+        eq(registrationsTable.ticketType, TOURNAMENT_PARTICIPANT_TYPE),
+        eq(registrationsTable.paymentStatus, "paid"),
+      ),
+    )
+    .orderBy(registrationsTable.createdAt);
+  const names = rows.map((r) => maskCompetitorName(r.name ?? "")).filter(Boolean);
+  res.json({ count: names.length, names });
+});
+
 // Atomic 戰鬥陀螺賽 order: one row per participant ("本人", 600, own 7/26 entry
 // QR) and one row per companion ("隨同一般門票", 200). All legs share a paymentRef
 // once payment is initiated. The 128-competitor cap is enforced under a per-key
