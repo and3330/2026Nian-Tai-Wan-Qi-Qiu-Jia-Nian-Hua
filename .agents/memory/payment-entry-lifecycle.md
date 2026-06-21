@@ -72,6 +72,11 @@ The admin overview intentionally still distinguishes seats that merely HOLD capa
 **Why:** Admins want visibility into in-progress (unpaid) reservations; the public page wants confirmed attendance. They are deliberately different now.
 **How to apply:** Always exclude refunded AND failed from "held"; use `isCarnivalLeg` to drop tournament legs. Per-session paid count is safe to sum across dates (combo = one leg per date, no double count).
 
+## Bulk "clear duplicate pending" must key on name+phone, participant-only, and delete atomically
+The admin one-click cleanup of redundant unpaid tournament orders identifies a duplicate by `name + phone` (both required; missing phone ⇒ not a duplicate), NOT name alone, and only matches PARTICIPANT legs (`tournament`) against already-PAID participant legs. Pending companion legs are swept only when they share a `paymentRef` with a deleted duplicate participant; standalone companion orders are never touched.
+**Why:** Name-only matching deletes different people who share a common Chinese name; a non-atomic read-then-delete can erase a leg that flips to `paid` mid-flight.
+**How to apply:** Run read+compute+delete in ONE `db.transaction`, and put the guard `payment_status NOT IN ('paid','refunded')` on the DELETE itself so paid/refunded are never removed even under a race. Order-level rows (paymentTransactions/invoices/refundRequests) are cleaned per `paymentRef` only when no legs remain for that ref.
+
 ## Combo = one registration row per day
 A two-day combo is multiple registration rows sharing one `paymentRef`, each with its own `qrToken` and `eventDate`. The buyer needs ALL legs' QRs, so confirmation emails must be sent per leg (buyer email is copied onto every leg).
 

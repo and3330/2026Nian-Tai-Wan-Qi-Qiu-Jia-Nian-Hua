@@ -28,7 +28,12 @@ import {
   AdminGetStatsResponse,
   AdminGetSalesOverviewResponse,
 } from "@workspace/api-zod";
-import { sendConfirmationEmail } from "../services/email-service";
+import {
+  sendConfirmationEmail,
+  sendEmail,
+  EVENT_INFO,
+  TOURNAMENT_INFO,
+} from "../services/email-service";
 import { markPaymentPaid } from "./payments";
 import { logger } from "../lib/logger";
 
@@ -654,6 +659,207 @@ router.post("/admin/registrations/mark-paid", async (req, res): Promise<void> =>
   }
 
   res.json({ confirmed, failed });
+});
+
+const TOURNAMENT_TYPES = ["tournament", "tournament-companion"];
+const PARTICIPANT_TYPE = "tournament";
+
+function normalizeName(name: string | null | undefined): string {
+  return (name ?? "").trim().toLowerCase();
+}
+
+function normalizePhone(phone: string | null | undefined): string {
+  return (phone ?? "").replace(/\D/g, "");
+}
+
+// A person's identity for duplicate detection: name + phone (both required).
+// Name alone is too collision-prone (common Chinese names), so a missing phone
+// means we can't safely treat the row as a duplicate.
+function identityKey(
+  name: string | null | undefined,
+  phone: string | null | undefined,
+): string | null {
+  const n = normalizeName(name);
+  const p = normalizePhone(phone);
+  if (!n || !p) return null;
+  return `${n}|${p}`;
+}
+
+function buildPaymentReminderEmail(name: string): { subject: string; body: string } {
+  const subject = "【2026 臺灣氣球嘉年華｜戰鬥陀螺賽】付款提醒 — 參賽名額保留中";
+  const body = `親愛的 ${name} 您好，
+
+提醒您，您報名的「${EVENT_INFO.name} 戰鬥陀螺賽」目前尚未完成付款。
+
+我們仍為您保留參賽名額，但僅能再保留約 1 天的時間。
+• 若您仍要參賽：請儘速完成付款，以確保您的名額。
+• 若您已不需要這張門票：無需回覆，名額將於保留時間結束後自動釋出給其他候補選手。
+
+🏆 賽事資訊
+日期：${TOURNAMENT_INFO.date}
+選手報到：${TOURNAMENT_INFO.checkin}
+地點：${TOURNAMENT_INFO.venue}
+開賽：${TOURNAMENT_INFO.start}
+
+如有任何問題，請洽服務專線 ${EVENT_INFO.servicePhone}。
+
+${EVENT_INFO.name} 主辦團隊
+`;
+  return { subject, body };
+}
+
+// Batch payment-reminder emails for the 戰鬥陀螺賽. Targets every NOT-yet-paid
+// tournament leg (participant + companion, excluding paid/refunded) that has an
+// email. Recipients are de-duplicated by email so a person with several pending
+// legs only gets one reminder. Optionally restrict to specific leg `ids`.
+router.post("/admin/registrations/send-payment-reminders", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor")) return;
+
+  const rawIds = Array.isArray(req.body?.ids) ? req.body.ids : null;
+  const idSet = rawIds
+    ? new Set(
+        rawIds
+          .map((v: unknown) => Number(v))
+          .filter((n: number) => Number.isInteger(n) && n > 0),
+      )
+    : null;
+
+  const legs = await db
+    .select({
+      id: registrationsTable.id,
+      parentName: registrationsTable.parentName,
+      email: registrationsTable.email,
+    })
+    .from(registrationsTable)
+    .where(
+      and(
+        inArray(registrationsTable.ticketType, TOURNAMENT_TYPES),
+        sql`${registrationsTable.paymentStatus} NOT IN ('paid', 'refunded')`,
+      ),
+    );
+
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const byEmail = new Map<string, { name: string; email: string }>();
+  for (const leg of legs) {
+    if (idSet && !idSet.has(leg.id)) continue;
+    const email = (leg.email ?? "").trim();
+    if (!emailRe.test(email)) continue;
+    const key = email.toLowerCase();
+    if (!byEmail.has(key)) {
+      byEmail.set(key, { name: (leg.parentName ?? "").trim() || "參賽者", email });
+    }
+  }
+
+  let sent = 0;
+  let failed = 0;
+  for (const { name, email } of byEmail.values()) {
+    const { subject, body } = buildPaymentReminderEmail(name);
+    try {
+      const result = await sendEmail({ to: email, subject, body });
+      if (result.delivered) sent++;
+      else failed++;
+    } catch (err) {
+      failed++;
+      logger.error({ err, email }, "[payment-reminder] send failed");
+    }
+  }
+
+  res.json({ recipients: byEmail.size, sent, failed });
+});
+
+// One-click cleanup for duplicate orders: deletes NOT-yet-paid 戰鬥陀螺賽
+// participant legs whose identity (name + phone) already has a PAID participant
+// leg (i.e. the person paid on another order, so the leftover pending duplicates
+// are junk holding nothing). Pending companion legs sharing the same junk order
+// are removed too; standalone companion orders and any paid/refunded legs are
+// never touched.
+router.post("/admin/registrations/clear-duplicate-pending", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor")) return;
+
+  let deletedCount = 0;
+  let clearedNames: string[] = [];
+
+  // Everything runs inside one transaction: we re-read candidates here and the
+  // DELETE carries its own status guard, so a leg that flips to paid mid-flight
+  // can never be deleted (no read-then-delete race).
+  await db.transaction(async (tx) => {
+    const legs = await tx
+      .select({
+        id: registrationsTable.id,
+        parentName: registrationsTable.parentName,
+        phone: registrationsTable.phone,
+        ticketType: registrationsTable.ticketType,
+        paymentStatus: registrationsTable.paymentStatus,
+        paymentRef: registrationsTable.paymentRef,
+      })
+      .from(registrationsTable)
+      .where(inArray(registrationsTable.ticketType, TOURNAMENT_TYPES));
+
+    const isPending = (s: string | null) => s !== "paid" && s !== "refunded";
+
+    // Identity (name + phone) of people who already hold a PAID participant slot.
+    const paidKeys = new Set(
+      legs
+        .filter((l) => l.ticketType === PARTICIPANT_TYPE && l.paymentStatus === "paid")
+        .map((l) => identityKey(l.parentName, l.phone))
+        .filter((k): k is string => Boolean(k)),
+    );
+
+    // Pending participant legs that duplicate an already-paid identity.
+    const dupParticipants = legs.filter((l) => {
+      if (l.ticketType !== PARTICIPANT_TYPE || !isPending(l.paymentStatus)) return false;
+      const k = identityKey(l.parentName, l.phone);
+      return Boolean(k) && paidKeys.has(k as string);
+    });
+
+    if (dupParticipants.length === 0) return;
+
+    const dupRefs = new Set(
+      dupParticipants.map((l) => l.paymentRef).filter((r): r is string => Boolean(r)),
+    );
+
+    // Delete the duplicate participant legs, plus any pending companion legs that
+    // belong to the same junk order (shared paymentRef). Standalone companion
+    // orders are never touched.
+    const deleteIds = new Set<number>(dupParticipants.map((l) => l.id));
+    for (const l of legs) {
+      if (l.paymentRef && dupRefs.has(l.paymentRef) && isPending(l.paymentStatus)) {
+        deleteIds.add(l.id);
+      }
+    }
+
+    clearedNames = Array.from(
+      new Set(dupParticipants.map((l) => (l.parentName ?? "").trim()).filter(Boolean)),
+    );
+
+    const deleted = await tx
+      .delete(registrationsTable)
+      .where(
+        and(
+          inArray(registrationsTable.id, Array.from(deleteIds)),
+          sql`${registrationsTable.paymentStatus} NOT IN ('paid', 'refunded')`,
+        ),
+      )
+      .returning({ id: registrationsTable.id });
+    deletedCount = deleted.length;
+
+    // Clean order-level rows only for refs that no longer have any legs left,
+    // so a shared ref (shouldn't happen for all-pending orders) stays safe.
+    for (const ref of dupRefs) {
+      const remaining = await tx
+        .select({ id: registrationsTable.id })
+        .from(registrationsTable)
+        .where(eq(registrationsTable.paymentRef, ref))
+        .limit(1);
+      if (remaining.length === 0) {
+        await tx.delete(paymentTransactionsTable).where(eq(paymentTransactionsTable.paymentRef, ref));
+        await tx.delete(invoicesTable).where(eq(invoicesTable.paymentRef, ref));
+        await tx.delete(refundRequestsTable).where(eq(refundRequestsTable.paymentRef, ref));
+      }
+    }
+  });
+
+  res.json({ deletedCount, names: clearedNames });
 });
 
 router.get("/admin/stats", async (req, res): Promise<void> => {

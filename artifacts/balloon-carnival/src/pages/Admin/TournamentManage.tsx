@@ -14,6 +14,8 @@ import {
   Clock,
   ScanLine,
   Mail,
+  Send,
+  Trash2,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -44,6 +46,8 @@ export default function TournamentManage() {
   const [checkingToken, setCheckingToken] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [sendingReminders, setSendingReminders] = useState(false);
+  const [clearingDup, setClearingDup] = useState(false);
 
   const legs = useMemo<Registration[]>(() => {
     const rows = (data ?? []) as Registration[];
@@ -72,6 +76,115 @@ export default function TournamentManage() {
       companionPaid: sumTickets(companions.filter((r) => r.paymentStatus === "paid")),
     };
   }, [legs]);
+
+  // Counts for the batch actions: unique email recipients among not-yet-paid
+  // legs, and pending legs whose name already has a paid leg (the duplicates).
+  const batchCounts = useMemo(() => {
+    const pending = legs.filter(
+      (r) => r.paymentStatus !== "paid" && r.paymentStatus !== "refunded",
+    );
+    const reminderRecipients = new Set(
+      pending
+        .map((r) => (r.email ?? "").trim().toLowerCase())
+        .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)),
+    ).size;
+    const idKey = (r: Registration): string | null => {
+      const n = (r.parentName ?? "").trim().toLowerCase();
+      const p = (r.phone ?? "").replace(/\D/g, "");
+      return n && p ? `${n}|${p}` : null;
+    };
+    const paidKeys = new Set(
+      legs
+        .filter((r) => r.ticketType === PARTICIPANT_TYPE && r.paymentStatus === "paid")
+        .map(idKey)
+        .filter((k): k is string => Boolean(k)),
+    );
+    const dupPending = pending.filter((r) => {
+      if (r.ticketType !== PARTICIPANT_TYPE) return false;
+      const k = idKey(r);
+      return Boolean(k) && paidKeys.has(k as string);
+    }).length;
+    return { reminderRecipients, dupPending };
+  }, [legs]);
+
+  const handleSendReminders = async () => {
+    if (batchCounts.reminderRecipients === 0) {
+      window.alert("目前沒有可發送的對象（沒有未付款且有 Email 的報名）。");
+      return;
+    }
+    if (
+      !window.confirm(
+        `將寄送付款提醒信給 ${batchCounts.reminderRecipients} 位未付款報名者（內容：名額保留中、約剩 1 天，逾時將釋出）。確定要發送嗎？`,
+      )
+    ) {
+      return;
+    }
+    setActionError(null);
+    setSendingReminders(true);
+    try {
+      const res = await fetch("/api/admin/registrations/send-payment-reminders", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        recipients?: number;
+        sent?: number;
+        failed?: number;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data?.error || "發送失敗");
+      window.alert(
+        `已發送 ${data.sent ?? 0} 封付款提醒信${data.failed ? `，失敗 ${data.failed} 封` : ""}。`,
+      );
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "發送失敗，請稍後再試");
+    } finally {
+      setSendingReminders(false);
+    }
+  };
+
+  const handleClearDuplicates = async () => {
+    if (batchCounts.dupPending === 0) {
+      window.alert("目前沒有「已付款者的重複待付款訂單」可清除。");
+      return;
+    }
+    if (
+      !window.confirm(
+        `將清除 ${batchCounts.dupPending} 筆待付款訂單——這些報名者的「相同姓名＋電話」已有另一筆已付款訂單，故視為重複。已付款訂單不受影響。此動作無法復原，確定要清除嗎？`,
+      )
+    ) {
+      return;
+    }
+    setActionError(null);
+    setClearingDup(true);
+    try {
+      const res = await fetch("/api/admin/registrations/clear-duplicate-pending", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        deletedCount?: number;
+        names?: string[];
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data?.error || "清除失敗");
+      const names = data.names ?? [];
+      window.alert(
+        `已清除 ${data.deletedCount ?? 0} 筆重複待付款訂單${
+          names.length ? `（${names.join("、")}）` : ""
+        }。`,
+      );
+      await refetch();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "清除失敗，請稍後再試");
+    } finally {
+      setClearingDup(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -187,7 +300,7 @@ export default function TournamentManage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">7/26（日）· 臺北瓶蓋工廠 M 棟 · 限額 {CAPACITY} 位參賽</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             type="button"
             onClick={() => refetch()}
@@ -196,6 +309,28 @@ export default function TournamentManage() {
           >
             <RefreshCw size={15} className={isFetching ? "animate-spin" : ""} /> 重新整理
           </button>
+          {canEdit && (
+            <>
+              <button
+                type="button"
+                onClick={handleSendReminders}
+                disabled={sendingReminders}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 text-sm font-bold hover:bg-amber-100 disabled:opacity-50"
+                data-testid="button-send-reminders"
+              >
+                <Send size={15} /> {sendingReminders ? "發送中…" : `發送付款提醒${batchCounts.reminderRecipients ? `（${batchCounts.reminderRecipients}）` : ""}`}
+              </button>
+              <button
+                type="button"
+                onClick={handleClearDuplicates}
+                disabled={clearingDup}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-rose-300 bg-rose-50 text-rose-700 text-sm font-bold hover:bg-rose-100 disabled:opacity-50"
+                data-testid="button-clear-duplicates"
+              >
+                <Trash2 size={15} /> {clearingDup ? "清除中…" : `清除重複待付款${batchCounts.dupPending ? `（${batchCounts.dupPending}）` : ""}`}
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={exportCsv}
