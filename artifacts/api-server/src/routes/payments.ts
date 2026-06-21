@@ -12,6 +12,7 @@ import { getStripeClient, isStripeConfigured } from "../lib/stripe-client";
 import { issueInvoice, voidInvoice, type InvoiceIssueOptions } from "../lib/ecpay-invoice";
 import { notifyPurchaseSlack } from "../lib/slack-notify";
 import { sendConfirmationEmail } from "../services/email-service";
+import { ensureTournamentCapacityForPayment } from "./registrations";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -204,6 +205,20 @@ router.post("/payments/initiate", async (req, res): Promise<void> => {
         res.status(400).json({ error: validationError });
         return;
       }
+    }
+
+    // Tournament hard-cap defense in depth: a participant registration created
+    // outside the reservation window no longer holds a slot, so re-verify against
+    // the live reservation occupancy (paid + active reservations) before creating
+    // a new charge. No-op for non-tournament orders.
+    const capGuard = await ensureTournamentCapacityForPayment(ids);
+    if (!capGuard.ok) {
+      res.status(409).json({
+        error: `戰鬥陀螺賽參賽名額已額滿，剩餘 ${capGuard.remaining} 個名額`,
+        code: "SOLD_OUT",
+        remaining: capGuard.remaining,
+      });
+      return;
     }
 
     await db.insert(paymentTransactionsTable).values({

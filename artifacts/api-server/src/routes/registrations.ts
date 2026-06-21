@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import crypto from "crypto";
 import QRCode from "qrcode";
 import { db, registrationsTable } from "@workspace/db";
@@ -186,16 +186,91 @@ async function lockDate(tx: DbExecutor, date: string): Promise<void> {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`reg:${date}`}))`);
 }
 
-// Counts confirmed-or-pending tournament participants (the 600-tier "本人"
-// legs). Companion general tickets do NOT consume the 128-slot competitor cap.
+// How long a freshly-created, not-yet-paid registration (unpaid/pending) holds a
+// competitor slot. This is the checkout reservation window: it gives a buyer
+// time to finish payment without overselling, while ensuring an abandoned
+// attempt releases its slot. Payment-gateway sessions expire well within this.
+const TOURNAMENT_PENDING_HOLD_MINUTES = 30;
+
+// Counts tournament participants (the 600-tier "本人" legs) that currently occupy
+// one of the 128 competitor slots. A slot is held by a PAID participant, or by a
+// recently-created not-yet-paid one (unpaid/pending within the reservation
+// window) so an in-progress checkout is reserved. Abandoned attempts (not-yet-
+// paid and older than the window) and refunded rows release their slot. The cap
+// is enforced at creation under a per-key advisory lock, so this count is the
+// single source of truth for both availability display and the purchase gate.
+// Companion general tickets are a separate inventory and never count here.
 async function countTournamentParticipants(tx: DbExecutor | typeof db): Promise<number> {
   const [row] = await tx
     .select({ total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)` })
     .from(registrationsTable)
     .where(
-      sql`${registrationsTable.ticketType} = ${TOURNAMENT_PARTICIPANT_TYPE} AND ${registrationsTable.paymentStatus} <> 'refunded'`,
+      sql`${registrationsTable.ticketType} = ${TOURNAMENT_PARTICIPANT_TYPE} AND (
+        ${registrationsTable.paymentStatus} = 'paid'
+        OR (
+          ${registrationsTable.paymentStatus} IN ('pending', 'unpaid')
+          AND ${registrationsTable.createdAt} > now() - make_interval(mins => ${TOURNAMENT_PENDING_HOLD_MINUTES})
+        )
+      )`,
     );
   return Number(row?.total ?? 0);
+}
+
+// Defense-in-depth tournament cap check for the payment path. A participant row
+// created outside the 30-min reservation window no longer holds a slot in
+// countTournamentParticipants, yet /payments/initiate could still transition it
+// into payment. Before a new charge is created we re-verify under the same
+// advisory lock used at creation, projecting occupancy with the SAME reservation
+// model (paid + in-window reservations) so a stale registration cannot be
+// revived into a bracket already full by paid + active reservations. No-op (ok)
+// when the order carries no unpaid tournament participant legs — carnival,
+// companion-only, and already-paid orders are unaffected. (Residual: two stale
+// revivals completing concurrently at the boundary would need a per-row
+// reservation timestamp to fully serialize; deferred as a schema change.)
+export async function ensureTournamentCapacityForPayment(
+  ids: number[],
+): Promise<{ ok: true } | { ok: false; remaining: number }> {
+  if (ids.length === 0) return { ok: true };
+  return db.transaction(async (tx) => {
+    // Cheap pre-check: does this order touch the competitor cap at all? Skip the
+    // lock entirely for carnival / companion-only / already-paid orders.
+    const [presence] = await tx
+      .select({ legs: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)` })
+      .from(registrationsTable)
+      .where(
+        and(
+          inArray(registrationsTable.id, ids),
+          eq(registrationsTable.ticketType, TOURNAMENT_PARTICIPANT_TYPE),
+          ne(registrationsTable.paymentStatus, "paid"),
+        ),
+      );
+    if (Number(presence?.legs ?? 0) === 0) return { ok: true as const };
+
+    await lockDate(tx, "tournament");
+    // Project occupancy using the SAME reservation model as creation. Recent
+    // (in-window) participant legs in this order are already represented in
+    // countTournamentParticipants; only STALE legs (created outside the window)
+    // are being revived and would be newly added on completion, so add just
+    // those to the live count. This blocks reviving a stale registration into a
+    // bracket already full by paid + active reservations.
+    const [staleRow] = await tx
+      .select({ requested: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)` })
+      .from(registrationsTable)
+      .where(
+        and(
+          inArray(registrationsTable.id, ids),
+          eq(registrationsTable.ticketType, TOURNAMENT_PARTICIPANT_TYPE),
+          ne(registrationsTable.paymentStatus, "paid"),
+          sql`${registrationsTable.createdAt} <= now() - make_interval(mins => ${TOURNAMENT_PENDING_HOLD_MINUTES})`,
+        ),
+      );
+    const requested = Number(staleRow?.requested ?? 0);
+    const occupancy = await countTournamentParticipants(tx);
+    if (occupancy + requested > TOURNAMENT_CAPACITY) {
+      return { ok: false as const, remaining: Math.max(0, TOURNAMENT_CAPACITY - occupancy) };
+    }
+    return { ok: true as const };
+  });
 }
 
 router.post("/registrations", async (req, res): Promise<void> => {

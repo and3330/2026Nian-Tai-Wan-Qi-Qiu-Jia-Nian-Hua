@@ -61,8 +61,12 @@ export default function TournamentManage() {
     const sumTickets = (rows: Registration[]) =>
       rows.reduce((n, r) => n + (r.ticketCount ?? 1), 0);
     return {
-      participantTotal: participants.filter(active).length,
+      // Only PAID participants occupy a competitor slot. Unpaid / pending (not
+      // yet completed) registrations do NOT consume the 128-slot cap.
       participantPaid: participants.filter((r) => r.paymentStatus === "paid").length,
+      participantPending: participants.filter(
+        (r) => r.paymentStatus !== "paid" && r.paymentStatus !== "refunded",
+      ).length,
       participantCheckedIn: participants.filter((r) => r.checkedInAt).length,
       companionTotal: sumTickets(companions.filter(active)),
       companionPaid: sumTickets(companions.filter((r) => r.paymentStatus === "paid")),
@@ -207,23 +211,23 @@ export default function TournamentManage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="rounded-2xl border bg-white p-5">
           <div className="flex items-center gap-2 text-muted-foreground text-xs font-bold mb-2">
-            <Users size={15} /> 參賽人數
+            <Users size={15} /> 參賽名額（已付款）
           </div>
-          <div className="text-2xl font-display font-bold">
-            {stats.participantTotal} <span className="text-base text-muted-foreground">/ {CAPACITY}</span>
+          <div className="text-2xl font-display font-bold text-green-600">
+            {stats.participantPaid} <span className="text-base text-muted-foreground">/ {CAPACITY}</span>
           </div>
           <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
             <div
               className="h-full bg-indigo-600"
-              style={{ width: `${Math.min(100, (stats.participantTotal / CAPACITY) * 100)}%` }}
+              style={{ width: `${Math.min(100, (stats.participantPaid / CAPACITY) * 100)}%` }}
             />
           </div>
         </div>
         <div className="rounded-2xl border bg-white p-5">
           <div className="flex items-center gap-2 text-muted-foreground text-xs font-bold mb-2">
-            <CheckCircle2 size={15} /> 參賽已付款
+            <CheckCircle2 size={15} /> 待付款（逾時自動釋出）
           </div>
-          <div className="text-2xl font-display font-bold text-green-600">{stats.participantPaid}</div>
+          <div className="text-2xl font-display font-bold text-amber-600">{stats.participantPending}</div>
         </div>
         <div className="rounded-2xl border bg-white p-5">
           <div className="flex items-center gap-2 text-muted-foreground text-xs font-bold mb-2">
