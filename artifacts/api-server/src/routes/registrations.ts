@@ -94,6 +94,10 @@ const TOURNAMENT_DATE = "2026-07-26";
 const TOURNAMENT_CAPACITY = 256;
 const TOURNAMENT_PARTICIPANT_TYPE = "tournament";
 const TOURNAMENT_COMPANION_TYPE = "tournament-companion";
+// Master switch to open/close 戰鬥陀螺賽 online registration. When false, the
+// availability endpoint reports `closed: true` (frontend shows 報名已截止) and the
+// create route rejects new orders regardless of remaining capacity.
+const TOURNAMENT_REGISTRATION_OPEN = false;
 
 // SQL fragment: a row belongs to the general carnival inventory (i.e. it is NOT
 // a tournament participant/companion leg). Used everywhere the 500-per-day cap
@@ -157,6 +161,15 @@ function resolveAmount(
   infantCount: number,
   amountPerOrder: number | null,
 ): { ok: true; ticketType: string | null; amount: number | null } | { ok: false; error: string } {
+  // Tournament legs may only be created through the dedicated, capacity-locked
+  // /registrations/tournament endpoint. Reject them on the generic create paths
+  // (single + combo) so the close switch can't be bypassed via a crafted body.
+  if (
+    rawTicketType === TOURNAMENT_PARTICIPANT_TYPE ||
+    rawTicketType === TOURNAMENT_COMPANION_TYPE
+  ) {
+    return { ok: false, error: "戰鬥陀螺賽請使用專屬報名頁" };
+  }
   let amount: number | null = null;
   if (rawTicketType && PRICE_BOOK[rawTicketType] != null) {
     const adultPrice = PRICE_BOOK[rawTicketType];
@@ -489,6 +502,7 @@ router.get("/registrations/tournament/availability", async (req, res): Promise<v
     registered,
     remaining,
     soldOut: remaining <= 0,
+    closed: !TOURNAMENT_REGISTRATION_OPEN,
   });
 });
 
@@ -525,6 +539,14 @@ router.get("/registrations/tournament/roster", async (_req, res): Promise<void> 
 // advisory lock so concurrent buyers serialize. Tournament orders are always
 // paid online — confirmation + QR emails are sent after payment (markPaymentPaid).
 router.post("/registrations/tournament", async (req, res): Promise<void> => {
+  if (!TOURNAMENT_REGISTRATION_OPEN) {
+    res.status(403).json({
+      error: "戰鬥陀螺賽線上報名已截止",
+      code: "REGISTRATION_CLOSED",
+    });
+    return;
+  }
+
   const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : null;
   if (!body) {
     res.status(400).json({ error: "Invalid body" });

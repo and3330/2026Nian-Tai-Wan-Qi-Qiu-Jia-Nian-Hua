@@ -33,6 +33,7 @@ type Availability = {
   registered: number;
   remaining: number;
   soldOut: boolean;
+  closed?: boolean;
 };
 
 type Roster = {
@@ -135,6 +136,9 @@ export default function TORPage() {
   }, []);
 
   const soldOut = availability?.soldOut ?? false;
+  // Master switch (set on the server) that fully closes online registration —
+  // overrides capacity, both participant and spectator paths are unavailable.
+  const closed = availability?.closed ?? false;
 
   // Participant sign-up closes when the 128 cap is reached, but spectator /
   // companion-only ticket purchase stays open regardless.
@@ -503,6 +507,16 @@ export default function TORPage() {
             <button onClick={resetForm} className="mt-10 text-green-600 font-bold hover:underline">
               繼續報名
             </button>
+          </div>
+        ) : closed ? (
+          <div className="bg-white border-2 border-border rounded-3xl p-10 md:p-12 text-center shadow-lg">
+            <AlertCircle className="w-16 h-16 text-rose-400 mx-auto mb-6" />
+            <h2 className="font-display text-3xl md:text-4xl mb-3">線上報名已截止</h2>
+            <p className="text-muted-foreground text-lg">
+              戰鬥陀螺賽的線上報名與購票已截止，感謝大家的熱情參與。
+              <br />
+              如有任何問題，歡迎透過官方管道與我們聯繫。
+            </p>
           </div>
         ) : (
           <>
