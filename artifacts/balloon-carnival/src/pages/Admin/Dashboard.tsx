@@ -26,7 +26,7 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const PIE_COLORS = ["#F97316", "#FACC15", "#22C55E", "#3B82F6"];
 
@@ -62,6 +62,20 @@ export default function AdminDashboard() {
 
   const [isExporting, setIsExporting] = useState(false);
   const [confirmingRef, setConfirmingRef] = useState<string | null>(null);
+
+  const [paymentMethods, setPaymentMethods] = useState<{
+    methods: { key: string; label: string; orders: number; revenue: number }[];
+    totalRevenue: number;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/payment-methods", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) setPaymentMethods(data);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleConfirmBank = async (paymentRef: string) => {
     if (
@@ -287,6 +301,57 @@ export default function AdminDashboard() {
           payerCount={overview ? overview.tournamentSales.payerCount : 0}
           ready={!!overview}
         />
+      </div>
+
+      {/* 各付款方式收款金額 */}
+      <div className="bg-white p-6 rounded-3xl border shadow-sm">
+        <h2 className="text-xl font-bold mb-1">各付款方式收款</h2>
+        <p className="text-sm text-muted-foreground mb-5">
+          已付款訂單（不含退款）依超商繳費、ATM 轉帳、信用卡等方式的金額與筆數
+        </p>
+        {!paymentMethods ? (
+          <div className="h-24 bg-muted/50 animate-pulse rounded-xl" />
+        ) : paymentMethods.methods.length === 0 ? (
+          <div className="py-8 text-center text-muted-foreground">
+            尚無收款資料
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {paymentMethods.methods.map((m, idx) => {
+              const pct = paymentMethods.totalRevenue
+                ? Math.round((m.revenue / paymentMethods.totalRevenue) * 1000) /
+                  10
+                : 0;
+              return (
+                <div key={m.key}>
+                  <div className="flex items-center justify-between mb-1.5 text-sm">
+                    <span className="font-bold">{m.label}</span>
+                    <span className="text-muted-foreground">
+                      {formatCurrency(m.revenue)} · {formatNumber(m.orders)} 筆 ·{" "}
+                      {pct}%
+                    </span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor:
+                          PIE_COLORS[idx % PIE_COLORS.length],
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            <div className="pt-3 mt-2 border-t flex items-center justify-between text-sm font-bold">
+              <span>合計</span>
+              <span className="text-green-600">
+                {formatCurrency(paymentMethods.totalRevenue)}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Daily sales trend (line chart) + ticket type distribution (pie) */}

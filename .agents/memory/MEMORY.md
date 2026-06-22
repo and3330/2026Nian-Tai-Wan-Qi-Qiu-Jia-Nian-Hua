@@ -11,3 +11,4 @@
 - [Rebuild libs after codegen](codegen-rebuild-libs.md) — after api-spec codegen, web tsc still errors until `pnpm run typecheck:libs` (tsc --build) regenerates lib dist .d.ts.
 - [api-server testing](api-server-testing.md) — vitest+supertest in test/ (not src/); runs vs shared dev DB with `__torTEST__` marker cleanup; mount router, not app.ts.
 - [Expose a new registration field end-to-end](api-response-schema-codegen.md) — list/lookup responses are zod-parsed (strip unknown keys); new column needs DB push + openapi.yaml + codegen + prod migration.
+- [Payment method classification](payment-method-classification.md) — sub-method (CVS/ATM/credit) lives in raw_result.Result.PaymentType (nested, not top-level); join paid registrations on payment_ref + SUM(amount) for per-method revenue.

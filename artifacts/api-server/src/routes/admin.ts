@@ -1076,6 +1076,59 @@ router.get("/admin/sales-overview", async (req, res): Promise<void> => {
   res.json(AdminGetSalesOverviewResponse.parse(overview));
 });
 
+// Revenue split by how the buyer actually paid (超商 / ATM 轉帳 / 信用卡 / …).
+// The gateway sub-method lives in the NewebPay callback under raw_result.Result.
+// PaymentType; Stripe is always a card, bank transfer is manual. We join paid
+// registrations to their transaction so the figures match the rest of the
+// overview (paid only, refunds excluded, real `amount` so combos aren't doubled).
+router.get("/admin/payment-methods", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res)) return;
+
+  const methodExpr = sql<string>`CASE
+    WHEN ${paymentTransactionsTable.provider} = 'stripe' THEN 'credit'
+    WHEN ${paymentTransactionsTable.provider} = 'bank' THEN 'bank'
+    WHEN ${paymentTransactionsTable.rawResult}->'Result'->>'PaymentType' = 'CREDIT' THEN 'credit'
+    WHEN ${paymentTransactionsTable.rawResult}->'Result'->>'PaymentType' IN ('VACC', 'WEBATM') THEN 'atm'
+    WHEN ${paymentTransactionsTable.rawResult}->'Result'->>'PaymentType' IN ('CVS', 'BARCODE') THEN 'cvs'
+    ELSE 'other'
+  END`;
+
+  const rows = await db
+    .select({
+      method: methodExpr,
+      orders: sql<number>`COUNT(DISTINCT COALESCE(${registrationsTable.paymentRef}, 'reg:' || ${registrationsTable.id}::text))`,
+      revenue: sql<number>`COALESCE(SUM(${registrationsTable.amount}), 0)`,
+    })
+    .from(registrationsTable)
+    .leftJoin(
+      paymentTransactionsTable,
+      eq(paymentTransactionsTable.paymentRef, registrationsTable.paymentRef),
+    )
+    .where(eq(registrationsTable.paymentStatus, "paid"))
+    .groupBy(methodExpr);
+
+  const LABELS: Record<string, string> = {
+    credit: "信用卡",
+    atm: "ATM／網路 ATM 轉帳",
+    cvs: "超商繳費",
+    bank: "銀行／臨櫃匯款",
+    other: "其他／手動確認",
+  };
+  const ORDER = ["credit", "atm", "cvs", "bank", "other"];
+  const byMethod = new Map(
+    rows.map((r) => [r.method, { orders: Number(r.orders), revenue: Number(r.revenue) }]),
+  );
+  const methods = ORDER.map((key) => ({
+    key,
+    label: LABELS[key],
+    orders: byMethod.get(key)?.orders ?? 0,
+    revenue: byMethod.get(key)?.revenue ?? 0,
+  })).filter((m) => m.orders > 0 || m.revenue > 0);
+  const totalRevenue = methods.reduce((sum, m) => sum + m.revenue, 0);
+
+  res.json({ methods, totalRevenue });
+});
+
 router.post("/admin/news", async (req, res): Promise<void> => {
   if (!requireAuth(req, res, "editor")) return;
 
