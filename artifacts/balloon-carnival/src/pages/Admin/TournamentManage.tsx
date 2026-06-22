@@ -21,7 +21,7 @@ import { formatDate } from "@/lib/utils";
 
 const PARTICIPANT_TYPE = "tournament";
 const COMPANION_TYPE = "tournament-companion";
-const CAPACITY = 128;
+const CAPACITY = 256;
 
 const TYPE_LABELS: Record<string, string> = {
   [PARTICIPANT_TYPE]: "參賽",
