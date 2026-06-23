@@ -56,6 +56,22 @@ const TICKET_TYPE_LABELS: Record<string, string> = {
   "tournament-companion": "戰鬥陀螺賽隨同票",
 };
 
+// Carnival event days, used for the order date filter.
+const EVENT_DATES = ["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"];
+
+const EVENT_DATE_WEEKDAY: Record<string, string> = {
+  "2026-07-23": "四",
+  "2026-07-24": "五",
+  "2026-07-25": "六",
+  "2026-07-26": "日",
+};
+
+function eventDateLabel(d: string) {
+  const [, m, day] = d.split("-");
+  const wd = EVENT_DATE_WEEKDAY[d];
+  return `${Number(m)}/${Number(day)}${wd ? `（${wd}）` : ""}`;
+}
+
 type OrderStatus =
   | "paid"
   | "awaiting_transfer"
@@ -177,6 +193,7 @@ export default function OrdersManage() {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all");
   const [confirmingRef, setConfirmingRef] = useState<string | null>(null);
   const [markingPaidRef, setMarkingPaidRef] = useState<string | null>(null);
   const [refundingRef, setRefundingRef] = useState<string | null>(null);
@@ -226,6 +243,8 @@ export default function OrdersManage() {
     return orders.filter((o) => {
       if (filter !== "all" && normalizeStatus(o.paymentStatus) !== filter)
         return false;
+      if (dateFilter !== "all" && !o.eventDates.includes(dateFilter))
+        return false;
       if (!q) return true;
       return (
         o.buyerName.toLowerCase().includes(q) ||
@@ -234,7 +253,7 @@ export default function OrdersManage() {
         o.ref.toLowerCase().includes(q)
       );
     });
-  }, [orders, filter, search]);
+  }, [orders, filter, search, dateFilter]);
 
   const orderByRef = useMemo(() => {
     const m = new Map<string, Order>();
@@ -854,17 +873,31 @@ export default function OrdersManage() {
             </button>
           ))}
         </div>
-        <div className="relative w-full lg:w-72">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="搜尋姓名、電話、Email、訂單編號"
-            className="w-full pl-9 pr-3 py-2.5 rounded-full border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-full sm:w-40 px-3 py-2.5 rounded-full border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="all">全部日期</option>
+            {EVENT_DATES.map((d) => (
+              <option key={d} value={d}>
+                {eventDateLabel(d)}
+              </option>
+            ))}
+          </select>
+          <div className="relative w-full lg:w-72">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="搜尋姓名、電話、Email、訂單編號"
+              className="w-full pl-9 pr-3 py-2.5 rounded-full border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
         </div>
       </div>
 
