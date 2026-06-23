@@ -91,7 +91,7 @@ const isPaidLeg = sql`${registrationsTable.paymentStatus} = 'paid'`;
 // admission. Tournament rows live on 7/26 too, but are counted independently so
 // they neither consume nor are blocked by the general 500 daily capacity.
 const TOURNAMENT_DATE = "2026-07-26";
-const TOURNAMENT_CAPACITY = 256;
+const TOURNAMENT_CAPACITY = 128;
 const TOURNAMENT_PARTICIPANT_TYPE = "tournament";
 const TOURNAMENT_COMPANION_TYPE = "tournament-companion";
 // Master switch to open/close 戰鬥陀螺賽 online registration. When false, the

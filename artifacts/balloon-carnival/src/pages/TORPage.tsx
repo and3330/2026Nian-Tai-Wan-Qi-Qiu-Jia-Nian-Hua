@@ -274,10 +274,10 @@ export default function TORPage() {
           </div>
           <h1 className="font-display text-4xl md:text-6xl mb-4 text-indigo-900">戰鬥陀螺挑戰賽</h1>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-100 text-rose-700 font-bold text-sm mb-4">
-            🔥 熱烈加賽 — 名額擴大至 {availability?.capacity ?? 256} 位！
+            🔥 熱烈加賽 — 名額擴大至 {availability?.capacity ?? 128} 位！
           </div>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            這是一場臺北陀螺的終極大賽！7/26（日）於臺北瓶蓋工廠 M 棟登場，線上限額 {availability?.capacity ?? 256} 位參賽者，捉對廝殺、爭奪冠軍寶座！
+            這是一場臺北陀螺的終極大賽！7/26（日）於臺北瓶蓋工廠 M 棟登場，線上限額 {availability?.capacity ?? 128} 位參賽者，捉對廝殺、爭奪冠軍寶座！
           </p>
         </div>
       </section>
