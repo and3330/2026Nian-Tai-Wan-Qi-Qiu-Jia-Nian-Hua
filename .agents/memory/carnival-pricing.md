@@ -6,7 +6,8 @@ description: Equal-price (adult=child) model for carnival admission and the prom
 # Carnival ticket pricing model
 
 Carnival admission charges the SAME price for adults and children (no child discount):
-- Everyone: single 200/head, combo 300/head.
+- Everyone: single 300/head, combo 500/head. (Two-day combo is framed as saving NT$100 vs 2× single = 600.)
+- Prices live in `PRICE_BOOK` (registrations.ts) + `PROMO_PRICE_BOOK` (promo-codes.ts); frontend copy duplicates them in CarnivalPage/HomePage/AdGuidePage. Any price change must touch all of these in lockstep or the displayed price will mismatch the backend's exact-amount check and 400 the order.
 
 Backend `resolveAmount` charges every head the adult unit price; the `CARNIVAL_CHILD_PRICE` override map is intentionally empty (children fall back to the adult price). Reintroduce a child tier only by adding entries there if policy changes again.
 

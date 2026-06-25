@@ -4,8 +4,8 @@ import { db, promoCodesTable, type PromoCode } from "@workspace/db";
 type DbExecutor = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export const PROMO_PRICE_BOOK: Record<string, number> = {
-  single: 200,
-  combo: 300,
+  single: 300,
+  combo: 500,
   "four-day-pass": 12000,
   workshop: 8000,
   competition: 5000,

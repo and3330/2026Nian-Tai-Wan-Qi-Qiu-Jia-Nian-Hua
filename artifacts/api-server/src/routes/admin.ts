@@ -41,7 +41,7 @@ const router: IRouter = Router();
 
 const EVENT_DATES = ["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"];
 const DAILY_CAPACITY = 500;
-const REFERENCE_TICKET_PRICE_TWD = 200;
+const REFERENCE_TICKET_PRICE_TWD = 300;
 const SESSION_LABELS: Record<string, string> = {
   "2026-07-23": "7/23（四）業內預展",
   "2026-07-24": "7/24（五）業內預展",

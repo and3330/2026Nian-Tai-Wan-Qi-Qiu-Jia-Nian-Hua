@@ -123,9 +123,9 @@ export default function CarnivalPage() {
 
   const baseTotal =
     visitorTicketType === "combo"
-      ? 300 * paidHeads
+      ? 500 * paidHeads
       : visitorTicketType === "single"
-        ? 200 * paidHeads
+        ? 300 * paidHeads
         : 0;
   const finalTotal = appliedPromo ? appliedPromo.finalAmount : baseTotal;
 
@@ -204,7 +204,7 @@ export default function CarnivalPage() {
           : `${formData.adultCount} 張`;
 
       if (visitorTicketType === "combo") {
-        const comboTotal = 300 * paidHeads;
+        const comboTotal = 500 * paidHeads;
         const result = await createComboMutation.mutateAsync({
           data: {
             parentName: formData.parentName,
@@ -227,7 +227,7 @@ export default function CarnivalPage() {
         totalAmount = appliedPromo ? appliedPromo.finalAmount : comboTotal;
         itemLabel = `兩日套票 × ${headLabel}（7/25 + 7/26）${appliedPromo ? ` · 折扣碼 ${appliedPromo.code}` : ""}`;
       } else {
-        const singleTotal = 200 * paidHeads;
+        const singleTotal = 300 * paidHeads;
         const r = await createMutation.mutateAsync({
           data: {
             parentName: formData.parentName,
@@ -388,7 +388,7 @@ export default function CarnivalPage() {
             </div>
             <div className="mb-2 flex items-baseline justify-center gap-1">
               <span className="text-2xl font-bold text-muted-foreground">NT$</span>
-              <span className="text-5xl md:text-6xl font-display font-bold text-green-600">200</span>
+              <span className="text-5xl md:text-6xl font-display font-bold text-green-600">300</span>
             </div>
             <p className="text-sm text-foreground/70 font-medium">7/25 或 7/26 擇一日</p>
           </button>
@@ -417,8 +417,8 @@ export default function CarnivalPage() {
             </div>
             <div className="mb-2 flex items-baseline justify-center gap-1">
               <span className="text-2xl font-bold text-muted-foreground">NT$</span>
-              <span className="text-5xl md:text-6xl font-display font-bold text-green-600">300</span>
-              <span className="text-sm font-bold text-muted-foreground line-through ml-1">400</span>
+              <span className="text-5xl md:text-6xl font-display font-bold text-green-600">500</span>
+              <span className="text-sm font-bold text-muted-foreground line-through ml-1">600</span>
             </div>
             <p className="text-sm text-foreground/70 font-medium">7/25 + 7/26 兩日皆可入場</p>
           </button>
@@ -443,7 +443,7 @@ export default function CarnivalPage() {
                   <div className="font-bold text-right break-all">{formData.email}</div>
                 </>)}
                 <div className="text-muted-foreground">票種：</div>
-                <div className="font-bold text-right text-primary">{visitorTicketType === "combo" ? "兩日套票 300 元" : "單日票 200 元"}</div>
+                <div className="font-bold text-right text-primary">{visitorTicketType === "combo" ? "兩日套票 500 元" : "單日票 300 元"}</div>
                 <div className="text-muted-foreground">票數：</div>
                 <div className="font-bold text-right">
                   {formData.childCount > 0 || formData.infantCount > 0
@@ -663,7 +663,7 @@ export default function CarnivalPage() {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      兒童與大人同票價（單日每位 200 元、兩日套票每位 300 元）。1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code。每筆訂單至少 1 位大人。
+                      兒童與大人同票價（單日每位 300 元、兩日套票每位 500 元）。1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code。每筆訂單至少 1 位大人。
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -782,7 +782,7 @@ export default function CarnivalPage() {
                 items: [
                   "名額有限，建議提前線上購票以確保入場",
                   "入場請出示購票確認 QR Code（電子或紙本皆可）",
-                  "兒童與大人同票價（單日 200 元、兩日套票 300 元），兒童亦佔 1 個入場名額；1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code",
+                  "兒童與大人同票價（單日 300 元、兩日套票 500 元），兒童亦佔 1 個入場名額；1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code",
                   "兩日套票須完成兩次報到（7/25 + 7/26 各一次）",
                   "每張票含價值 50 元精美報到小禮物（一票兌換一組）",
                   "每張票贈價值 500 元商城優惠套裝折扣碼（購票後以 Email 寄送）",

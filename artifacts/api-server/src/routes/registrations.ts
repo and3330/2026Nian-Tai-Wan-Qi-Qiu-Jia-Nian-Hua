@@ -139,8 +139,8 @@ router.get("/registrations/availability", async (req, res): Promise<void> => {
 
 // Adult (滿 6 歲以上) prices.
 const PRICE_BOOK: Record<string, number> = {
-  single: 200,
-  combo: 300,
+  single: 300,
+  combo: 500,
   "four-day-pass": 12000,
   workshop: 8000,
   competition: 5000,

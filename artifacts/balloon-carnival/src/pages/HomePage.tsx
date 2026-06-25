@@ -249,12 +249,12 @@ export default function HomePage() {
             <h3 className="text-2xl font-bold mb-1">單日票</h3>
             <p className="text-sm text-muted-foreground mb-5">7/25（六）或 7/26（日）擇一日入場</p>
             <div className="flex items-baseline gap-1 mb-6">
-              <span className="text-5xl font-bold text-primary">200</span>
+              <span className="text-5xl font-bold text-primary">300</span>
               <span className="text-lg text-muted-foreground">元 / 人</span>
             </div>
             <div className="space-y-2 text-sm text-muted-foreground mb-6">
               <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 全展區 ・ 舞臺表演 ・ 比賽展件</p>
-              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 兒童與大人同票價 200 元 / 人，1 歲以下免費</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 兒童與大人同票價 300 元 / 人，1 歲以下免費</p>
             </div>
             <span className="inline-flex items-center gap-2 text-primary font-bold text-sm group-hover:gap-3 transition-all">
               選擇單日票 <ArrowRight size={16} />
@@ -274,9 +274,9 @@ export default function HomePage() {
             <h3 className="text-2xl font-bold mb-1">兩日套票</h3>
             <p className="text-sm text-muted-foreground mb-5">7/25 + 7/26 兩日完整體驗</p>
             <div className="flex items-baseline gap-1 mb-6 flex-wrap">
-              <span className="text-5xl font-bold text-secondary">300</span>
+              <span className="text-5xl font-bold text-secondary">500</span>
               <span className="text-lg text-muted-foreground">元 / 人</span>
-              <span className="text-sm text-muted-foreground line-through ml-2">原價 400</span>
+              <span className="text-sm text-muted-foreground line-through ml-2">原價 600</span>
             </div>
             <div className="space-y-2 text-sm text-muted-foreground mb-6">
               <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 兩日無限暢遊・所有節目通通看</p>
@@ -324,7 +324,7 @@ export default function HomePage() {
 
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground">
-            親子手作坊另需現場購票 <span className="font-bold text-foreground">150 元/組</span>　・　兒童與大人同票價（單日 200 元 / 兩日套票 300 元），1 歲以下免費
+            親子手作坊另需現場購票 <span className="font-bold text-foreground">150 元/組</span>　・　兒童與大人同票價（單日 300 元 / 兩日套票 500 元），1 歲以下免費
           </p>
         </div>
       </section>
@@ -499,9 +499,9 @@ export default function HomePage() {
           </div>
           <div className="space-y-4">
             {[
-              { q: "需要購買門票嗎？", a: "活動日（7/25、7/26）單日票 200 元、兩日套票 300 元，請提前在官網預約購票。名額有限，建議儘早預約。" },
+              { q: "需要購買門票嗎？", a: "活動日（7/25、7/26）單日票 300 元、兩日套票 500 元，請提前在官網預約購票。名額有限，建議儘早預約。" },
               { q: "活動地點在哪裡？怎麼去？", a: "活動地點為臺北瓶蓋工廠（台北市南港區南港路二段13號）。可搭乘捷運至南港站1號出口，步行約5分鐘即可到達。" },
-              { q: "小朋友適合參加嗎？", a: "非常適合！嘉年華特別設有親子區、DIY 工作坊和兒童遊戲區。兒童與大人同票價（單日 200 元 / 兩日套票 300 元），每位兒童佔 1 個入場名額；1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code。" },
+              { q: "小朋友適合參加嗎？", a: "非常適合！嘉年華特別設有親子區、DIY 工作坊和兒童遊戲區。兒童與大人同票價（單日 300 元 / 兩日套票 500 元），每位兒童佔 1 個入場名額；1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code。" },
               { q: "可以現場報名嗎？", a: "建議提前線上預約，確保有入場名額。若當日尚有餘額，也可現場排隊候補入場。" },
               { q: "活動有提供停車場嗎？", a: "臺北瓶蓋工廠設有地下停車場，也可利用南港車站周邊停車場。建議搭乘大眾交通工具前往。" },
             ].map((item, idx) => (
