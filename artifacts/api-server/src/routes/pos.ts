@@ -66,7 +66,7 @@ router.get("/admin/pos/lookup/:token", async (req, res): Promise<void> => {
 
 router.post("/admin/pos/invoice", async (req, res): Promise<void> => {
   if (!requireAuth(req, res, "checkin")) return;
-  const { qrToken, amount } = req.body ?? {};
+  const { qrToken, amount, carrierType, carrierNum } = req.body ?? {};
   if (typeof qrToken !== "string" || !qrToken.trim()) {
     res.status(400).json({ error: "缺少票券 QR token" });
     return;
@@ -75,6 +75,19 @@ router.post("/admin/pos/invoice", async (req, res): Promise<void> => {
   if (!Number.isInteger(amt) || amt <= 0 || amt > 1000000) {
     res.status(400).json({ error: "金額必須為 1 ~ 1,000,000 的整數" });
     return;
+  }
+  // Carrier selection: default is the ECPay member carrier (email-bound);
+  // staff may instead scan the customer's own phone-barcode carrier (財政部
+  // 手機條碼, "/" + 7 chars) so the invoice lands directly in their carrier.
+  const useCarrier: "ecpay_carrier" | "phone_barcode" =
+    carrierType === "phone_barcode" ? "phone_barcode" : "ecpay_carrier";
+  let barcode = "";
+  if (useCarrier === "phone_barcode") {
+    barcode = String(carrierNum ?? "").trim().toUpperCase();
+    if (!/^\/[0-9A-Z.+-]{7}$/.test(barcode)) {
+      res.status(400).json({ error: "手機條碼格式錯誤：應為「/」開頭共 8 碼（例如 /AB12+-.）" });
+      return;
+    }
   }
   const [reg] = await db
     .select()
@@ -86,9 +99,13 @@ router.post("/admin/pos/invoice", async (req, res): Promise<void> => {
     return;
   }
   // ecpay_carrier (綠界會員載具) delivery is email-bound — without an email
-  // the issuance would pass our precheck but fail at the ECPay gateway.
-  if (!reg.email) {
-    res.status(400).json({ error: "此票券沒有 Email，無法以會員載具開立電子發票" });
+  // the issuance would pass our precheck but fail at the ECPay gateway. The
+  // phone-barcode carrier has no such dependency (reg.phone satisfies the
+  // email-or-phone gateway requirement).
+  if (useCarrier === "ecpay_carrier" && !reg.email) {
+    res.status(400).json({
+      error: "此票券沒有 Email，無法以會員載具開立；請改掃描客人的手機條碼載具",
+    });
     return;
   }
 
@@ -98,11 +115,8 @@ router.post("/admin/pos/invoice", async (req, res): Promise<void> => {
     .values({
       paymentRef,
       invoiceType: "personal",
-      // ECPay member carrier: the invoice is stored in the buyer's ECPay
-      // carrier and delivery is handled via their email. A B2C invoice with
-      // Print=0/Donation=0 must have a carrier, so this is the safe default
-      // for on-site cash sales where we only have the ticket holder's info.
-      carrierType: "ecpay_carrier",
+      carrierType: useCarrier,
+      carrierNum: useCarrier === "phone_barcode" ? barcode : null,
       buyerName: reg.parentName,
       buyerEmail: reg.email,
       buyerPhone: reg.phone,
@@ -117,7 +131,8 @@ router.post("/admin/pos/invoice", async (req, res): Promise<void> => {
     customerName: reg.parentName || undefined,
     customerPhone: reg.phone || undefined,
     invoiceType: "personal",
-    carrierType: "ecpay_carrier",
+    carrierType: useCarrier,
+    carrierNum: useCarrier === "phone_barcode" ? barcode : undefined,
     salesAmount: amt,
     items: [{ name: "商品", count: 1, unitPrice: amt, amount: amt }],
   };

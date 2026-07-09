@@ -63,6 +63,8 @@ export default function POSPage() {
   const [result, setResult] = useState<LookupResult>({ kind: "idle" });
   const [amountInput, setAmountInput] = useState("");
   const [issueState, setIssueState] = useState<IssueState>({ kind: "idle" });
+  const [carrierChoice, setCarrierChoice] = useState<"ecpay_carrier" | "phone_barcode">("ecpay_carrier");
+  const [barcodeInput, setBarcodeInput] = useState("");
   const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [decodingFile, setDecodingFile] = useState(false);
@@ -70,12 +72,17 @@ export default function POSPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastScannedRef = useRef<string>("");
   const lastScanTimeRef = useRef<number>(0);
+  // What the shared camera is currently scanning for: the ticket QR, or the
+  // customer's phone-barcode carrier (財政部手機條碼, Code39 "/XXXXXXX").
+  const scanTargetRef = useRef<"ticket" | "carrier">("ticket");
 
   const performLookup = useCallback(async (token: string) => {
     if (!token) return;
     setResult({ kind: "loading" });
     setIssueState({ kind: "idle" });
     setAmountInput("");
+    setCarrierChoice("ecpay_carrier");
+    setBarcodeInput("");
     try {
       const res = await fetch(`/api/admin/pos/lookup/${encodeURIComponent(token)}`, {
         credentials: "include",
@@ -109,7 +116,13 @@ export default function POSPage() {
       setIssueState({ kind: "failed", message: "請輸入正確的整數金額" });
       return;
     }
-    if (!window.confirm(`確認向「${result.reg.parentName}」開立 NT$${amt.toLocaleString()} 電子發票？`)) {
+    const barcode = barcodeInput.trim().toUpperCase();
+    if (carrierChoice === "phone_barcode" && !/^\/[0-9A-Z.+-]{7}$/.test(barcode)) {
+      setIssueState({ kind: "failed", message: "手機條碼格式錯誤：應為「/」開頭共 8 碼" });
+      return;
+    }
+    const carrierLabel = carrierChoice === "phone_barcode" ? `手機條碼 ${barcode}` : "綠界會員載具（Email）";
+    if (!window.confirm(`確認向「${result.reg.parentName}」開立 NT$${amt.toLocaleString()} 電子發票？\n載具：${carrierLabel}`)) {
       return;
     }
     setIssueState({ kind: "submitting" });
@@ -118,7 +131,12 @@ export default function POSPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrToken: result.token, amount: amt }),
+        body: JSON.stringify({
+          qrToken: result.token,
+          amount: amt,
+          carrierType: carrierChoice,
+          ...(carrierChoice === "phone_barcode" ? { carrierNum: barcode } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
@@ -146,6 +164,9 @@ export default function POSPage() {
       scannerRef.current = null;
     }
     setScanning(false);
+    // A cancelled carrier scan must not leave the camera hijacking the next
+    // ticket scan.
+    scanTargetRef.current = "ticket";
   }, []);
 
   const onDecoded = useCallback(
@@ -156,10 +177,18 @@ export default function POSPage() {
       }
       lastScannedRef.current = decodedText;
       lastScanTimeRef.current = now;
+      if (scanTargetRef.current === "carrier") {
+        // Phone-barcode carrier scan: normalise and drop it into the barcode
+        // field instead of triggering a ticket lookup.
+        setBarcodeInput(decodedText.trim().toUpperCase());
+        scanTargetRef.current = "ticket";
+        stopScanner();
+        return;
+      }
       setTokenInput(decodedText);
       performLookup(decodedText);
     },
-    [performLookup],
+    [performLookup, stopScanner],
   );
 
   const startScanner = useCallback(async () => {
@@ -187,6 +216,9 @@ export default function POSPage() {
       scannerRef.current = null;
       setCameraError(describeCameraError(err));
       setScanning(false);
+      // Failed carrier-scan startup must not leave the next scan in carrier
+      // mode.
+      scanTargetRef.current = "ticket";
     }
   }, [onDecoded]);
 
@@ -231,6 +263,9 @@ export default function POSPage() {
     setIssueState({ kind: "idle" });
     setTokenInput("");
     setAmountInput("");
+    setCarrierChoice("ecpay_carrier");
+    setBarcodeInput("");
+    scanTargetRef.current = "ticket";
   };
 
   return (
@@ -252,7 +287,14 @@ export default function POSPage() {
               <Camera size={20} /> 相機掃描
             </h2>
             <button
-              onClick={() => (scanning ? stopScanner() : startScanner())}
+              onClick={() => {
+                if (scanning) {
+                  stopScanner();
+                } else {
+                  scanTargetRef.current = "ticket";
+                  startScanner();
+                }
+              }}
               className={cn(
                 "px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
                 scanning ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-primary text-white hover:bg-primary/90",
@@ -371,7 +413,9 @@ export default function POSPage() {
                     <p className="text-sm text-green-700">
                       金額 NT${issueState.amount.toLocaleString()}
                       {issueState.invoiceNumber && <>・發票號碼 <span className="font-mono font-bold">{issueState.invoiceNumber}</span></>}
-                      ，發票已存入客人的綠界會員載具並寄送 Email 通知。
+                      {carrierChoice === "phone_barcode"
+                        ? "，發票已歸戶至客人的手機條碼載具。"
+                        : "，發票已存入綠界電子發票平台並寄送 Email 通知客人。"}
                     </p>
                   )}
                 </div>
@@ -410,6 +454,71 @@ export default function POSPage() {
 
               {issueState.kind !== "issued" && (
                 <div className="mt-6 space-y-3">
+                  <label className="block font-bold text-sm">發票載具</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCarrierChoice("ecpay_carrier")}
+                      className={cn(
+                        "px-4 py-3 rounded-xl border-2 text-sm font-bold text-left transition-all",
+                        carrierChoice === "ecpay_carrier"
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-muted text-muted-foreground hover:border-primary/40",
+                      )}
+                      data-testid="button-carrier-ecpay"
+                    >
+                      綠界電子發票（Email 通知）
+                      <span className="block text-xs font-normal mt-0.5">
+                        {result.reg.email ? `寄到 ${result.reg.email}` : "此票券沒有 Email，請改用手機條碼"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCarrierChoice("phone_barcode")}
+                      className={cn(
+                        "px-4 py-3 rounded-xl border-2 text-sm font-bold text-left transition-all",
+                        carrierChoice === "phone_barcode"
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-muted text-muted-foreground hover:border-primary/40",
+                      )}
+                      data-testid="button-carrier-phone"
+                    >
+                      手機條碼載具
+                      <span className="block text-xs font-normal mt-0.5">掃描客人的「/」開頭條碼</span>
+                    </button>
+                  </div>
+
+                  {carrierChoice === "phone_barcode" && (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={barcodeInput}
+                        onChange={(e) => setBarcodeInput(e.target.value.toUpperCase())}
+                        placeholder="/AB12345"
+                        maxLength={8}
+                        className="flex-1 px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-primary font-mono text-lg"
+                        data-testid="input-pos-barcode"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          scanTargetRef.current = "carrier";
+                          startScanner();
+                        }}
+                        disabled={scanning}
+                        className="px-4 py-3 rounded-xl border-2 border-primary/30 text-primary font-bold text-sm hover:bg-primary/5 transition-all disabled:opacity-50 flex items-center gap-2"
+                        data-testid="button-scan-barcode"
+                      >
+                        <Camera size={16} /> 掃描條碼
+                      </button>
+                    </div>
+                  )}
+                  {carrierChoice === "phone_barcode" && scanning && (
+                    <p className="text-xs text-primary text-center">
+                      相機已開啟（上方掃描區），請對準客人手機上的條碼
+                    </p>
+                  )}
+
                   <label className="block font-bold text-sm">消費金額（現金，NT$）</label>
                   <input
                     type="number"
@@ -437,7 +546,7 @@ export default function POSPage() {
                     {issueState.kind === "submitting" ? "開立中，請稍候..." : "開立電子發票"}
                   </button>
                   <p className="text-xs text-muted-foreground text-center">
-                    品名固定為「商品」・發票將以客人購票時的姓名 / Email 開立（綠界會員載具）
+                    品名固定為「商品」・買受人資料自動帶入客人購票時的姓名 / Email / 電話
                   </p>
                 </div>
               )}
