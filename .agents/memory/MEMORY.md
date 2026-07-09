@@ -1,4 +1,5 @@
 - [Confirmation email rendering](confirmation-email.md) — confirmation HTML is code-owned (not admin-editable body); always escapeHtml user data; QR needs a live registration row.
+- [On-site POS e-invoice rules](pos-invoicing.md) — B2C personal Print=0 needs a carrier (email-bound member carrier); POS invoices use synthetic POS- paymentRef; never test-issue from dev (prod keys).
 - [Payment-to-entry lifecycle rules](payment-entry-lifecycle.md) — admission requires paid (null amount ≠ free); QR email only after payment; paid-transition atomic+idempotent; "missing email" = order never reached paid.
 - [html5-qrcode + React DOM conflict](qr-scanner-react-dom-conflict.md) — scanner target div must have NO React children or toggling scan crashes page to white; placeholders go in siblings.
 - [Code sandbox masks secrets](code-sandbox-env-secrets.md) — viewEnvVars returns secret presence booleans not values; secret-bearing API calls must run in the deployed app, not the sandbox.

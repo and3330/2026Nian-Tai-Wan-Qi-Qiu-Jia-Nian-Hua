@@ -18,6 +18,7 @@ const ALL_NAVS: NavItem[] = [
   { href: "/admin/invoices", label: "發票管理", icon: ReceiptText, roles: ["editor"] },
   { href: "/admin/tournament", label: "戰鬥陀螺賽", icon: Trophy, roles: ["editor"] },
   { href: "/admin/checkin", label: "現場報到", icon: ScanLine, roles: ["checkin"] },
+  { href: "/admin/pos", label: "現場收費開發票", icon: ReceiptText, roles: ["checkin"] },
   { href: "/admin/email-templates", label: "Email 模板", icon: Mail, roles: ["editor"] },
   { href: "/admin/news", label: "最新消息管理", icon: Newspaper, roles: ["editor"] },
   { href: "/admin/contestants", label: "選手管理", icon: Users, roles: ["editor"] },

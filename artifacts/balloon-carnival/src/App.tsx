@@ -34,6 +34,7 @@ import AdminSocialAccounts from "@/pages/Admin/SocialAccountsManage";
 import AdminSocialPosts from "@/pages/Admin/SocialPostsManage";
 import AdminAutomation from "@/pages/Admin/AutomationSettings";
 import AdminCheckin from "@/pages/Admin/CheckinPage";
+import AdminPOS from "@/pages/Admin/POSPage";
 import AdminEmailTemplates from "@/pages/Admin/EmailTemplatesPage";
 import AdminUsersManage from "@/pages/Admin/UsersManage";
 import AdminPromoCodesManage from "@/pages/Admin/PromoCodesManage";
@@ -114,6 +115,9 @@ function Router() {
         </Route>
         <Route path="/admin/checkin">
           {() => <AdminLayout><AdminCheckin /></AdminLayout>}
+        </Route>
+        <Route path="/admin/pos">
+          {() => <AdminLayout><AdminPOS /></AdminLayout>}
         </Route>
         <Route path="/admin/email-templates">
           {() => <AdminLayout><AdminEmailTemplates /></AdminLayout>}
