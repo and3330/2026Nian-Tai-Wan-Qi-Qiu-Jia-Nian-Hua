@@ -6,9 +6,11 @@ import {
   paymentTransactionsTable,
   refundRequestsTable,
 } from "@workspace/db";
+import { invoicesTable } from "@workspace/db";
 import { requireRole } from "../middlewares/authMiddleware";
 import { logger } from "../lib/logger";
-import { sendRefundBankInfoEmail } from "../services/email-service";
+import { sendRefundBankInfoEmail, sendRefundNotifyEmail } from "../services/email-service";
+import { voidInvoice } from "../lib/ecpay-invoice";
 
 const router: IRouter = Router();
 
@@ -77,32 +79,40 @@ router.post("/refund-requests", async (req, res): Promise<void> => {
       return;
     }
 
-    const [existing] = await db
-      .select({ id: refundRequestsTable.id, status: refundRequestsTable.status })
-      .from(refundRequestsTable)
-      .where(
-        and(
-          eq(refundRequestsTable.paymentRef, ref),
-          sql`${refundRequestsTable.status} IN ('pending', 'approved')`,
-        ),
-      )
-      .limit(1);
-    if (existing) {
+    // Atomic duplicate guard: the existing-request check and the insert run in
+    // one transaction under a per-order advisory lock, so two concurrent
+    // submissions for the same paymentRef cannot both pass the check.
+    const outcome = await db.transaction(async (txn) => {
+      await txn.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`refund:${ref}`}))`);
+      const [existing] = await txn
+        .select({ id: refundRequestsTable.id })
+        .from(refundRequestsTable)
+        .where(
+          and(
+            eq(refundRequestsTable.paymentRef, ref),
+            sql`${refundRequestsTable.status} IN ('pending', 'approved')`,
+          ),
+        )
+        .limit(1);
+      if (existing) return { duplicate: true as const };
+      const [created] = await txn
+        .insert(refundRequestsTable)
+        .values({
+          paymentRef: ref,
+          buyerName: matched.parentName,
+          buyerContact: contactRaw,
+          reason,
+          status: "pending",
+          refundAmount: tx.amount,
+        })
+        .returning({ id: refundRequestsTable.id });
+      return { duplicate: false as const, created };
+    });
+    if (outcome.duplicate) {
       res.status(409).json({ error: "此訂單已有處理中的退票申請，請耐心等候或來電查詢" });
       return;
     }
-
-    const [created] = await db
-      .insert(refundRequestsTable)
-      .values({
-        paymentRef: ref,
-        buyerName: matched.parentName,
-        buyerContact: contactRaw,
-        reason,
-        status: "pending",
-        refundAmount: tx.amount,
-      })
-      .returning({ id: refundRequestsTable.id });
+    const created = outcome.created;
 
     logger.info({ refundId: created.id, paymentRef: ref }, "[refund] new request submitted");
 
@@ -303,7 +313,95 @@ async function loadRequestWithRegs(id: number) {
   return { request, regs };
 }
 
-// ── Admin: approve refund (releases inventory) ─────────────────────────────
+// ── Approve helper (shared by single + bulk endpoints) ─────────────────────
+// Marks the request approved, flags all order registrations as refunded
+// (releases inventory), voids the payment transaction, and best-effort voids
+// the issued e-invoice via ECPay. The external invoice call runs OUTSIDE the
+// DB transaction; its outcome is reported back (never silently swallowed).
+async function approveRefundRequest(
+  id: number,
+  opts: { adminNote?: string; refundAmount?: number; userId: string | null },
+): Promise<
+  | { ok: true; invoiceVoid: { attempted: boolean; success: boolean; message: string } }
+  | { ok: false; status: number; error: string }
+> {
+  const result = await db.transaction(async (tx) => {
+    const [request] = await tx
+      .select()
+      .from(refundRequestsTable)
+      .where(eq(refundRequestsTable.id, id))
+      .for("update");
+    if (!request) return { ok: false as const, status: 404, error: "找不到此退票申請" };
+    if (request.status !== "pending") {
+      return { ok: false as const, status: 400, error: `此申請已處於「${request.status}」狀態，無法重複處理` };
+    }
+    await tx
+      .update(registrationsTable)
+      .set({ paymentStatus: "refunded" })
+      .where(
+        and(
+          eq(registrationsTable.paymentRef, request.paymentRef),
+          sql`${registrationsTable.paymentStatus} <> 'refunded'`,
+        ),
+      );
+    // Void the order's payment transaction record as well.
+    await tx
+      .update(paymentTransactionsTable)
+      .set({ status: "refunded" })
+      .where(eq(paymentTransactionsTable.paymentRef, request.paymentRef));
+    await tx
+      .update(refundRequestsTable)
+      .set({
+        status: "approved",
+        adminNote: opts.adminNote || request.adminNote,
+        refundAmount: opts.refundAmount ?? request.refundAmount,
+        processedBy: opts.userId,
+        processedAt: new Date(),
+      })
+      .where(eq(refundRequestsTable.id, id));
+    return { ok: true as const, paymentRef: request.paymentRef };
+  });
+
+  if (!result.ok) return result;
+
+  // Best-effort: void the issued e-invoice for this order (external ECPay
+  // call — cannot be part of the DB transaction). Failure does not roll back
+  // the refund; it is surfaced to the admin so they can retry manually.
+  const invoiceVoid = { attempted: false, success: false, message: "此訂單沒有已開立的發票" };
+  try {
+    const [invoice] = await db
+      .select()
+      .from(invoicesTable)
+      .where(and(eq(invoicesTable.paymentRef, result.paymentRef), eq(invoicesTable.status, "issued")))
+      .orderBy(desc(invoicesTable.id))
+      .limit(1);
+    if (invoice?.invoiceNumber && invoice.invoiceDate) {
+      invoiceVoid.attempted = true;
+      const dateOnly = invoice.invoiceDate.split("+")[0]?.split(" ")[0]?.split("T")[0] ?? invoice.invoiceDate;
+      const voidResult = await voidInvoice(invoice.invoiceNumber, dateOnly, "退票退款");
+      invoiceVoid.success = voidResult.success;
+      invoiceVoid.message = voidResult.success
+        ? `發票 ${invoice.invoiceNumber} 已作廢`
+        : `發票作廢失敗：${voidResult.message}`;
+      if (voidResult.success) {
+        await db
+          .update(invoicesTable)
+          .set({ status: "voided", voidedAt: new Date() })
+          .where(eq(invoicesTable.id, invoice.id));
+      }
+    }
+  } catch (err) {
+    invoiceVoid.attempted = true;
+    invoiceVoid.success = false;
+    invoiceVoid.message = "發票作廢失敗，請至發票管理手動作廢";
+    logger.error({ err, id }, "[refund] invoice void error");
+  }
+
+  logger.info({ id, userId: opts.userId, invoiceVoid }, "[refund] approved");
+  return { ok: true, invoiceVoid };
+}
+
+// ── Admin: approve refund (releases inventory, voids order + invoice) ──────
 router.post(
   "/admin/refund-requests/:id/approve",
   requireRole("editor"),
@@ -315,48 +413,100 @@ router.post(
     const userId = (req as { user?: { id?: string } }).user?.id ?? null;
 
     try {
-      const result = await db.transaction(async (tx) => {
-        const [request] = await tx
-          .select()
-          .from(refundRequestsTable)
-          .where(eq(refundRequestsTable.id, id))
-          .for("update");
-        if (!request) return { ok: false as const, status: 404, error: "not found" };
-        if (request.status !== "pending") {
-          return { ok: false as const, status: 400, error: `此申請已處於「${request.status}」狀態，無法重複處理` };
-        }
-        await tx
-          .update(registrationsTable)
-          .set({ paymentStatus: "refunded" })
-          .where(
-            and(
-              eq(registrationsTable.paymentRef, request.paymentRef),
-              sql`${registrationsTable.paymentStatus} <> 'refunded'`,
-            ),
-          );
-        await tx
-          .update(refundRequestsTable)
-          .set({
-            status: "approved",
-            adminNote: adminNote || request.adminNote,
-            refundAmount: refundAmountInput ?? request.refundAmount,
-            processedBy: userId,
-            processedAt: new Date(),
-          })
-          .where(eq(refundRequestsTable.id, id));
-        return { ok: true as const };
-      });
-
+      const result = await approveRefundRequest(id, { adminNote, refundAmount: refundAmountInput, userId });
       if (!result.ok) {
         res.status(result.status).json({ error: result.error });
         return;
       }
-      logger.info({ id, userId }, "[refund] approved");
-      res.json({ ok: true, status: "approved" });
+      res.json({ ok: true, status: "approved", invoiceVoid: result.invoiceVoid });
     } catch (err) {
       logger.error({ err }, "[refund] approve error");
       res.status(500).json({ error: "處理失敗，請稍後再試" });
     }
+  },
+);
+
+// ── Admin: send the refund-approved notification email ─────────────────────
+router.post(
+  "/admin/refund-requests/:id/send-notify-email",
+  requireRole("editor"),
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+    try {
+      const result = await sendRefundNotifyEmail(id);
+      if (!result.delivered) {
+        res.status(400).json({ error: result.message || "寄送失敗" });
+        return;
+      }
+      logger.info({ id }, "[refund] notify email sent by admin");
+      res.json({ ok: true, message: result.message });
+    } catch (err) {
+      logger.error({ err, id }, "[refund] send notify email error");
+      res.status(500).json({ error: "寄送失敗，請稍後再試" });
+    }
+  },
+);
+
+// ── Admin: bulk operations ──────────────────────────────────────────────────
+// action: approve | reject | send-bank-email | send-notify-email
+// Processes each id independently and reports per-id results, so one bad row
+// never blocks the rest of the batch.
+router.post(
+  "/admin/refund-requests/bulk",
+  requireRole("editor"),
+  async (req, res): Promise<void> => {
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const action = typeof body.action === "string" ? body.action : "";
+    const rawIds: unknown[] = Array.isArray(body.ids) ? body.ids : [];
+    const ids = [...new Set(rawIds.filter((v): v is number => typeof v === "number" && Number.isFinite(v)))];
+    const adminNote = typeof body.adminNote === "string" ? body.adminNote.trim() : "";
+    const userId = (req as { user?: { id?: string } }).user?.id ?? null;
+
+    const ACTIONS = new Set(["approve", "reject", "send-bank-email", "send-notify-email"]);
+    if (!ACTIONS.has(action)) { res.status(400).json({ error: "無效的批量操作" }); return; }
+    if (ids.length === 0 || ids.length > 100) {
+      res.status(400).json({ error: "請選擇 1~100 筆申請" });
+      return;
+    }
+    if (action === "reject" && adminNote.length < 3) {
+      res.status(400).json({ error: "批量拒絕需填寫原因（至少 3 字）" });
+      return;
+    }
+
+    const results: { id: number; ok: boolean; message: string }[] = [];
+    for (const id of ids) {
+      try {
+        if (action === "approve") {
+          const r = await approveRefundRequest(id, { adminNote, userId });
+          results.push(
+            r.ok
+              ? { id, ok: true, message: r.invoiceVoid.attempted ? r.invoiceVoid.message : "已核准退票" }
+              : { id, ok: false, message: r.error },
+          );
+        } else if (action === "reject") {
+          const [updated] = await db
+            .update(refundRequestsTable)
+            .set({ status: "rejected", adminNote, processedBy: userId, processedAt: new Date() })
+            .where(and(eq(refundRequestsTable.id, id), eq(refundRequestsTable.status, "pending")))
+            .returning({ id: refundRequestsTable.id });
+          results.push(updated ? { id, ok: true, message: "已拒絕" } : { id, ok: false, message: "非待處理狀態，已略過" });
+        } else if (action === "send-bank-email") {
+          const r = await sendRefundBankInfoEmail(id);
+          results.push({ id, ok: r.delivered, message: r.delivered ? "表單信已寄出" : r.message || "寄送失敗" });
+        } else {
+          const r = await sendRefundNotifyEmail(id);
+          results.push({ id, ok: r.delivered, message: r.delivered ? "通知信已寄出" : r.message || "寄送失敗" });
+        }
+      } catch (err) {
+        logger.error({ err, id, action }, "[refund] bulk item error");
+        results.push({ id, ok: false, message: "處理失敗" });
+      }
+    }
+
+    const succeeded = results.filter((r) => r.ok).length;
+    logger.info({ action, total: ids.length, succeeded, userId }, "[refund] bulk done");
+    res.json({ ok: true, action, total: ids.length, succeeded, failed: ids.length - succeeded, results });
   },
 );
 

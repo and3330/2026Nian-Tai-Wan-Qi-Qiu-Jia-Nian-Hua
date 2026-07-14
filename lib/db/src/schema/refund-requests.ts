@@ -23,6 +23,8 @@ export const refundRequestsTable = pgTable(
     bankAccountName: text("bank_account_name"),
     bankAccountNumber: text("bank_account_number"),
     bankInfoSubmittedAt: timestamp("bank_info_submitted_at", { withTimezone: true }),
+    // 退票結果通知信（核准後寄出）
+    notifyEmailSentAt: timestamp("notify_email_sent_at", { withTimezone: true }),
     adminNote: text("admin_note"),
     processedBy: text("processed_by"),
     processedAt: timestamp("processed_at", { withTimezone: true }),

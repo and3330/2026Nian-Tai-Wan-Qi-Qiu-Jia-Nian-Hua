@@ -683,3 +683,83 @@ ${EVENT_INFO.name} 主辦團隊
   }
   return result;
 }
+
+// ── Refund result notification email ───────────────────────────────────────
+// Sent (manually or in bulk) by admins after a refund request has been
+// approved. Tells the buyer the refund is confirmed and reminds them of the
+// 7–14 working-day processing window. If the buyer has not yet submitted
+// their bank info, the tokenized form link is included as well.
+
+export async function sendRefundNotifyEmail(
+  refundRequestId: number,
+): Promise<SendEmailResult | { delivered: false; mode: EmailMode; message: string }> {
+  const [request] = await db
+    .select()
+    .from(refundRequestsTable)
+    .where(eq(refundRequestsTable.id, refundRequestId))
+    .limit(1);
+  if (!request) {
+    return { delivered: false, mode: getEmailMode(), message: "找不到退票申請" };
+  }
+  if (request.status !== "approved") {
+    return { delivered: false, mode: getEmailMode(), message: "僅已退票（核准）的申請可寄送退票通知信" };
+  }
+
+  let to = request.buyerContact.includes("@") ? request.buyerContact.trim() : "";
+  if (!to) {
+    const regs = await db
+      .select({ email: registrationsTable.email })
+      .from(registrationsTable)
+      .where(eq(registrationsTable.paymentRef, request.paymentRef));
+    to = regs.find((r) => r.email)?.email ?? "";
+  }
+  if (!to) {
+    return { delivered: false, mode: getEmailMode(), message: "此訂單沒有 Email，無法寄送退票通知信" };
+  }
+
+  // If bank info is still missing, include the form link so the buyer can
+  // complete it — lazily creating the token if it was never generated.
+  let formSection = "";
+  if (!request.bankInfoSubmittedAt) {
+    let token = request.bankInfoToken;
+    if (!token) {
+      token = crypto.randomBytes(16).toString("hex");
+      await db
+        .update(refundRequestsTable)
+        .set({ bankInfoToken: token })
+        .where(eq(refundRequestsTable.id, refundRequestId));
+    }
+    formSection = `
+⚠️ 我們尚未收到您的退款帳戶資料，請儘速點擊以下連結填寫，以便完成退款：
+${getPublicBaseUrl()}/refund-info/${token}
+`;
+  }
+
+  const amountLine = request.refundAmount != null ? `退款金額：NT$ ${request.refundAmount.toLocaleString("zh-TW")}\n` : "";
+  const body = `親愛的 ${request.buyerName} 您好，
+
+您的退票申請（訂單編號：${request.paymentRef}）已核准，票券已完成退票。
+${amountLine}${formSection}
+我們將依您提供的退款帳戶資訊進行退款作業。
+⏰ 退款需要 7 到 14 個工作天，敬請耐心等候。
+
+原訂單之票券與發票將一併作廢，恕無法再供入場使用。
+
+如有任何問題，請洽服務專線 ${EVENT_INFO.servicePhone}。
+
+${EVENT_INFO.name} 主辦團隊
+`;
+
+  const result = await sendEmail({
+    to,
+    subject: `【${EVENT_INFO.name}】退票完成通知 - ${request.paymentRef}`,
+    body,
+  });
+  if (result.delivered) {
+    await db
+      .update(refundRequestsTable)
+      .set({ notifyEmailSentAt: new Date() })
+      .where(eq(refundRequestsTable.id, refundRequestId));
+  }
+  return result;
+}

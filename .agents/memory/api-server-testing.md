@@ -14,5 +14,4 @@ The api-server uses **vitest + supertest** (run via `pnpm --filter @workspace/ap
 - `vitest.config.ts` sets `fileParallelism: false` so suites sharing the DB don't race on capacity counts.
 
 **Why:** there was no test infra before; this pattern lets integration tests run against the real schema without provisioning a separate DB and without corrupting dev data.
-
-**Pre-existing unrelated failure:** `pnpm --filter @workspace/api-server run typecheck` fails at `src/routes/payments.ts` (`Property 'user' does not exist on Request`) independent of tests — don't be alarmed.
+- Admin (role-gated) routes can be tested by stubbing the auth contract in the test app: a middleware that sets `req.isAuthenticated = () => true` and `req.hasRole = () => true` before mounting the router (see `test/refund-bulk.test.ts`).

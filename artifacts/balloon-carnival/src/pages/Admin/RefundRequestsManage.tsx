@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Redirect } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, XCircle, RefreshCw, Calendar, Filter, Mail, Landmark } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, RefreshCw, Calendar, Filter, Mail, Landmark, Send } from "lucide-react";
 
 interface RefundRow {
   id: number;
@@ -21,6 +21,7 @@ interface RefundRow {
   bankAccountName: string | null;
   bankAccountNumber: string | null;
   bankInfoSubmittedAt: string | null;
+  notifyEmailSentAt: string | null;
   adminNote: string | null;
   processedBy: string | null;
   processedAt: string | null;
@@ -80,6 +81,7 @@ export default function AdminRefundRequestsManage() {
   const [detail, setDetail] = useState<DetailResponse | null>(null);
   const [adminNote, setAdminNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -87,6 +89,7 @@ export default function AdminRefundRequestsManage() {
       const q = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : "";
       const data = await api<RefundRow[]>(`/admin/refund-requests${q}`);
       setRows(data);
+      setSelected(new Set());
     } catch (e) {
       toast({ variant: "destructive", title: "載入失敗", description: (e as Error).message });
     } finally {
@@ -115,14 +118,24 @@ export default function AdminRefundRequestsManage() {
 
   const approve = async () => {
     if (!detail) return;
-    if (!window.confirm(`確定核准退票？將釋放 ${detail.registrations.reduce((s, r) => s + r.ticketCount, 0)} 個名額。`)) return;
+    if (!window.confirm(`確定核准退票？將釋放 ${detail.registrations.reduce((s, r) => s + r.ticketCount, 0)} 個名額，並自動作廢對應的訂單與發票。`)) return;
     setBusy(true);
     try {
-      await api(`/admin/refund-requests/${detail.request.id}/approve`, {
-        method: "POST",
-        body: JSON.stringify({ adminNote: adminNote.trim() || undefined }),
+      const r = await api<{ invoiceVoid?: { attempted: boolean; success: boolean; message: string } }>(
+        `/admin/refund-requests/${detail.request.id}/approve`,
+        {
+          method: "POST",
+          body: JSON.stringify({ adminNote: adminNote.trim() || undefined }),
+        },
+      );
+      const iv = r.invoiceVoid;
+      toast({
+        title: "已核准退票",
+        description: iv?.attempted
+          ? `票券已標記為退款。${iv.message}`
+          : "票券已標記為退款，名額已釋放（此訂單無已開立發票）。",
+        variant: iv?.attempted && !iv.success ? "destructive" : undefined,
       });
-      toast({ title: "已核准退票", description: "票券已標記為退款，名額已釋放。" });
       setOpenId(null);
       refresh();
     } catch (e) {
@@ -147,6 +160,72 @@ export default function AdminRefundRequestsManage() {
       refresh();
     } catch (e) {
       toast({ variant: "destructive", title: "處理失敗", description: (e as Error).message });
+    } finally { setBusy(false); }
+  };
+
+  const sendNotifyEmail = async () => {
+    if (!detail) return;
+    if (!window.confirm("寄出「退票完成通知」Email 給買家？")) return;
+    setBusy(true);
+    try {
+      await api(`/admin/refund-requests/${detail.request.id}/send-notify-email`, { method: "POST" });
+      toast({ title: "已寄出通知信", description: "退票完成通知信件已寄出。" });
+      openDetail(detail.request.id);
+      refresh();
+    } catch (e) {
+      toast({ variant: "destructive", title: "寄送失敗", description: (e as Error).message });
+    } finally { setBusy(false); }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAll = () => {
+    setSelected((prev) => (prev.size === rows.length ? new Set<number>() : new Set(rows.map((r) => r.id))));
+  };
+
+  interface BulkResponse {
+    total: number; succeeded: number; failed: number;
+    results: { id: number; ok: boolean; message: string }[];
+  }
+  const runBulk = async (action: "approve" | "reject" | "send-bank-email" | "send-notify-email") => {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    const CONFIRM: Record<string, string> = {
+      approve: `批量核准 ${ids.length} 筆退票？票券與付款紀錄將標記為已退款，並自動作廢對應發票。`,
+      reject: `批量拒絕 ${ids.length} 筆退票申請？`,
+      "send-bank-email": `批量寄出「退款資料表單」Email（${ids.length} 筆）？`,
+      "send-notify-email": `批量寄出「退票完成通知」Email（${ids.length} 筆）？僅已退票的申請會寄出。`,
+    };
+    let note = "";
+    if (action === "reject") {
+      const input = window.prompt("請輸入拒絕原因（至少 3 字），將套用至所有選取的申請：");
+      if (input === null) return;
+      note = input.trim();
+      if (note.length < 3) { toast({ variant: "destructive", title: "拒絕原因至少 3 字" }); return; }
+    }
+    if (!window.confirm(CONFIRM[action])) return;
+    setBusy(true);
+    try {
+      const r = await api<BulkResponse>(`/admin/refund-requests/bulk`, {
+        method: "POST",
+        body: JSON.stringify({ action, ids, adminNote: note || undefined }),
+      });
+      const failedItems = r.results.filter((x) => !x.ok);
+      toast({
+        title: `批量操作完成：成功 ${r.succeeded} 筆，失敗 ${r.failed} 筆`,
+        description: failedItems.length > 0
+          ? failedItems.slice(0, 5).map((x) => `#${x.id} ${x.message}`).join("；") + (failedItems.length > 5 ? "…" : "")
+          : undefined,
+        variant: r.failed > 0 ? "destructive" : undefined,
+      });
+      refresh();
+    } catch (e) {
+      toast({ variant: "destructive", title: "批量操作失敗", description: (e as Error).message });
     } finally { setBusy(false); }
   };
 
@@ -222,6 +301,51 @@ export default function AdminRefundRequestsManage() {
         ))}
       </div>
 
+      {canAct && selected.size > 0 && (
+        <div className="flex items-center gap-2 flex-wrap bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 text-sm" data-testid="bulk-toolbar">
+          <span className="font-medium">已選取 {selected.size} 筆</span>
+          <button
+            onClick={() => runBulk("approve")}
+            disabled={busy}
+            data-testid="button-bulk-approve"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
+          >
+            <CheckCircle2 size={14} /> 批量退票成功
+          </button>
+          <button
+            onClick={() => runBulk("reject")}
+            disabled={busy}
+            data-testid="button-bulk-reject"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-destructive text-destructive text-xs font-medium hover:bg-destructive/5 disabled:opacity-50"
+          >
+            <XCircle size={14} /> 批量拒絕
+          </button>
+          <button
+            onClick={() => runBulk("send-bank-email")}
+            disabled={busy}
+            data-testid="button-bulk-bank-email"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
+          >
+            <Mail size={14} /> 批量寄退款資料表單
+          </button>
+          <button
+            onClick={() => runBulk("send-notify-email")}
+            disabled={busy}
+            data-testid="button-bulk-notify-email"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
+          >
+            <Send size={14} /> 批量寄退票通知信
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            disabled={busy}
+            className="ml-auto px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted"
+          >
+            取消選取
+          </button>
+        </div>
+      )}
+
       <section className="bg-white rounded-2xl border overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin inline mr-2" /> 載入中…</div>
@@ -231,6 +355,17 @@ export default function AdminRefundRequestsManage() {
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase text-muted-foreground border-b bg-muted/30">
               <tr>
+                {canAct && (
+                  <th className="pl-4 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={rows.length > 0 && selected.size === rows.length}
+                      onChange={toggleSelectAll}
+                      data-testid="checkbox-select-all"
+                      className="rounded"
+                    />
+                  </th>
+                )}
                 <th className="px-4 py-3">訂單編號</th>
                 <th className="px-4 py-3">買家</th>
                 <th className="px-4 py-3">原因</th>
@@ -243,6 +378,17 @@ export default function AdminRefundRequestsManage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20" data-testid={`refund-row-${r.id}`}>
+                  {canAct && (
+                    <td className="pl-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(r.id)}
+                        onChange={() => toggleSelect(r.id)}
+                        data-testid={`checkbox-select-${r.id}`}
+                        className="rounded"
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3 font-mono">{r.paymentRef}</td>
                   <td className="px-4 py-3">
                     <div>{r.buyerName}</div>
@@ -307,20 +453,35 @@ export default function AdminRefundRequestsManage() {
                       <Landmark size={16} className="text-primary" /> 退款帳戶資料
                     </h3>
                     {canAct && (
-                      <button
-                        onClick={resendBankEmail}
-                        disabled={busy}
-                        data-testid="button-resend-bank-email"
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
-                      >
-                        <Mail size={14} /> 補發退款資料表單 Email
-                      </button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={resendBankEmail}
+                          disabled={busy}
+                          data-testid="button-resend-bank-email"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
+                        >
+                          <Mail size={14} /> 補發退款資料表單 Email
+                        </button>
+                        {detail.request.status === "approved" && (
+                          <button
+                            onClick={sendNotifyEmail}
+                            disabled={busy}
+                            data-testid="button-send-notify-email"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
+                          >
+                            <Send size={14} /> 寄退票完成通知信
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {detail.request.bankInfoEmailSentAt
                       ? `表單 Email 已於 ${new Date(detail.request.bankInfoEmailSentAt).toLocaleString("zh-TW")} 寄出`
                       : "尚未寄出退款資料表單 Email"}
+                    {detail.request.notifyEmailSentAt && (
+                      <> ・退票通知信已於 {new Date(detail.request.notifyEmailSentAt).toLocaleString("zh-TW")} 寄出</>
+                    )}
                   </div>
                   {detail.request.bankInfoSubmittedAt ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 pt-1">
