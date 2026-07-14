@@ -284,6 +284,78 @@ router.get(
   },
 );
 
+// ── Admin: CSV export ──────────────────────────────────────────────────────
+// Includes bank-account PII, so this is editor-only (viewer/checkin cannot
+// bypass redaction via export).
+const REFUND_STATUS_LABELS: Record<string, string> = {
+  pending: "待處理",
+  approved: "退票成功",
+  rejected: "已拒絕",
+  rescheduled: "已改期",
+};
+router.get(
+  "/admin/refund-requests/export",
+  requireRole("editor"),
+  async (req, res): Promise<void> => {
+    try {
+      const statusFilter = typeof req.query.status === "string" ? req.query.status : undefined;
+      const rows = statusFilter
+        ? await db
+            .select()
+            .from(refundRequestsTable)
+            .where(eq(refundRequestsTable.status, statusFilter))
+            .orderBy(desc(refundRequestsTable.createdAt))
+        : await db
+            .select()
+            .from(refundRequestsTable)
+            .orderBy(desc(refundRequestsTable.createdAt));
+
+      // CSV-quote and neutralize formula injection: values starting with
+      // = + - @ (after optional whitespace) get a leading ' so spreadsheet
+      // apps treat them as text, not formulas.
+      const escape = (v: unknown) => {
+        let s = String(v ?? "");
+        if (/^\s*[=+\-@]/.test(s)) s = `'${s}`;
+        return `"${s.replace(/"/g, '""')}"`;
+      };
+      const header =
+        "ID,訂單編號,購票人姓名,聯絡方式,退票原因,狀態,退票金額(元),表單購買資訊,表單姓名,表單電話,銀行名稱,分行,戶名,帳號,銀行資料提交時間,表單信寄出時間,通知信寄出時間,管理備註,處理人,處理時間,申請時間\n";
+      const csvRows = rows.map((r) =>
+        [
+          r.id,
+          escape(r.paymentRef),
+          escape(r.buyerName),
+          escape(r.buyerContact),
+          escape(r.reason),
+          escape(REFUND_STATUS_LABELS[r.status] ?? r.status),
+          r.refundAmount ?? "",
+          escape(r.formPurchaseInfo),
+          escape(r.formName),
+          escape(r.formPhone),
+          escape(r.bankName),
+          escape(r.bankBranch),
+          escape(r.bankAccountName),
+          escape(r.bankAccountNumber),
+          r.bankInfoSubmittedAt ? r.bankInfoSubmittedAt.toISOString() : "",
+          r.bankInfoEmailSentAt ? r.bankInfoEmailSentAt.toISOString() : "",
+          r.notifyEmailSentAt ? r.notifyEmailSentAt.toISOString() : "",
+          escape(r.adminNote),
+          escape(r.processedBy),
+          r.processedAt ? r.processedAt.toISOString() : "",
+          r.createdAt.toISOString(),
+        ].join(","),
+      );
+      const csv = header + csvRows.join("\n");
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", "attachment; filename=refund-requests.csv");
+      res.send("\uFEFF" + csv);
+    } catch (err) {
+      logger.error({ err }, "[refund] admin export error");
+      res.status(500).json({ error: "匯出失敗" });
+    }
+  },
+);
+
 // Bank-account details are sensitive financial PII: only editors (and owner)
 // may read them. Viewer/checkin staff still see the request itself, plus
 // whether the buyer has submitted their bank info, but not the values.

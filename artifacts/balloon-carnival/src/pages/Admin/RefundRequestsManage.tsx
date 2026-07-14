@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Redirect } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, XCircle, RefreshCw, Calendar, Filter, Mail, Landmark, Send } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, RefreshCw, Calendar, Filter, Mail, Landmark, Send, Download } from "lucide-react";
 
 interface RefundRow {
   id: number;
@@ -82,6 +82,30 @@ export default function AdminRefundRequestsManage() {
   const [adminNote, setAdminNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const q = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : "";
+      const res = await fetch(`/api/admin/refund-requests/export${q}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `refund-requests_${new Date().toISOString().split("T")[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast({ variant: "destructive", title: "匯出失敗", description: "請稍後再試" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -269,13 +293,25 @@ export default function AdminRefundRequestsManage() {
             處理買家提出的退票申請。核准退票會釋放名額；如雙方同意改期，可直接點選新日期改票，本筆申請會自動結案。
           </p>
         </div>
-        <button
-          onClick={refresh}
-          data-testid="button-refresh-refunds"
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border hover:bg-muted text-sm"
-        >
-          <RefreshCw size={14} /> 重新整理
-        </button>
+        <div className="flex items-center gap-2">
+          {canAct && (
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              data-testid="button-export-refunds"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border hover:bg-muted text-sm disabled:opacity-50"
+            >
+              <Download size={14} /> {isExporting ? "匯出中..." : "匯出 CSV"}
+            </button>
+          )}
+          <button
+            onClick={refresh}
+            data-testid="button-refresh-refunds"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border hover:bg-muted text-sm"
+          >
+            <RefreshCw size={14} /> 重新整理
+          </button>
+        </div>
       </header>
 
       <div className="flex items-center gap-2 text-sm">
