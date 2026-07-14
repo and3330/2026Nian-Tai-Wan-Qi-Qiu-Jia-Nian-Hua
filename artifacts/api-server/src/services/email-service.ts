@@ -1,6 +1,7 @@
-import { db, emailTemplatesTable, registrationsTable } from "@workspace/db";
+import { db, emailTemplatesTable, registrationsTable, refundRequestsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import QRCode from "qrcode";
+import crypto from "node:crypto";
 import { logger } from "../lib/logger";
 
 export type EmailMode = "resend" | "console";
@@ -602,6 +603,83 @@ export async function sendConfirmationEmail(
       .update(registrationsTable)
       .set({ confirmationEmailSentAt: new Date() })
       .where(eq(registrationsTable.id, registrationId));
+  }
+  return result;
+}
+
+// ── Refund bank-info request email ─────────────────────────────────────────
+// Sent when a buyer submits a refund request (and re-sendable by admins).
+// Contains a tokenized link to a public form where the buyer fills in their
+// purchase details and bank account so we can wire the refund back.
+
+export async function sendRefundBankInfoEmail(
+  refundRequestId: number,
+): Promise<SendEmailResult | { delivered: false; mode: EmailMode; message: string }> {
+  const [request] = await db
+    .select()
+    .from(refundRequestsTable)
+    .where(eq(refundRequestsTable.id, refundRequestId))
+    .limit(1);
+  if (!request) {
+    return { delivered: false, mode: getEmailMode(), message: "找不到退票申請" };
+  }
+
+  // Resolve a destination email: the contact the buyer typed if it is an
+  // email, otherwise fall back to the order's registration email.
+  let to = request.buyerContact.includes("@") ? request.buyerContact.trim() : "";
+  if (!to) {
+    const regs = await db
+      .select({ email: registrationsTable.email })
+      .from(registrationsTable)
+      .where(eq(registrationsTable.paymentRef, request.paymentRef));
+    to = regs.find((r) => r.email)?.email ?? "";
+  }
+  if (!to) {
+    return { delivered: false, mode: getEmailMode(), message: "此訂單沒有 Email，無法寄送退款資料表單" };
+  }
+
+  // Lazily create the unguessable form token on first send.
+  let token = request.bankInfoToken;
+  if (!token) {
+    token = crypto.randomBytes(16).toString("hex");
+    await db
+      .update(refundRequestsTable)
+      .set({ bankInfoToken: token })
+      .where(eq(refundRequestsTable.id, refundRequestId));
+  }
+
+  const formUrl = `${getPublicBaseUrl()}/refund-info/${token}`;
+  const body = `親愛的 ${request.buyerName} 您好，
+
+我們已收到您的退票申請（訂單編號：${request.paymentRef}）。
+
+為了完成退款作業，請點擊以下連結填寫退款資料表單：
+
+${formUrl}
+
+表單需填寫的資訊：
+• 購買的時間、日期
+• 姓名、電話／手機
+• 退款帳戶資訊（銀行名稱、分行、戶名、帳號）
+
+您提交資料後，我們將統一進行退款作業。
+⏰ 退款需要 7 到 14 個工作天，敬請耐心等候。
+
+如有任何問題，請洽服務專線 ${EVENT_INFO.servicePhone}。
+
+${EVENT_INFO.name} 主辦團隊
+`;
+
+  const result = await sendEmail({
+    to,
+    subject: `【${EVENT_INFO.name}】退票申請已收到，請填寫退款資料 - ${request.paymentRef}`,
+    body,
+  });
+  if (result.delivered) {
+    await db
+      .update(refundRequestsTable)
+      .set({ bankInfoEmailSentAt: new Date() })
+      .where(eq(refundRequestsTable.id, refundRequestId));
   }
   return result;
 }

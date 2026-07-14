@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { requireRole } from "../middlewares/authMiddleware";
 import { logger } from "../lib/logger";
+import { sendRefundBankInfoEmail } from "../services/email-service";
 
 const router: IRouter = Router();
 
@@ -104,7 +105,19 @@ router.post("/refund-requests", async (req, res): Promise<void> => {
       .returning({ id: refundRequestsTable.id });
 
     logger.info({ refundId: created.id, paymentRef: ref }, "[refund] new request submitted");
-    res.status(201).json({ id: created.id, status: "pending", message: "已收到您的退票申請，工作人員會於 3 個工作天內處理並回覆。" });
+
+    // Fire-and-forget: email the buyer a tokenized link to the refund
+    // bank-info form. Failures are logged (admins can resend from the
+    // back-office) and never block the request submission itself.
+    void sendRefundBankInfoEmail(created.id)
+      .then((r) => {
+        if (!r.delivered) {
+          logger.warn({ refundId: created.id, message: r.message }, "[refund] bank-info email not delivered");
+        }
+      })
+      .catch((err) => logger.error({ err, refundId: created.id }, "[refund] bank-info email error"));
+
+    res.status(201).json({ id: created.id, status: "pending", message: "已收到您的退票申請，我們已寄出退款資料表單 Email，請依信件指示填寫退款帳戶資訊；提交後退款需要 7 到 14 個工作天。" });
   } catch (err) {
     logger.error({ err }, "[refund] submit error");
     res.status(500).json({ error: "申請失敗，請稍後再試" });
@@ -134,6 +147,108 @@ router.get("/refund-requests/by-ref/:ref", async (req, res): Promise<void> => {
   res.json(rows);
 });
 
+// ── Public: refund bank-info form (tokenized link from the email) ─────────
+router.get("/refund-info/:token", async (req, res): Promise<void> => {
+  const token = req.params.token?.trim();
+  if (!token || token.length < 16) { res.status(400).json({ error: "無效的連結" }); return; }
+  const [request] = await db
+    .select({
+      id: refundRequestsTable.id,
+      paymentRef: refundRequestsTable.paymentRef,
+      buyerName: refundRequestsTable.buyerName,
+      status: refundRequestsTable.status,
+      refundAmount: refundRequestsTable.refundAmount,
+      bankInfoSubmittedAt: refundRequestsTable.bankInfoSubmittedAt,
+      createdAt: refundRequestsTable.createdAt,
+    })
+    .from(refundRequestsTable)
+    .where(eq(refundRequestsTable.bankInfoToken, token))
+    .limit(1);
+  if (!request) { res.status(404).json({ error: "連結無效或已失效，請聯絡客服" }); return; }
+  res.json(request);
+});
+
+router.post("/refund-info/:token", async (req, res): Promise<void> => {
+  try {
+    const token = req.params.token?.trim();
+    if (!token || token.length < 16) { res.status(400).json({ error: "無效的連結" }); return; }
+    const [request] = await db
+      .select()
+      .from(refundRequestsTable)
+      .where(eq(refundRequestsTable.bankInfoToken, token))
+      .limit(1);
+    if (!request) { res.status(404).json({ error: "連結無效或已失效，請聯絡客服" }); return; }
+    if (request.status === "rejected" || request.status === "rescheduled") {
+      res.status(400).json({ error: "此退票申請已結案，如有疑問請聯絡客服" });
+      return;
+    }
+
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const field = (key: string, label: string, max: number): string | null => {
+      const v = typeof body[key] === "string" ? body[key].trim() : "";
+      if (!v) { res.status(400).json({ error: `請填寫${label}` }); return null; }
+      if (v.length > max) { res.status(400).json({ error: `${label}長度過長` }); return null; }
+      return v;
+    };
+    const formPurchaseInfo = field("purchaseInfo", "購買的時間、日期", 200); if (formPurchaseInfo === null) return;
+    const formName = field("name", "姓名", 100); if (formName === null) return;
+    const formPhone = field("phone", "電話／手機", 50); if (formPhone === null) return;
+    const bankName = field("bankName", "銀行名稱", 100); if (bankName === null) return;
+    const bankBranch = field("bankBranch", "分行", 100); if (bankBranch === null) return;
+    const bankAccountName = field("bankAccountName", "戶名", 100); if (bankAccountName === null) return;
+    const bankAccountNumber = field("bankAccountNumber", "帳號", 30); if (bankAccountNumber === null) return;
+    if (!/^[0-9-]{6,30}$/.test(bankAccountNumber)) {
+      res.status(400).json({ error: "帳號格式錯誤，請輸入 6~30 位數字" });
+      return;
+    }
+
+    await db
+      .update(refundRequestsTable)
+      .set({
+        formPurchaseInfo,
+        formName,
+        formPhone,
+        bankName,
+        bankBranch,
+        bankAccountName,
+        bankAccountNumber,
+        bankInfoSubmittedAt: new Date(),
+      })
+      .where(eq(refundRequestsTable.id, request.id));
+
+    logger.info({ refundId: request.id }, "[refund] bank info submitted");
+    res.json({
+      ok: true,
+      message: "已收到您的退款帳戶資料，我們將統一進行退款作業。退款需要 7 到 14 個工作天，敬請耐心等候。",
+    });
+  } catch (err) {
+    logger.error({ err }, "[refund] bank info submit error");
+    res.status(500).json({ error: "提交失敗，請稍後再試" });
+  }
+});
+
+// ── Admin: (re)send the refund bank-info email ─────────────────────────────
+router.post(
+  "/admin/refund-requests/:id/resend-bank-email",
+  requireRole("editor"),
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+    try {
+      const result = await sendRefundBankInfoEmail(id);
+      if (!result.delivered) {
+        res.status(400).json({ error: result.message || "寄送失敗" });
+        return;
+      }
+      logger.info({ id }, "[refund] bank-info email resent by admin");
+      res.json({ ok: true, message: result.message });
+    } catch (err) {
+      logger.error({ err, id }, "[refund] resend bank-info email error");
+      res.status(500).json({ error: "寄送失敗，請稍後再試" });
+    }
+  },
+);
+
 // ── Admin: list ────────────────────────────────────────────────────────────
 router.get(
   "/admin/refund-requests",
@@ -151,13 +266,31 @@ router.get(
             .select()
             .from(refundRequestsTable)
             .orderBy(desc(refundRequestsTable.createdAt));
-      res.json(rows);
+      res.json(rows.map((r) => redactBankFields(r, req.hasRole("editor"))));
     } catch (err) {
       logger.error({ err }, "[refund] admin list error");
       res.status(500).json({ error: "Failed to load refund requests" });
     }
   },
 );
+
+// Bank-account details are sensitive financial PII: only editors (and owner)
+// may read them. Viewer/checkin staff still see the request itself, plus
+// whether the buyer has submitted their bank info, but not the values.
+function redactBankFields<T extends Record<string, unknown>>(row: T, canReadBank: boolean): T {
+  if (canReadBank) return row;
+  return {
+    ...row,
+    formPurchaseInfo: null,
+    formName: null,
+    formPhone: null,
+    bankName: null,
+    bankBranch: null,
+    bankAccountName: null,
+    bankAccountNumber: null,
+    bankInfoToken: null,
+  };
+}
 
 // Helper: load a request + its order regs
 async function loadRequestWithRegs(id: number) {
@@ -366,7 +499,7 @@ router.get(
       .from(paymentTransactionsTable)
       .where(eq(paymentTransactionsTable.paymentRef, data.request.paymentRef));
     res.json({
-      request: data.request,
+      request: redactBankFields(data.request, req.hasRole("editor")),
       transaction: tx ?? null,
       registrations: data.regs.map((r) => ({
         id: r.id,

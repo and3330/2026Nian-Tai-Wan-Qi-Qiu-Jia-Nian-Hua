@@ -19,6 +19,7 @@ import SponsorsPage from "@/pages/SponsorsPage";
 import AdGuidePage from "@/pages/AdGuidePage";
 import PaymentResultPage from "@/pages/PaymentResultPage";
 import OrderLookupPage from "@/pages/OrderLookupPage";
+import RefundInfoPage from "@/pages/RefundInfoPage";
 
 // Admin Pages
 import AdminLayout from "@/pages/AdminLayout";
@@ -81,6 +82,7 @@ function Router() {
         <Route path="/ad-guide" component={AdGuidePage} />
         <Route path="/payment/result" component={PaymentResultPage} />
         <Route path="/lookup" component={OrderLookupPage} />
+        <Route path="/refund-info/:token" component={RefundInfoPage} />
 
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route path="/admin">

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Redirect } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, XCircle, RefreshCw, Calendar, Filter } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, RefreshCw, Calendar, Filter, Mail, Landmark } from "lucide-react";
 
 interface RefundRow {
   id: number;
@@ -12,6 +12,15 @@ interface RefundRow {
   reason: string;
   status: "pending" | "approved" | "rejected" | "rescheduled";
   refundAmount: number | null;
+  bankInfoEmailSentAt: string | null;
+  formPurchaseInfo: string | null;
+  formName: string | null;
+  formPhone: string | null;
+  bankName: string | null;
+  bankBranch: string | null;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
+  bankInfoSubmittedAt: string | null;
   adminNote: string | null;
   processedBy: string | null;
   processedAt: string | null;
@@ -138,6 +147,20 @@ export default function AdminRefundRequestsManage() {
       refresh();
     } catch (e) {
       toast({ variant: "destructive", title: "處理失敗", description: (e as Error).message });
+    } finally { setBusy(false); }
+  };
+
+  const resendBankEmail = async () => {
+    if (!detail) return;
+    if (!window.confirm("補發「退款資料表單」Email 給買家？")) return;
+    setBusy(true);
+    try {
+      await api(`/admin/refund-requests/${detail.request.id}/resend-bank-email`, { method: "POST" });
+      toast({ title: "已補發 Email", description: "退款資料表單信件已寄出。" });
+      openDetail(detail.request.id);
+      refresh();
+    } catch (e) {
+      toast({ variant: "destructive", title: "補發失敗", description: (e as Error).message });
     } finally { setBusy(false); }
   };
 
@@ -275,6 +298,45 @@ export default function AdminRefundRequestsManage() {
                   </div>
                   {detail.request.adminNote && (
                     <div><span className="text-muted-foreground">處理備註：</span>{detail.request.adminNote}</div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border p-4 text-sm space-y-2">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <h3 className="font-medium flex items-center gap-2">
+                      <Landmark size={16} className="text-primary" /> 退款帳戶資料
+                    </h3>
+                    {canAct && (
+                      <button
+                        onClick={resendBankEmail}
+                        disabled={busy}
+                        data-testid="button-resend-bank-email"
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
+                      >
+                        <Mail size={14} /> 補發退款資料表單 Email
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {detail.request.bankInfoEmailSentAt
+                      ? `表單 Email 已於 ${new Date(detail.request.bankInfoEmailSentAt).toLocaleString("zh-TW")} 寄出`
+                      : "尚未寄出退款資料表單 Email"}
+                  </div>
+                  {detail.request.bankInfoSubmittedAt ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 pt-1">
+                      <div><span className="text-muted-foreground">購買時間：</span>{detail.request.formPurchaseInfo}</div>
+                      <div><span className="text-muted-foreground">姓名：</span>{detail.request.formName}</div>
+                      <div><span className="text-muted-foreground">電話：</span>{detail.request.formPhone}</div>
+                      <div><span className="text-muted-foreground">銀行：</span>{detail.request.bankName}</div>
+                      <div><span className="text-muted-foreground">分行：</span>{detail.request.bankBranch}</div>
+                      <div><span className="text-muted-foreground">戶名：</span>{detail.request.bankAccountName}</div>
+                      <div><span className="text-muted-foreground">帳號：</span><span className="font-mono">{detail.request.bankAccountNumber}</span></div>
+                      <div className="text-xs text-muted-foreground sm:col-span-2">
+                        提交時間：{new Date(detail.request.bankInfoSubmittedAt).toLocaleString("zh-TW")}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-amber-700">買家尚未回填退款帳戶資料。</div>
                   )}
                 </div>
 

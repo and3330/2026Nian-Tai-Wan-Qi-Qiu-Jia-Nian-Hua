@@ -11,6 +11,18 @@ export const refundRequestsTable = pgTable(
     // pending | approved | rejected | rescheduled
     status: text("status").notNull().default("pending"),
     refundAmount: integer("refund_amount"),
+    // Unguessable token embedded in the "fill in your bank account" email link
+    bankInfoToken: text("bank_info_token").unique(),
+    bankInfoEmailSentAt: timestamp("bank_info_email_sent_at", { withTimezone: true }),
+    // Buyer-submitted refund form (via the public token link)
+    formPurchaseInfo: text("form_purchase_info"),
+    formName: text("form_name"),
+    formPhone: text("form_phone"),
+    bankName: text("bank_name"),
+    bankBranch: text("bank_branch"),
+    bankAccountName: text("bank_account_name"),
+    bankAccountNumber: text("bank_account_number"),
+    bankInfoSubmittedAt: timestamp("bank_info_submitted_at", { withTimezone: true }),
     adminNote: text("admin_note"),
     processedBy: text("processed_by"),
     processedAt: timestamp("processed_at", { withTimezone: true }),
