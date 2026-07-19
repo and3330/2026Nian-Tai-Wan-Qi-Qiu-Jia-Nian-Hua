@@ -23,6 +23,9 @@ export const registrationsTable = pgTable(
     discountAmount: integer("discount_amount"),
     qrToken: text("qr_token").unique(),
     checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
+    // Heads admitted so far (partial check-in): a multi-person ticket may be
+    // checked in across several scans until it reaches ticketCount.
+    checkedInCount: integer("checked_in_count").notNull().default(0),
     confirmationEmailSentAt: timestamp("confirmation_email_sent_at", { withTimezone: true }),
     weekReminderSentAt: timestamp("week_reminder_sent_at", { withTimezone: true }),
     dayReminderSentAt: timestamp("day_reminder_sent_at", { withTimezone: true }),
@@ -39,6 +42,7 @@ export const insertRegistrationSchema = createInsertSchema(registrationsTable).o
   createdAt: true,
   qrToken: true,
   checkedInAt: true,
+  checkedInCount: true,
   confirmationEmailSentAt: true,
   weekReminderSentAt: true,
   dayReminderSentAt: true,

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, registrationsTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -42,7 +42,8 @@ router.get("/admin/checkin/lookup/:token", async (req, res): Promise<void> => {
   }
   res.json({
     registration: reg,
-    alreadyCheckedIn: !!reg.checkedInAt,
+    alreadyCheckedIn: reg.checkedInCount >= reg.ticketCount,
+    remaining: Math.max(0, reg.ticketCount - reg.checkedInCount),
     admissible: isAdmissible(reg),
   });
 });
@@ -67,22 +68,55 @@ router.post("/admin/checkin/:token", async (req, res): Promise<void> => {
     });
     return;
   }
-  if (reg.checkedInAt) {
+  const remaining = reg.ticketCount - reg.checkedInCount;
+  if (remaining <= 0) {
     res.status(409).json({
       registration: reg,
       alreadyCheckedIn: true,
-      error: `此票券已於 ${reg.checkedInAt.toISOString()} 報到過`,
+      error: `此票券 ${reg.ticketCount} 位已全數報到${reg.checkedInAt ? `（最後報到時間 ${reg.checkedInAt.toISOString()}）` : ""}`,
     });
     return;
   }
+  // How many heads to admit this scan. Defaults to all remaining.
+  const rawCount = (req.body ?? {}).count;
+  let count = remaining;
+  if (rawCount !== undefined && rawCount !== null) {
+    count = Number(rawCount);
+    if (!Number.isInteger(count) || count < 1 || count > remaining) {
+      res.status(400).json({
+        error: `報到人數必須是 1 到 ${remaining} 之間的整數`,
+        remaining,
+      });
+      return;
+    }
+  }
+  // Atomic guarded increment: the WHERE clause re-checks the remaining
+  // capacity so concurrent scans can never over-admit.
   const [updated] = await db
     .update(registrationsTable)
-    .set({ checkedInAt: new Date() })
-    .where(eq(registrationsTable.id, reg.id))
+    .set({
+      checkedInAt: new Date(),
+      checkedInCount: sql`${registrationsTable.checkedInCount} + ${count}`,
+    })
+    .where(
+      and(
+        eq(registrationsTable.id, reg.id),
+        sql`${registrationsTable.checkedInCount} + ${count} <= ${registrationsTable.ticketCount}`,
+      ),
+    )
     .returning();
+  if (!updated) {
+    res.status(409).json({
+      registration: reg,
+      error: "報到人數已變動，請重新查詢票券",
+    });
+    return;
+  }
   res.json({
     registration: updated,
     alreadyCheckedIn: false,
+    checkedInNow: count,
+    remaining: updated.ticketCount - updated.checkedInCount,
   });
 });
 

@@ -14,6 +14,7 @@ type Registration = {
   eventDate: string;
   qrToken: string | null;
   checkedInAt: string | null;
+  checkedInCount: number;
   createdAt: string;
 };
 
@@ -21,8 +22,12 @@ type LookupResult =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "found"; reg: Registration; alreadyCheckedIn: boolean }
-  | { kind: "checked"; reg: Registration; alreadyCheckedIn: boolean }
+  | { kind: "checked"; reg: Registration; alreadyCheckedIn: boolean; checkedInNow?: number }
   | { kind: "error"; message: string };
+
+function remainingOf(reg: Registration): number {
+  return Math.max(0, reg.ticketCount - (reg.checkedInCount ?? 0));
+}
 
 const SCANNER_ELEMENT_ID = "qr-scanner-container";
 const FILE_SCAN_ELEMENT_ID = "qr-file-scan-container";
@@ -62,6 +67,7 @@ export default function CheckinPage() {
   const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [decodingFile, setDecodingFile] = useState(false);
+  const [checkinCount, setCheckinCount] = useState<number>(1);
   const scannerRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastScannedRef = useRef<string>("");
@@ -80,6 +86,7 @@ export default function CheckinPage() {
         return;
       }
       const data = await res.json();
+      setCheckinCount(remainingOf(data.registration));
       setResult({ kind: "found", reg: data.registration, alreadyCheckedIn: data.alreadyCheckedIn });
     } catch (err) {
       setResult({ kind: "error", message: (err as Error).message });
@@ -91,14 +98,16 @@ export default function CheckinPage() {
     performLookup(tokenInput.trim());
   };
 
-  const performCheckin = async (token: string) => {
+  const performCheckin = async (token: string, count: number) => {
     try {
       const res = await fetch(`/api/admin/checkin/${encodeURIComponent(token)}`, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ count }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 409) {
+      if (res.status === 409 && data.registration && data.alreadyCheckedIn === true) {
         setResult({ kind: "checked", reg: data.registration, alreadyCheckedIn: true });
         return;
       }
@@ -106,7 +115,12 @@ export default function CheckinPage() {
         setResult({ kind: "error", message: data.error || `報到失敗 (${res.status})` });
         return;
       }
-      setResult({ kind: "checked", reg: data.registration, alreadyCheckedIn: false });
+      setResult({
+        kind: "checked",
+        reg: data.registration,
+        alreadyCheckedIn: false,
+        checkedInNow: data.checkedInNow,
+      });
     } catch (err) {
       setResult({ kind: "error", message: (err as Error).message });
     }
@@ -354,14 +368,19 @@ export default function CheckinPage() {
                 <div className="flex-1">
                   <h3 className="font-bold text-xl mb-1">
                     {result.kind === "checked" && !result.alreadyCheckedIn
-                      ? "報到成功 ✓"
+                      ? `報到成功 ✓${result.checkedInNow ? `（本次 ${result.checkedInNow} 位）` : ""}`
                       : result.alreadyCheckedIn
-                        ? "已重複報到"
+                        ? "已全數報到"
                         : "票券資訊"}
                   </h3>
                   {result.alreadyCheckedIn && result.reg.checkedInAt && (
                     <p className="text-sm text-amber-700">
-                      此票券已於 {new Date(result.reg.checkedInAt).toLocaleString("zh-TW")} 報到
+                      此票券 {result.reg.ticketCount} 位已全數報到（最後報到 {new Date(result.reg.checkedInAt).toLocaleString("zh-TW")}）
+                    </p>
+                  )}
+                  {result.kind === "checked" && !result.alreadyCheckedIn && remainingOf(result.reg) > 0 && (
+                    <p className="text-sm text-amber-700 font-bold">
+                      尚有 {remainingOf(result.reg)} 位未報到，之後可再掃同一張票補報到
                     </p>
                   )}
                 </div>
@@ -395,16 +414,55 @@ export default function CheckinPage() {
                 </div>
                 <div className="text-muted-foreground">入場日期：</div>
                 <div className="font-bold text-primary">{result.reg.eventDate}</div>
+                {(result.reg.checkedInCount ?? 0) > 0 && (
+                  <>
+                    <div className="text-muted-foreground">報到進度：</div>
+                    <div className="font-bold">
+                      已報到 {result.reg.checkedInCount} / {result.reg.ticketCount} 位
+                      {remainingOf(result.reg) > 0 && (
+                        <span className="text-amber-700">（尚餘 {remainingOf(result.reg)} 位）</span>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               {result.kind === "found" && !result.alreadyCheckedIn && result.reg.qrToken && (
-                <button
-                  onClick={() => performCheckin(result.reg.qrToken!)}
-                  className="mt-6 w-full py-4 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-2"
-                  data-testid="button-confirm-checkin"
-                >
-                  <CheckCircle2 size={20} /> 確認報到
-                </button>
+                <div className="mt-6 space-y-3">
+                  {remainingOf(result.reg) > 1 && (
+                    <div className="bg-white/60 rounded-2xl p-4">
+                      <div className="text-sm font-bold mb-2">本次報到人數</div>
+                      <div className="flex flex-wrap gap-2">
+                        {Array.from({ length: remainingOf(result.reg) }, (_, i) => i + 1).map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setCheckinCount(n)}
+                            className={cn(
+                              "w-12 h-12 rounded-xl border-2 font-bold transition-all",
+                              checkinCount === n
+                                ? "bg-green-600 border-green-600 text-white"
+                                : "bg-white border-border hover:border-green-400",
+                            )}
+                            data-testid={`button-count-${n}`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    onClick={() =>
+                      performCheckin(result.reg.qrToken!, Math.min(checkinCount, remainingOf(result.reg)))
+                    }
+                    className="w-full py-4 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-2"
+                    data-testid="button-confirm-checkin"
+                  >
+                    <CheckCircle2 size={20} />
+                    確認報到{remainingOf(result.reg) > 1 ? ` ${Math.min(checkinCount, remainingOf(result.reg))} 位` : ""}
+                  </button>
+                </div>
               )}
 
               <button
