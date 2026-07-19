@@ -228,10 +228,25 @@ export default function POSPage() {
     setCameraError(null);
     setScanning(true);
     try {
-      const { Html5Qrcode } = await import("html5-qrcode");
-      const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID);
+      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
+      const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, {
+        // Native BarcodeDetector (when available) is far better at 1D
+        // barcodes like the Code 39 phone-barcode carrier.
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_128,
+        ],
+        verbose: false,
+      });
       scannerRef.current = scanner;
-      const config = { fps: 10, qrbox: { width: 240, height: 240 } };
+      const isCarrierScan = scanTargetRef.current === "carrier";
+      const config = {
+        fps: 10,
+        // Wide box for 1D carrier barcodes; square box for ticket QR codes.
+        qrbox: isCarrierScan ? { width: 300, height: 140 } : { width: 240, height: 240 },
+      };
       try {
         await scanner.start({ facingMode: "environment" }, config, onDecoded, () => {});
       } catch (primaryErr) {
@@ -263,8 +278,16 @@ export default function POSPage() {
       setCameraError(null);
       setDecodingFile(true);
       try {
-        const { Html5Qrcode } = await import("html5-qrcode");
-        const fileScanner = new Html5Qrcode(FILE_SCAN_ELEMENT_ID);
+        const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
+        const fileScanner = new Html5Qrcode(FILE_SCAN_ELEMENT_ID, {
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.CODE_128,
+          ],
+          verbose: false,
+        });
         try {
           const decodedText = await fileScanner.scanFile(file, false);
           onDecoded(decodedText);
@@ -276,7 +299,7 @@ export default function POSPage() {
       } catch {
         setResult({
           kind: "error",
-          message: "照片中找不到 QR Code，請對準票券重新拍攝，或改用手動輸入 token。",
+          message: "照片中找不到 QR Code 或條碼，請重新對準拍攝，或改用手動輸入。",
         });
       } finally {
         setDecodingFile(false);
