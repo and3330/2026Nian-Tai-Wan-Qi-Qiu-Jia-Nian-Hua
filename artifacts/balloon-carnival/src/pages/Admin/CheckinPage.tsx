@@ -41,6 +41,9 @@ function describeCameraError(err: unknown): string {
   if (insecure) {
     return "瀏覽器基於安全限制，必須在 https 安全連線下才能開啟相機。請改用「拍照掃描」或確認網址為 https。";
   }
+  if (/Failed to fetch dynamically imported module|Importing a module script failed/i.test(msg)) {
+    return "系統剛更新，頁面版本過舊。請重新整理此頁後再開啟相機。";
+  }
   if (name === "NotAllowedError" || /permission|denied/i.test(msg)) {
     return "相機權限被拒絕。請到瀏覽器設定允許本網站使用相機，或改用下方「拍照掃描」。";
   }

@@ -15,3 +15,4 @@
 - [Refund bank-info flow](refund-bank-info.md) — tokenized public form collects bank account; redact bank PII server-side for non-editor roles; refunds quoted as 7–14 working days.
 - [Payment method classification](payment-method-classification.md) — sub-method (CVS/ATM/credit) lives in raw_result.Result.PaymentType (nested, not top-level); join paid registrations on payment_ref + SUM(amount) for per-method revenue.
 - [Vendor role isolation](vendor-role-isolation.md) — vendor role is session-bound to one vendor; "any authenticated admin" endpoints are no longer safe, list explicit roles.
+- [Stale chunk after redeploy](stale-chunk-reload.md) — deploys break lazy import() on stale pages; keep the vite:preloadError one-shot reload listener in the web entry.
