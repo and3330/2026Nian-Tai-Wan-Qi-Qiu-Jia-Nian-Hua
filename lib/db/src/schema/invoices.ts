@@ -13,6 +13,9 @@ export const invoicesTable = pgTable("invoices", {
   buyerEmail: text("buyer_email"),
   buyerPhone: text("buyer_phone"),
   buyerAddr: text("buyer_addr"),
+  // POS sales attribution: which booth vendor collected this sale (null for
+  // online-order invoices and staff-issued POS invoices without a vendor).
+  vendorId: integer("vendor_id"),
   amount: integer("amount").notNull(),
   status: text("status").notNull().default("pending"),
   invoiceNumber: text("invoice_number"),

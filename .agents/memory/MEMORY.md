@@ -14,3 +14,4 @@
 - [Expose a new registration field end-to-end](api-response-schema-codegen.md) — list/lookup responses are zod-parsed (strip unknown keys); new column needs DB push + openapi.yaml + codegen + prod migration.
 - [Refund bank-info flow](refund-bank-info.md) — tokenized public form collects bank account; redact bank PII server-side for non-editor roles; refunds quoted as 7–14 working days.
 - [Payment method classification](payment-method-classification.md) — sub-method (CVS/ATM/credit) lives in raw_result.Result.PaymentType (nested, not top-level); join paid registrations on payment_ref + SUM(amount) for per-method revenue.
+- [Vendor role isolation](vendor-role-isolation.md) — vendor role is session-bound to one vendor; "any authenticated admin" endpoints are no longer safe, list explicit roles.

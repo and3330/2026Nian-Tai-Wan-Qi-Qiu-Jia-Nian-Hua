@@ -10,14 +10,16 @@ export const SESSION_TTL = 7 * 24 * 60 * 60 * 1000;
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "1";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "aa3210";
 
-export type AdminRole = "owner" | "editor" | "checkin" | "viewer";
-export const ALL_ROLES: AdminRole[] = ["owner", "editor", "checkin", "viewer"];
+export type AdminRole = "owner" | "editor" | "checkin" | "viewer" | "vendor";
+export const ALL_ROLES: AdminRole[] = ["owner", "editor", "checkin", "viewer", "vendor"];
 
 export interface SessionUser {
   id: string;
   username: string;
   role: AdminRole;
   displayName?: string | null;
+  // For role=vendor accounts: the booth vendor this account belongs to.
+  vendorId?: number | null;
 }
 
 export interface SessionData {
@@ -80,6 +82,7 @@ export async function authenticateAdmin(username: string, password: string): Pro
       username: row.username,
       role: row.role as AdminRole,
       displayName: row.displayName,
+      vendorId: row.vendorId ?? null,
     },
   };
 }

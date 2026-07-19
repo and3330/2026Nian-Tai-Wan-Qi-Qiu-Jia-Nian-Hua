@@ -863,7 +863,7 @@ router.post("/admin/registrations/clear-duplicate-pending", async (req, res): Pr
 });
 
 router.get("/admin/stats", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "viewer", "editor", "checkin")) return;
 
   const rows = await db
     .select({
@@ -890,7 +890,7 @@ router.get("/admin/stats", async (req, res): Promise<void> => {
 });
 
 router.get("/admin/sales-overview", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "viewer", "editor", "checkin")) return;
 
   // Per-session occupied seats: every registration that still holds a seat — i.e.
   // not failed and not refunded — regardless of payment status, so reserved-but-unpaid
@@ -1082,7 +1082,7 @@ router.get("/admin/sales-overview", async (req, res): Promise<void> => {
 // registrations to their transaction so the figures match the rest of the
 // overview (paid only, refunds excluded, real `amount` so combos aren't doubled).
 router.get("/admin/payment-methods", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "viewer", "editor", "checkin")) return;
 
   const methodExpr = sql<string>`CASE
     WHEN ${paymentTransactionsTable.provider} = 'stripe' THEN 'credit'
@@ -1258,7 +1258,7 @@ router.delete("/admin/contestants/:id", async (req, res): Promise<void> => {
 });
 
 router.get("/admin/sponsors", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res)) return;
+  if (!requireAuth(req, res, "viewer", "editor", "checkin")) return;
 
   const sponsors = await db
     .select()

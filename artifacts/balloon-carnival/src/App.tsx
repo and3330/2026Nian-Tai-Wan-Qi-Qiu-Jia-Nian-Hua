@@ -40,6 +40,7 @@ import AdminEmailTemplates from "@/pages/Admin/EmailTemplatesPage";
 import AdminUsersManage from "@/pages/Admin/UsersManage";
 import AdminPromoCodesManage from "@/pages/Admin/PromoCodesManage";
 import AdminRefundRequestsManage from "@/pages/Admin/RefundRequestsManage";
+import AdminVendorsManage from "@/pages/Admin/VendorsManage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -120,6 +121,9 @@ function Router() {
         </Route>
         <Route path="/admin/pos">
           {() => <AdminLayout><AdminPOS /></AdminLayout>}
+        </Route>
+        <Route path="/admin/vendors">
+          {() => <AdminLayout><AdminVendorsManage /></AdminLayout>}
         </Route>
         <Route path="/admin/email-templates">
           {() => <AdminLayout><AdminEmailTemplates /></AdminLayout>}

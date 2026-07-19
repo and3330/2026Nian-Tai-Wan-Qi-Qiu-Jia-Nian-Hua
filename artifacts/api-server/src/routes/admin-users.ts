@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, adminUsersTable } from "@workspace/db";
+import { db, adminUsersTable, vendorsTable } from "@workspace/db";
 import { requireRole } from "../middlewares/authMiddleware";
 import { hashPassword, ALL_ROLES, type AdminRole } from "../lib/auth";
 
@@ -12,11 +12,27 @@ function isValidRole(r: unknown): r is AdminRole {
   return typeof r === "string" && (ALL_ROLES as string[]).includes(r);
 }
 
+// Vendor accounts must be bound to an existing vendor; other roles must not
+// carry a vendorId. Returns the normalized vendorId or an error message.
+async function resolveVendorBinding(role: string, rawVendorId: unknown): Promise<
+  { ok: true; vendorId: number | null } | { ok: false; error: string }
+> {
+  if (role !== "vendor") return { ok: true, vendorId: null };
+  const vendorId = Number(rawVendorId);
+  if (!Number.isInteger(vendorId) || vendorId <= 0) {
+    return { ok: false, error: "商家帳號必須選擇所屬商家" };
+  }
+  const [vendor] = await db.select().from(vendorsTable).where(eq(vendorsTable.id, vendorId));
+  if (!vendor) return { ok: false, error: "所選商家不存在" };
+  return { ok: true, vendorId };
+}
+
 function safeUser(row: typeof adminUsersTable.$inferSelect) {
   return {
     id: row.id,
     username: row.username,
     role: row.role,
+    vendorId: row.vendorId,
     displayName: row.displayName,
     createdBy: row.createdBy,
     createdAt: row.createdAt,
@@ -55,6 +71,12 @@ router.post("/admin/users", ownerOnly, async (req, res) => {
     return;
   }
 
+  const binding = await resolveVendorBinding(role, body.vendorId);
+  if (!binding.ok) {
+    res.status(400).json({ error: binding.error });
+    return;
+  }
+
   const passwordHash = await hashPassword(password);
   const [row] = await db
     .insert(adminUsersTable)
@@ -62,6 +84,7 @@ router.post("/admin/users", ownerOnly, async (req, res) => {
       username,
       passwordHash,
       role,
+      vendorId: binding.vendorId,
       displayName,
       createdBy: req.adminUser?.username ?? null,
     })
@@ -80,6 +103,12 @@ router.put("/admin/users/:id", ownerOnly, async (req, res) => {
       return;
     }
     updates.role = body.role;
+    const binding = await resolveVendorBinding(body.role, body.vendorId);
+    if (!binding.ok) {
+      res.status(400).json({ error: binding.error });
+      return;
+    }
+    updates.vendorId = binding.vendorId;
   }
   if (typeof body.displayName === "string" || body.displayName === null) {
     updates.displayName = (body.displayName as string | null) || null;

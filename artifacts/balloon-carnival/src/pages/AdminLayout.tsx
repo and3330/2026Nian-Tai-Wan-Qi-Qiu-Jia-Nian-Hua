@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, useLocation, Redirect } from "wouter";
 import { useAuth, type AdminRole } from "@workspace/replit-auth-web";
-import { LayoutDashboard, Newspaper, Users, Handshake, ArrowLeft, Share2, FileText, Settings, ScanLine, Mail, ShieldCheck, LogOut, Tag, Undo2, Menu, X, ShoppingCart, Trophy, ReceiptText } from "lucide-react";
+import { LayoutDashboard, Newspaper, Users, Handshake, ArrowLeft, Share2, FileText, Settings, ScanLine, Mail, ShieldCheck, LogOut, Tag, Undo2, Menu, X, ShoppingCart, Trophy, ReceiptText, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -18,7 +18,8 @@ const ALL_NAVS: NavItem[] = [
   { href: "/admin/invoices", label: "發票管理", icon: ReceiptText, roles: ["editor"] },
   { href: "/admin/tournament", label: "戰鬥陀螺賽", icon: Trophy, roles: ["editor"] },
   { href: "/admin/checkin", label: "現場報到", icon: ScanLine, roles: ["checkin"] },
-  { href: "/admin/pos", label: "現場收費開發票", icon: ReceiptText, roles: ["checkin"] },
+  { href: "/admin/pos", label: "現場收費開發票", icon: ReceiptText, roles: ["checkin", "vendor"] },
+  { href: "/admin/vendors", label: "攤位商家管理", icon: Store, roles: ["editor"] },
   { href: "/admin/email-templates", label: "Email 模板", icon: Mail, roles: ["editor"] },
   { href: "/admin/news", label: "最新消息管理", icon: Newspaper, roles: ["editor"] },
   { href: "/admin/contestants", label: "選手管理", icon: Users, roles: ["editor"] },
@@ -36,6 +37,7 @@ const ROLE_LABELS: Record<AdminRole, string> = {
   editor: "編輯",
   checkin: "現場報到",
   viewer: "檢視",
+  vendor: "攤位商家",
 };
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -70,6 +72,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center">載入中...</div>;
   if (!isAuthenticated) return <Redirect to="/admin/login" />;
+  // Vendor accounts have no dashboard access — send them straight to POS.
+  if (role === "vendor" && location === "/admin") return <Redirect to="/admin/pos" />;
 
   const navs = ALL_NAVS.filter((n) => hasRole(...n.roles));
   const currentNav = ALL_NAVS.find(n => n.exact ? location === n.href : location.startsWith(n.href));

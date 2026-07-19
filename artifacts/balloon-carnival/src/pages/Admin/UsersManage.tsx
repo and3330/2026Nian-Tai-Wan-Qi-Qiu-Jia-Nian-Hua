@@ -8,10 +8,18 @@ interface AdminUserRow {
   id: string;
   username: string;
   role: AdminRole;
+  vendorId: number | null;
   displayName: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+interface VendorOption {
+  id: number;
+  name: string;
+  boothNumber: string | null;
+  active: boolean;
 }
 
 const ROLE_LABEL: Record<AdminRole, string> = {
@@ -19,6 +27,7 @@ const ROLE_LABEL: Record<AdminRole, string> = {
   editor: "編輯",
   checkin: "現場報到",
   viewer: "檢視",
+  vendor: "攤位商家",
 };
 
 const ROLE_DESC: Record<AdminRole, string> = {
@@ -26,6 +35,7 @@ const ROLE_DESC: Record<AdminRole, string> = {
   editor: "可編輯內容、Email、社群、自動化",
   checkin: "僅可使用現場報到工具",
   viewer: "僅可檢視報名統計",
+  vendor: "攤位商家：POS 收款開發票、只看自己的收款",
 };
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -51,6 +61,8 @@ export default function AdminUsersManage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [newRole, setNewRole] = useState<AdminRole>("editor");
+  const [newVendorId, setNewVendorId] = useState<string>("");
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -66,7 +78,12 @@ export default function AdminUsersManage() {
   }, [toast]);
 
   useEffect(() => {
-    if (role === "owner") refresh();
+    if (role === "owner") {
+      refresh();
+      api<VendorOption[]>("/admin/vendors")
+        .then((rows) => setVendors(rows))
+        .catch(() => setVendors([]));
+    }
   }, [role, refresh]);
 
   if (isLoading) return null;
@@ -74,14 +91,24 @@ export default function AdminUsersManage() {
 
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (newRole === "vendor" && !newVendorId) {
+      toast({ variant: "destructive", title: "請選擇所屬商家", description: "商家帳號必須綁定一個攤位商家。" });
+      return;
+    }
     setSubmitting(true);
     try {
       await api("/admin/users", {
         method: "POST",
-        body: JSON.stringify({ username: username.trim(), password, displayName: displayName.trim() || null, role: newRole }),
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+          displayName: displayName.trim() || null,
+          role: newRole,
+          ...(newRole === "vendor" ? { vendorId: Number(newVendorId) } : {}),
+        }),
       });
       toast({ title: "已建立帳號" });
-      setUsername(""); setPassword(""); setDisplayName(""); setNewRole("editor");
+      setUsername(""); setPassword(""); setDisplayName(""); setNewRole("editor"); setNewVendorId("");
       refresh();
     } catch (e) {
       toast({ variant: "destructive", title: "建立失敗", description: (e as Error).message });
@@ -92,7 +119,23 @@ export default function AdminUsersManage() {
 
   const onChangeRole = async (id: string, role: AdminRole) => {
     try {
-      await api(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify({ role }) });
+      let vendorId: number | undefined;
+      if (role === "vendor") {
+        const activeVendors = vendors.filter((v) => v.active);
+        if (activeVendors.length === 0) {
+          toast({ variant: "destructive", title: "尚無可用商家", description: "請先到「攤位商家管理」新增商家。" });
+          return;
+        }
+        const list = activeVendors.map((v) => `${v.id}：${v.name}${v.boothNumber ? `（${v.boothNumber}）` : ""}`).join("\n");
+        const input = window.prompt(`請輸入要綁定的商家編號：\n${list}`);
+        if (!input) return;
+        vendorId = Number(input.trim());
+        if (!activeVendors.some((v) => v.id === vendorId)) {
+          toast({ variant: "destructive", title: "商家編號不正確" });
+          return;
+        }
+      }
+      await api(`/admin/users/${id}`, { method: "PUT", body: JSON.stringify({ role, ...(vendorId ? { vendorId } : {}) }) });
       toast({ title: "角色已更新" });
       refresh();
     } catch (e) {
@@ -170,6 +213,24 @@ export default function AdminUsersManage() {
               ))}
             </select>
           </label>
+          {newRole === "vendor" && (
+            <label className="text-sm">
+              <span className="block mb-1 font-medium">所屬商家 *</span>
+              <select
+                data-testid="select-new-vendor"
+                value={newVendorId} onChange={(e) => setNewVendorId(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">— 請選擇商家 —</option>
+                {vendors.filter((v) => v.active).map((v) => (
+                  <option key={v.id} value={v.id}>{v.name}{v.boothNumber ? `（攤位 ${v.boothNumber}）` : ""}</option>
+                ))}
+              </select>
+              {vendors.filter((v) => v.active).length === 0 && (
+                <span className="block mt-1 text-xs text-destructive">尚無商家，請先到「攤位商家管理」新增。</span>
+              )}
+            </label>
+          )}
           <div className="md:col-span-2">
             <button
               type="submit" disabled={submitting}
@@ -216,6 +277,11 @@ export default function AdminUsersManage() {
                           <option key={r} value={r}>{ROLE_LABEL[r]}</option>
                         ))}
                       </select>
+                      {u.role === "vendor" && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          綁定：{vendors.find((v) => v.id === u.vendorId)?.name || `商家 #${u.vendorId ?? "—"}`}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-3 text-muted-foreground text-xs">{u.createdBy || "—"}</td>
                     <td className="px-3 py-3">

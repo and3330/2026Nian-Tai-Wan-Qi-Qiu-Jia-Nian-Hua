@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ReceiptText, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff } from "lucide-react";
+import { ReceiptText, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff, Store } from "lucide-react";
+import { useAuth } from "@workspace/replit-auth-web";
 import { cn } from "@/lib/utils";
 
 type PosRegistration = {
@@ -33,6 +34,13 @@ type IssueState =
   | { kind: "issued"; invoiceNumber: string | null; amount: number }
   | { kind: "failed"; message: string };
 
+type MySales = {
+  vendor: { id: number; name: string; boothNumber: string | null } | null;
+  totals: { count: number; total: number };
+  today: { count: number; total: number };
+  recent: { id: number; amount: number; status: string; invoiceNumber: string | null; buyerName: string | null; createdAt: string }[];
+};
+
 const SCANNER_ELEMENT_ID = "pos-qr-scanner-container";
 const FILE_SCAN_ELEMENT_ID = "pos-qr-file-scan-container";
 
@@ -59,6 +67,10 @@ function describeCameraError(err: unknown): string {
 }
 
 export default function POSPage() {
+  const { role } = useAuth();
+  const isVendor = role === "vendor";
+  const [mySales, setMySales] = useState<MySales | null>(null);
+  const [mySalesError, setMySalesError] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState("");
   const [result, setResult] = useState<LookupResult>({ kind: "idle" });
   const [amountInput, setAmountInput] = useState("");
@@ -75,6 +87,26 @@ export default function POSPage() {
   // What the shared camera is currently scanning for: the ticket QR, or the
   // customer's phone-barcode carrier (財政部手機條碼, Code39 "/XXXXXXX").
   const scanTargetRef = useRef<"ticket" | "carrier">("ticket");
+
+  const refreshMySales = useCallback(async () => {
+    if (!isVendor) return;
+    try {
+      const res = await fetch(`/api/admin/pos/my-sales`, { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMySalesError(data.error || `載入收款統計失敗 (${res.status})`);
+        return;
+      }
+      setMySalesError(null);
+      setMySales(data);
+    } catch (err) {
+      setMySalesError((err as Error).message);
+    }
+  }, [isVendor]);
+
+  useEffect(() => {
+    refreshMySales();
+  }, [refreshMySales]);
 
   const performLookup = useCallback(async (token: string) => {
     if (!token) return;
@@ -148,6 +180,7 @@ export default function POSPage() {
         invoiceNumber: data.invoice?.invoiceNumber ?? null,
         amount: amt,
       });
+      refreshMySales();
     } catch (err) {
       setIssueState({ kind: "failed", message: (err as Error).message });
     }
@@ -278,6 +311,54 @@ export default function POSPage() {
           掃描客人門票 QR Code，輸入現金消費金額，立即開立電子發票（品名固定為「商品」）
         </p>
       </div>
+
+      {isVendor && (
+        <div className="bg-white rounded-3xl border-2 border-primary/20 shadow-sm p-6" data-testid="vendor-sales-panel">
+          <h2 className="font-bold text-lg flex items-center gap-2 mb-4">
+            <Store size={20} className="text-primary" />
+            {mySales?.vendor
+              ? <>我的收款統計 — {mySales.vendor.name}{mySales.vendor.boothNumber ? `（攤位 ${mySales.vendor.boothNumber}）` : ""}</>
+              : "我的收款統計"}
+          </h2>
+          {mySalesError ? (
+            <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {mySalesError}</p>
+          ) : !mySales ? (
+            <p className="text-sm text-muted-foreground">載入中…</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-2xl bg-primary/5 p-4">
+                  <div className="text-xs text-muted-foreground mb-1">今日收款（已開立）</div>
+                  <div className="text-2xl font-bold text-primary" data-testid="text-today-total">NT${mySales.today.total.toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{mySales.today.count} 筆</div>
+                </div>
+                <div className="rounded-2xl bg-muted/40 p-4">
+                  <div className="text-xs text-muted-foreground mb-1">累計收款（已開立）</div>
+                  <div className="text-2xl font-bold" data-testid="text-all-total">NT${mySales.totals.total.toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{mySales.totals.count} 筆</div>
+                </div>
+              </div>
+              {mySales.recent.length > 0 && (
+                <div className="mt-4">
+                  <div className="text-xs font-bold text-muted-foreground uppercase mb-2">最近收款</div>
+                  <ul className="space-y-1 text-sm">
+                    {mySales.recent.slice(0, 10).map((r) => (
+                      <li key={r.id} className="flex justify-between gap-3 border-b last:border-0 py-1.5">
+                        <span className="text-muted-foreground whitespace-nowrap">{new Date(r.createdAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className="font-mono text-xs self-center">{r.invoiceNumber || "—"}</span>
+                        <span className="font-bold">NT${r.amount.toLocaleString()}</span>
+                        <span className={cn("text-xs self-center", r.status === "issued" ? "text-green-600" : r.status === "failed" ? "text-red-500" : "text-muted-foreground")}>
+                          {r.status === "issued" ? "已開立" : r.status === "failed" ? "失敗" : r.status === "voided" ? "已作廢" : r.status}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Camera scanner */}

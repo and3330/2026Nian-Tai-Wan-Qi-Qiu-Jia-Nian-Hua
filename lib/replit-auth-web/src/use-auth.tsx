@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from "react";
 
-export type AdminRole = "owner" | "editor" | "checkin" | "viewer";
+export type AdminRole = "owner" | "editor" | "checkin" | "viewer" | "vendor";
 
 export interface AdminUser {
   id: string;
   username: string;
   role?: AdminRole;
   displayName?: string | null;
+  vendorId?: number | null;
 }
 
 interface AuthState {

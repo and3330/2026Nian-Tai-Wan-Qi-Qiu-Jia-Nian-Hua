@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
 
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const sessionsTable = pgTable(
@@ -33,8 +33,10 @@ export const adminUsersTable = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: varchar("username").notNull().unique(),
   passwordHash: varchar("password_hash").notNull(),
-  // One of: owner | editor | checkin | viewer
+  // One of: owner | editor | checkin | viewer | vendor
   role: varchar("role").notNull(),
+  // For role=vendor accounts: which booth vendor this account belongs to.
+  vendorId: integer("vendor_id"),
   displayName: varchar("display_name"),
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

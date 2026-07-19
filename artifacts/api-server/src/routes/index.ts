@@ -17,6 +17,7 @@ import adminUsersRouter from "./admin-users";
 import promoCodesRouter from "./promo-codes";
 import refundRequestsRouter from "./refund-requests";
 import contestantVotesRouter from "./contestant-votes";
+import vendorsRouter from "./vendors";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(adminUsersRouter);
 router.use(promoCodesRouter);
 router.use(refundRequestsRouter);
 router.use(contestantVotesRouter);
+router.use(vendorsRouter);
 
 export default router;
