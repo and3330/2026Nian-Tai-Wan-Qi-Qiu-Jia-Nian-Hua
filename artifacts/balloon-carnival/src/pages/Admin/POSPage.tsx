@@ -43,6 +43,15 @@ type MySales = {
 
 const SCANNER_ELEMENT_ID = "pos-qr-scanner-container";
 const FILE_SCAN_ELEMENT_ID = "pos-qr-file-scan-container";
+const CARRIER_SCANNER_ELEMENT_ID = "pos-carrier-scanner-container";
+
+const SCANNER_CONSTRUCTOR_CONFIG = (formats: any) => ({
+  // Native BarcodeDetector (when available) is far better at 1D
+  // barcodes like the Code 39 phone-barcode carrier.
+  experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+  formatsToSupport: [formats.QR_CODE, formats.CODE_39, formats.CODE_128],
+  verbose: false,
+});
 
 function describeCameraError(err: unknown): string {
   const name = (err as { name?: string })?.name || "";
@@ -87,9 +96,12 @@ export default function POSPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastScannedRef = useRef<string>("");
   const lastScanTimeRef = useRef<number>(0);
-  // What the shared camera is currently scanning for: the ticket QR, or the
-  // customer's phone-barcode carrier (財政部手機條碼, Code39 "/XXXXXXX").
-  const scanTargetRef = useRef<"ticket" | "carrier">("ticket");
+  // Dedicated inline camera for the customer's phone-barcode carrier
+  // (財政部手機條碼, Code39 "/XXXXXXX") — rendered next to the barcode field
+  // so the staffer never has to scroll back up mid-checkout.
+  const carrierScannerRef = useRef<any>(null);
+  const [carrierScanning, setCarrierScanning] = useState(false);
+  const [carrierCameraError, setCarrierCameraError] = useState<string | null>(null);
 
   const refreshMySales = useCallback(async () => {
     if (!isVendor) return;
@@ -111,8 +123,24 @@ export default function POSPage() {
     refreshMySales();
   }, [refreshMySales]);
 
+  const stopCarrierScanner = useCallback(async () => {
+    if (carrierScannerRef.current) {
+      try {
+        await carrierScannerRef.current.stop();
+      } catch {}
+      try {
+        await carrierScannerRef.current.clear();
+      } catch {}
+      carrierScannerRef.current = null;
+    }
+    setCarrierScanning(false);
+  }, []);
+
   const performLookup = useCallback(async (token: string) => {
     if (!token) return;
+    // A fresh lookup rebuilds the carrier section; await full teardown so the
+    // camera never outlives its target div (white-screen hazard).
+    await stopCarrierScanner();
     setResult({ kind: "loading" });
     setIssueState({ kind: "idle" });
     setAmountInput("");
@@ -137,7 +165,7 @@ export default function POSPage() {
     } catch (err) {
       setResult({ kind: "error", message: (err as Error).message });
     }
-  }, []);
+  }, [stopCarrierScanner]);
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,9 +228,6 @@ export default function POSPage() {
       scannerRef.current = null;
     }
     setScanning(false);
-    // A cancelled carrier scan must not leave the camera hijacking the next
-    // ticket scan.
-    scanTargetRef.current = "ticket";
   }, []);
 
   const onDecoded = useCallback(
@@ -213,43 +238,38 @@ export default function POSPage() {
       }
       lastScannedRef.current = decodedText;
       lastScanTimeRef.current = now;
-      if (scanTargetRef.current === "carrier") {
-        // Phone-barcode carrier scan: normalise and drop it into the barcode
-        // field instead of triggering a ticket lookup.
-        setBarcodeInput(decodedText.trim().toUpperCase());
-        scanTargetRef.current = "ticket";
-        stopScanner();
-        return;
-      }
       setTokenInput(decodedText);
+      // Camera stops as soon as a ticket is scanned, so the customer info
+      // panel is visible immediately without a live video pushing it down.
+      stopScanner();
       performLookup(decodedText);
     },
     [performLookup, stopScanner],
   );
 
+  const onCarrierDecoded = useCallback(
+    (decodedText: string) => {
+      // Normalise and drop the phone-barcode into the field, then stop the
+      // dedicated carrier camera.
+      setBarcodeInput(decodedText.trim().toUpperCase());
+      stopCarrierScanner();
+    },
+    [stopCarrierScanner],
+  );
+
   const startScanner = useCallback(async () => {
+    // Only one camera at a time — the device camera can't serve two streams.
+    await stopCarrierScanner();
     setCameraError(null);
     setScanning(true);
     try {
       const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
-      const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, {
-        // Native BarcodeDetector (when available) is far better at 1D
-        // barcodes like the Code 39 phone-barcode carrier.
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.QR_CODE,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.CODE_128,
-        ],
-        verbose: false,
-      });
+      const scanner = new Html5Qrcode(
+        SCANNER_ELEMENT_ID,
+        SCANNER_CONSTRUCTOR_CONFIG(Html5QrcodeSupportedFormats),
+      );
       scannerRef.current = scanner;
-      const isCarrierScan = scanTargetRef.current === "carrier";
-      const config = {
-        fps: 10,
-        // Wide box for 1D carrier barcodes; square box for ticket QR codes.
-        qrbox: isCarrierScan ? { width: 300, height: 140 } : { width: 240, height: 240 },
-      };
+      const config = { fps: 10, qrbox: { width: 240, height: 240 } };
       try {
         await scanner.start({ facingMode: "environment" }, config, onDecoded, () => {});
       } catch (primaryErr) {
@@ -267,11 +287,42 @@ export default function POSPage() {
       scannerRef.current = null;
       setCameraError(describeCameraError(err));
       setScanning(false);
-      // Failed carrier-scan startup must not leave the next scan in carrier
-      // mode.
-      scanTargetRef.current = "ticket";
     }
-  }, [onDecoded]);
+  }, [onDecoded, stopCarrierScanner]);
+
+  const startCarrierScanner = useCallback(async () => {
+    // Only one camera at a time — stop the ticket scanner first.
+    await stopScanner();
+    setCarrierCameraError(null);
+    setCarrierScanning(true);
+    try {
+      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
+      const scanner = new Html5Qrcode(
+        CARRIER_SCANNER_ELEMENT_ID,
+        SCANNER_CONSTRUCTOR_CONFIG(Html5QrcodeSupportedFormats),
+      );
+      carrierScannerRef.current = scanner;
+      // Wide box for the 1D Code 39 carrier barcode.
+      const config = { fps: 10, qrbox: { width: 300, height: 140 } };
+      try {
+        await scanner.start({ facingMode: "environment" }, config, onCarrierDecoded, () => {});
+      } catch (primaryErr) {
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || cameras.length === 0) throw primaryErr;
+        const rear =
+          cameras.find((c) => /back|rear|environment|後/i.test(c.label)) ||
+          cameras[cameras.length - 1];
+        await scanner.start(rear.id, config, onCarrierDecoded, () => {});
+      }
+    } catch (err) {
+      try {
+        await carrierScannerRef.current?.clear();
+      } catch {}
+      carrierScannerRef.current = null;
+      setCarrierCameraError(describeCameraError(err));
+      setCarrierScanning(false);
+    }
+  }, [onCarrierDecoded, stopScanner]);
 
   const handleFileScan = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,17 +365,20 @@ export default function POSPage() {
   useEffect(() => {
     return () => {
       stopScanner();
+      stopCarrierScanner();
     };
-  }, [stopScanner]);
+  }, [stopScanner, stopCarrierScanner]);
 
-  const resetAll = () => {
+  const resetAll = async () => {
+    // Await teardown before unmounting the carrier section (white-screen hazard).
+    await stopCarrierScanner();
     setResult({ kind: "idle" });
     setIssueState({ kind: "idle" });
     setTokenInput("");
     setAmountInput("");
     setCarrierChoice("ecpay_carrier");
     setBarcodeInput("");
-    scanTargetRef.current = "ticket";
+    setCarrierCameraError(null);
   };
 
   return (
@@ -398,7 +452,6 @@ export default function POSPage() {
                 if (scanning) {
                   stopScanner();
                 } else {
-                  scanTargetRef.current = "ticket";
                   startScanner();
                 }
               }}
@@ -565,7 +618,11 @@ export default function POSPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setCarrierChoice("ecpay_carrier")}
+                      onClick={async () => {
+                        // Await teardown before the carrier section unmounts.
+                        await stopCarrierScanner();
+                        setCarrierChoice("ecpay_carrier");
+                      }}
                       className={cn(
                         "px-4 py-3 rounded-xl border-2 text-sm font-bold text-left transition-all",
                         carrierChoice === "ecpay_carrier"
@@ -596,34 +653,59 @@ export default function POSPage() {
                   </div>
 
                   {carrierChoice === "phone_barcode" && (
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={barcodeInput}
-                        onChange={(e) => setBarcodeInput(e.target.value.toUpperCase())}
-                        placeholder="/AB12345"
-                        maxLength={8}
-                        className="flex-1 px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-primary font-mono text-lg"
-                        data-testid="input-pos-barcode"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          scanTargetRef.current = "carrier";
-                          startScanner();
-                        }}
-                        disabled={scanning}
-                        className="px-4 py-3 rounded-xl border-2 border-primary/30 text-primary font-bold text-sm hover:bg-primary/5 transition-all disabled:opacity-50 flex items-center gap-2"
-                        data-testid="button-scan-barcode"
+                    <>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={barcodeInput}
+                          onChange={(e) => setBarcodeInput(e.target.value.toUpperCase())}
+                          placeholder="/AB12345"
+                          maxLength={8}
+                          className="flex-1 px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-primary font-mono text-lg"
+                          data-testid="input-pos-barcode"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (carrierScanning) {
+                              stopCarrierScanner();
+                            } else {
+                              startCarrierScanner();
+                            }
+                          }}
+                          className={cn(
+                            "px-4 py-3 rounded-xl border-2 font-bold text-sm transition-all flex items-center gap-2",
+                            carrierScanning
+                              ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                              : "border-primary/30 text-primary hover:bg-primary/5",
+                          )}
+                          data-testid="button-scan-barcode"
+                        >
+                          {carrierScanning ? <><CameraOff size={16} /> 停止</> : <><Camera size={16} /> 掃描條碼</>}
+                        </button>
+                      </div>
+                      {/* Dedicated inline carrier camera — opens right here so the
+                          staffer never scrolls back to the top scanner. Target div
+                          kept FREE of React children (html5-qrcode owns it). */}
+                      <div
+                        className={cn(
+                          "w-full bg-muted/30 rounded-2xl overflow-hidden",
+                          carrierScanning ? "min-h-[220px]" : "hidden",
+                        )}
                       >
-                        <Camera size={16} /> 掃描條碼
-                      </button>
-                    </div>
-                  )}
-                  {carrierChoice === "phone_barcode" && scanning && (
-                    <p className="text-xs text-primary text-center">
-                      相機已開啟（上方掃描區），請對準客人手機上的條碼
-                    </p>
+                        <div id={CARRIER_SCANNER_ELEMENT_ID} className="w-full" />
+                      </div>
+                      {carrierScanning && (
+                        <p className="text-xs text-primary text-center">
+                          請對準客人手機上的「/」開頭條碼，掃到後會自動填入
+                        </p>
+                      )}
+                      {carrierCameraError && (
+                        <p className="text-xs text-red-600 text-center flex items-center justify-center gap-1">
+                          <AlertTriangle size={14} /> {carrierCameraError}
+                        </p>
+                      )}
+                    </>
                   )}
 
                   <label className="block font-bold text-sm">消費金額（現金，NT$）</label>
