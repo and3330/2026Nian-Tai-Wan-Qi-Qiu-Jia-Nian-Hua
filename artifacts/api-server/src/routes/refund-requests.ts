@@ -15,7 +15,6 @@ import { voidInvoice } from "../lib/ecpay-invoice";
 const router: IRouter = Router();
 
 const EVENT_DATES = new Set(["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"]);
-const DAILY_CAPACITY = 500;
 
 function normalizeContact(raw: string): { isEmail: boolean; emailLc: string; digits: string } {
   const trimmed = raw.trim();
@@ -652,17 +651,10 @@ router.put(
           return { ok: false as const, status: 400, error: "新日期與原日期相同" };
         }
 
-        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`reg:${newDate}`}))`);
-        const [row] = await tx
-          .select({ total: sql<number>`COALESCE(SUM(${registrationsTable.ticketCount}), 0)` })
-          .from(registrationsTable)
-          .where(sql`${registrationsTable.eventDate} = ${newDate} AND ${registrationsTable.paymentStatus} <> 'refunded'`);
-        const used = Number(row?.total ?? 0);
-        const ticketCount = reg.ticketCount ?? 1;
-        if (used + ticketCount > DAILY_CAPACITY) {
-          return { ok: false as const, status: 409, error: `${newDate} 名額不足（剩餘 ${DAILY_CAPACITY - used}，需要 ${ticketCount}）` };
-        }
-
+        // Admin reschedule deliberately bypasses the daily-capacity check:
+        // this is a staff-negotiated date change (both sides already agreed),
+        // so it must succeed even when the target day is sold out. Public
+        // purchase flows still enforce DAILY_CAPACITY.
         await tx
           .update(registrationsTable)
           .set({ eventDate: newDate })
