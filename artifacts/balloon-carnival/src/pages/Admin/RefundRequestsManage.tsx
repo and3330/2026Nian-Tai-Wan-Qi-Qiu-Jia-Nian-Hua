@@ -22,6 +22,7 @@ interface RefundRow {
   bankAccountNumber: string | null;
   bankInfoSubmittedAt: string | null;
   notifyEmailSentAt: string | null;
+  refundedNotifySentAt: string | null;
   adminNote: string | null;
   processedBy: string | null;
   processedAt: string | null;
@@ -142,7 +143,7 @@ export default function AdminRefundRequestsManage() {
 
   const approve = async () => {
     if (!detail) return;
-    if (!window.confirm(`確定核准退票？將釋放 ${detail.registrations.reduce((s, r) => s + r.ticketCount, 0)} 個名額，並自動作廢對應的訂單與發票。`)) return;
+    if (!window.confirm(`確定核准退票？將釋放 ${detail.registrations.reduce((s, r) => s + r.ticketCount, 0)} 個名額、自動作廢對應的訂單與發票，並自動寄出「退票完成通知」Email 給買家。`)) return;
     setBusy(true);
     try {
       const r = await api<{ invoiceVoid?: { attempted: boolean; success: boolean; message: string } }>(
@@ -201,6 +202,20 @@ export default function AdminRefundRequestsManage() {
     } finally { setBusy(false); }
   };
 
+  const sendRefundedEmail = async () => {
+    if (!detail) return;
+    if (!window.confirm("寄出「已退款通知」Email 給買家？（請確認款項已實際匯出）")) return;
+    setBusy(true);
+    try {
+      await api(`/admin/refund-requests/${detail.request.id}/send-refunded-email`, { method: "POST" });
+      toast({ title: "已寄出已退款通知", description: "已退款通知信件已寄出。" });
+      openDetail(detail.request.id);
+      refresh();
+    } catch (e) {
+      toast({ variant: "destructive", title: "寄送失敗", description: (e as Error).message });
+    } finally { setBusy(false); }
+  };
+
   const toggleSelect = (id: number) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -216,14 +231,15 @@ export default function AdminRefundRequestsManage() {
     total: number; succeeded: number; failed: number;
     results: { id: number; ok: boolean; message: string }[];
   }
-  const runBulk = async (action: "approve" | "reject" | "send-bank-email" | "send-notify-email") => {
+  const runBulk = async (action: "approve" | "reject" | "send-bank-email" | "send-notify-email" | "send-refunded-email") => {
     const ids = [...selected];
     if (ids.length === 0) return;
     const CONFIRM: Record<string, string> = {
-      approve: `批量核准 ${ids.length} 筆退票？票券與付款紀錄將標記為已退款，並自動作廢對應發票。`,
+      approve: `批量核准 ${ids.length} 筆退票？票券與付款紀錄將標記為已退款、自動作廢對應發票，並自動寄出「退票完成通知」Email。`,
       reject: `批量拒絕 ${ids.length} 筆退票申請？`,
       "send-bank-email": `批量寄出「退款資料表單」Email（${ids.length} 筆）？`,
       "send-notify-email": `批量寄出「退票完成通知」Email（${ids.length} 筆）？僅已退票的申請會寄出。`,
+      "send-refunded-email": `批量寄出「已退款通知」Email（${ids.length} 筆）？請確認款項已實際匯出，僅已退票的申請會寄出。`,
     };
     let note = "";
     if (action === "reject") {
@@ -373,6 +389,14 @@ export default function AdminRefundRequestsManage() {
             <Send size={14} /> 批量寄退票通知信
           </button>
           <button
+            onClick={() => runBulk("send-refunded-email")}
+            disabled={busy}
+            data-testid="button-bulk-refunded-email"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500 text-emerald-700 text-xs font-medium hover:bg-emerald-50 disabled:opacity-50"
+          >
+            <Send size={14} /> 批量寄已退款通知
+          </button>
+          <button
             onClick={() => setSelected(new Set())}
             disabled={busy}
             className="ml-auto px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted"
@@ -508,6 +532,16 @@ export default function AdminRefundRequestsManage() {
                             <Send size={14} /> 寄退票完成通知信
                           </button>
                         )}
+                        {detail.request.status === "approved" && (
+                          <button
+                            onClick={sendRefundedEmail}
+                            disabled={busy}
+                            data-testid="button-send-refunded-email"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-500 text-emerald-700 text-xs hover:bg-emerald-50 disabled:opacity-50"
+                          >
+                            <Send size={14} /> 寄已退款通知信
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -517,6 +551,9 @@ export default function AdminRefundRequestsManage() {
                       : "尚未寄出退款資料表單 Email"}
                     {detail.request.notifyEmailSentAt && (
                       <> ・退票通知信已於 {new Date(detail.request.notifyEmailSentAt).toLocaleString("zh-TW")} 寄出</>
+                    )}
+                    {detail.request.refundedNotifySentAt && (
+                      <> ・已退款通知已於 {new Date(detail.request.refundedNotifySentAt).toLocaleString("zh-TW")} 寄出</>
                     )}
                   </div>
                   {detail.request.bankInfoSubmittedAt ? (

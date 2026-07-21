@@ -9,7 +9,7 @@ import {
 import { invoicesTable } from "@workspace/db";
 import { requireRole } from "../middlewares/authMiddleware";
 import { logger } from "../lib/logger";
-import { sendRefundBankInfoEmail, sendRefundNotifyEmail } from "../services/email-service";
+import { sendRefundBankInfoEmail, sendRefundNotifyEmail, sendRefundedNotifyEmail } from "../services/email-service";
 import { voidInvoice } from "../lib/ecpay-invoice";
 
 const router: IRouter = Router();
@@ -469,6 +469,18 @@ async function approveRefundRequest(
   }
 
   logger.info({ id, userId: opts.userId, invoiceVoid }, "[refund] approved");
+
+  // Auto-notify the buyer that the refund was approved. Fire-and-forget:
+  // email failure must never roll back or fail the approval itself; the admin
+  // UI still shows a manual "寄退票完成通知信" button as the retry path.
+  void sendRefundNotifyEmail(id)
+    .then((r) => {
+      if (!r.delivered) {
+        logger.warn({ id, message: r.message }, "[refund] auto notify email not delivered");
+      }
+    })
+    .catch((err) => logger.error({ err, id }, "[refund] auto notify email error"));
+
   return { ok: true, invoiceVoid };
 }
 
@@ -519,8 +531,30 @@ router.post(
   },
 );
 
+// ── Admin: send the "money has been transferred" notification email ────────
+router.post(
+  "/admin/refund-requests/:id/send-refunded-email",
+  requireRole("editor"),
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+    try {
+      const result = await sendRefundedNotifyEmail(id);
+      if (!result.delivered) {
+        res.status(400).json({ error: result.message || "寄送失敗" });
+        return;
+      }
+      logger.info({ id }, "[refund] refunded-notify email sent by admin");
+      res.json({ ok: true, message: result.message });
+    } catch (err) {
+      logger.error({ err, id }, "[refund] send refunded-notify email error");
+      res.status(500).json({ error: "寄送失敗，請稍後再試" });
+    }
+  },
+);
+
 // ── Admin: bulk operations ──────────────────────────────────────────────────
-// action: approve | reject | send-bank-email | send-notify-email
+// action: approve | reject | send-bank-email | send-notify-email | send-refunded-email
 // Processes each id independently and reports per-id results, so one bad row
 // never blocks the rest of the batch.
 router.post(
@@ -534,7 +568,7 @@ router.post(
     const adminNote = typeof body.adminNote === "string" ? body.adminNote.trim() : "";
     const userId = (req as { user?: { id?: string } }).user?.id ?? null;
 
-    const ACTIONS = new Set(["approve", "reject", "send-bank-email", "send-notify-email"]);
+    const ACTIONS = new Set(["approve", "reject", "send-bank-email", "send-notify-email", "send-refunded-email"]);
     if (!ACTIONS.has(action)) { res.status(400).json({ error: "無效的批量操作" }); return; }
     if (ids.length === 0 || ids.length > 100) {
       res.status(400).json({ error: "請選擇 1~100 筆申請" });
@@ -565,6 +599,9 @@ router.post(
         } else if (action === "send-bank-email") {
           const r = await sendRefundBankInfoEmail(id);
           results.push({ id, ok: r.delivered, message: r.delivered ? "表單信已寄出" : r.message || "寄送失敗" });
+        } else if (action === "send-refunded-email") {
+          const r = await sendRefundedNotifyEmail(id);
+          results.push({ id, ok: r.delivered, message: r.delivered ? "已退款通知已寄出" : r.message || "寄送失敗" });
         } else {
           const r = await sendRefundNotifyEmail(id);
           results.push({ id, ok: r.delivered, message: r.delivered ? "通知信已寄出" : r.message || "寄送失敗" });

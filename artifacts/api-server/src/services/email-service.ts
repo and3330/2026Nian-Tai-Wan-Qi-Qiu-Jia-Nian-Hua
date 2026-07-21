@@ -763,3 +763,61 @@ ${EVENT_INFO.name} 主辦團隊
   }
   return result;
 }
+
+// ── 已退款通知：款項實際匯出後，告知買家退款已完成 ─────────────────────────
+export async function sendRefundedNotifyEmail(
+  refundRequestId: number,
+): Promise<SendEmailResult | { delivered: false; mode: EmailMode; message: string }> {
+  const [request] = await db
+    .select()
+    .from(refundRequestsTable)
+    .where(eq(refundRequestsTable.id, refundRequestId))
+    .limit(1);
+  if (!request) {
+    return { delivered: false, mode: getEmailMode(), message: "找不到退票申請" };
+  }
+  if (request.status !== "approved") {
+    return { delivered: false, mode: getEmailMode(), message: "僅已退票（核准）的申請可寄送已退款通知" };
+  }
+
+  let to = request.buyerContact.includes("@") ? request.buyerContact.trim() : "";
+  if (!to) {
+    const regs = await db
+      .select({ email: registrationsTable.email })
+      .from(registrationsTable)
+      .where(eq(registrationsTable.paymentRef, request.paymentRef));
+    to = regs.find((r) => r.email)?.email ?? "";
+  }
+  if (!to) {
+    return { delivered: false, mode: getEmailMode(), message: "此訂單沒有 Email，無法寄送已退款通知" };
+  }
+
+  const amountLine = request.refundAmount != null ? `退款金額：NT$ ${request.refundAmount.toLocaleString("zh-TW")}\n` : "";
+  const accountLine = request.bankAccountNumber
+    ? `退款帳戶：${request.bankName ?? ""} 末五碼 ${request.bankAccountNumber.slice(-5)}\n`
+    : "";
+  const body = `親愛的 ${request.buyerName} 您好，
+
+您的退票申請（訂單編號：${request.paymentRef}）退款作業已完成，款項已匯出。
+${amountLine}${accountLine}
+實際入帳時間依各銀行作業而定，通常為 1 至 3 個工作天。
+若超過 3 個工作天仍未收到款項，請洽服務專線 ${EVENT_INFO.servicePhone}。
+
+感謝您的耐心等候，期待未來再與您相見。
+
+${EVENT_INFO.name} 主辦團隊
+`;
+
+  const result = await sendEmail({
+    to,
+    subject: `【${EVENT_INFO.name}】退款完成通知 - ${request.paymentRef}`,
+    body,
+  });
+  if (result.delivered) {
+    await db
+      .update(refundRequestsTable)
+      .set({ refundedNotifySentAt: new Date() })
+      .where(eq(refundRequestsTable.id, refundRequestId));
+  }
+  return result;
+}
