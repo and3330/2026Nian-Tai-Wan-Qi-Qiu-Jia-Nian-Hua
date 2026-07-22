@@ -459,6 +459,14 @@ export default function POSPage() {
     setScanning(false);
   }, []);
 
+  // 取得客人資料後掃描區會被隱藏 — 若相機仍在跑（例如邊掃邊手動查詢），
+  // 這裡確保它被關掉，避免隱藏狀態下相機持續佔用。
+  useEffect(() => {
+    if (result.kind === "found" && scannerRef.current) {
+      stopScanner();
+    }
+  }, [result.kind, stopScanner]);
+
   const onDecoded = useCallback(
     (decodedText: string) => {
       const now = Date.now();
@@ -691,7 +699,9 @@ export default function POSPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* 取得客人資料後整塊隱藏（用 CSS 隱藏而非卸載，避免 html5-qrcode 的
+          target div 被移除；按「清除並服務下一位客人」後會再顯示） */}
+      <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-6", result.kind === "found" && "hidden")}>
         {/* Camera scanner */}
         <div className="bg-white rounded-3xl border shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
