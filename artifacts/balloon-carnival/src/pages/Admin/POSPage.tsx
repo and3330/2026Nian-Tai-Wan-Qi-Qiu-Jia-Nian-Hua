@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   ReceiptText, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff,
   Store, ShoppingCart, Plus, Minus, Banknote, CreditCard, Smartphone, Globe,
-  Package, Trash2, ListOrdered, Pencil,
+  Package, Trash2, ListOrdered, Pencil, BarChart3,
 } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { cn } from "@/lib/utils";
@@ -83,6 +83,16 @@ const PAYMENT_METHODS = [
   { value: "online", label: "線上付款", icon: Globe },
   { value: "apple_pay", label: "Apple Pay", icon: Smartphone },
 ] as const;
+
+type PosStats = {
+  orderCount: number;
+  totalRevenue: number;
+  totalDiscount: number;
+  today: { count: number; total: number };
+  byMethod: { method: string; count: number; total: number }[];
+  byProduct: { name: string; qty: number; total: number }[];
+  byDay: { day: string; count: number; total: number }[];
+};
 
 const PAYMENT_LABEL: Record<string, string> = {
   cash: "現金",
@@ -169,6 +179,9 @@ export default function POSPage() {
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [orders, setOrders] = useState<PosOrder[]>([]);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [stats, setStats] = useState<PosStats | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   const vendorQuery = isVendor ? "" : selectedVendorId > 0 ? `vendorId=${selectedVendorId}` : "";
 
@@ -244,6 +257,25 @@ export default function POSPage() {
   useEffect(() => {
     if (ordersOpen) refreshOrders();
   }, [ordersOpen, refreshOrders]);
+
+  const refreshStats = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/pos/stats${vendorQuery ? `?${vendorQuery}` : ""}`, { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setStatsError(data.error || `載入統計失敗 (${res.status})`);
+        return;
+      }
+      setStatsError(null);
+      setStats(data);
+    } catch (err) {
+      setStatsError((err as Error).message);
+    }
+  }, [vendorQuery]);
+
+  useEffect(() => {
+    if (statsOpen) refreshStats();
+  }, [statsOpen, refreshStats]);
 
   useEffect(() => {
     if (isVendor) return;
@@ -1292,6 +1324,96 @@ export default function POSPage() {
           )}
         </div>
       )}
+
+      {/* ── 銷售統計 ── */}
+      <div className="bg-white rounded-3xl border shadow-sm p-6">
+        <button
+          type="button"
+          onClick={() => setStatsOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+          data-testid="button-toggle-stats"
+        >
+          <h2 className="font-bold text-lg flex items-center gap-2">
+            <BarChart3 size={20} className="text-primary" /> 銷售統計
+          </h2>
+          <span className="text-sm text-muted-foreground">{statsOpen ? "收合 ▲" : "展開 ▼"}</span>
+        </button>
+        {statsOpen && (
+          <div className="mt-4 space-y-5">
+            {statsError ? (
+              <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {statsError}</p>
+            ) : !stats ? (
+              <p className="text-sm text-muted-foreground">載入中...</p>
+            ) : stats.orderCount === 0 ? (
+              <p className="text-sm text-muted-foreground">尚無銷售紀錄。</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-muted/40 rounded-2xl p-4">
+                    <div className="text-xs text-muted-foreground">今日營收</div>
+                    <div className="text-xl font-bold text-primary" data-testid="text-stats-today-total">NT${stats.today.total.toLocaleString()}</div>
+                    <div className="text-xs text-muted-foreground">{stats.today.count} 筆</div>
+                  </div>
+                  <div className="bg-muted/40 rounded-2xl p-4">
+                    <div className="text-xs text-muted-foreground">累計營收</div>
+                    <div className="text-xl font-bold" data-testid="text-stats-total">NT${stats.totalRevenue.toLocaleString()}</div>
+                    <div className="text-xs text-muted-foreground">{stats.orderCount} 筆</div>
+                  </div>
+                  <div className="bg-muted/40 rounded-2xl p-4">
+                    <div className="text-xs text-muted-foreground">平均客單價</div>
+                    <div className="text-xl font-bold">
+                      NT${stats.orderCount > 0 ? Math.round(stats.totalRevenue / stats.orderCount).toLocaleString() : 0}
+                    </div>
+                  </div>
+                  <div className="bg-muted/40 rounded-2xl p-4">
+                    <div className="text-xs text-muted-foreground">累計折價</div>
+                    <div className="text-xl font-bold text-red-600">−NT${stats.totalDiscount.toLocaleString()}</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <h3 className="font-bold text-sm mb-2">熱賣商品</h3>
+                    <ul className="divide-y text-sm">
+                      {stats.byProduct.map((p) => (
+                        <li key={p.name} className="py-2 flex items-center justify-between gap-3">
+                          <span>{p.name}<span className="text-muted-foreground text-xs">・{p.qty} 件</span></span>
+                          <span className="font-bold">NT${p.total.toLocaleString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="space-y-5">
+                    <div>
+                      <h3 className="font-bold text-sm mb-2">付款方式</h3>
+                      <ul className="divide-y text-sm">
+                        {stats.byMethod.map((m) => (
+                          <li key={m.method} className="py-2 flex items-center justify-between gap-3">
+                            <span>{PAYMENT_LABEL[m.method] ?? m.method}<span className="text-muted-foreground text-xs">・{m.count} 筆</span></span>
+                            <span className="font-bold">NT${m.total.toLocaleString()}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm mb-2">每日營收</h3>
+                      <ul className="divide-y text-sm">
+                        {stats.byDay.map((d) => (
+                          <li key={d.day} className="py-2 flex items-center justify-between gap-3">
+                            <span>{d.day}<span className="text-muted-foreground text-xs">・{d.count} 筆</span></span>
+                            <span className="font-bold">NT${d.total.toLocaleString()}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">＊統計以 POS 結帳訂單為準（含未開發票訂單）；商品金額為折價前售價。</p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ── 最近訂單 ── */}
       <div className="bg-white rounded-3xl border shadow-sm p-6">

@@ -467,6 +467,78 @@ router.post("/admin/pos/orders", async (req, res): Promise<void> => {
   res.json({ order });
 });
 
+// 銷售統計：以 pos_orders 為準（含未開發票的訂單）。vendor 只看自己的；
+// 工作人員／主辦方預設看全部，可用 ?vendorId 過濾（vendorId=0 → 主辦方自營）。
+router.get("/admin/pos/stats", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin", "vendor")) return;
+  let cond;
+  if (req.adminUser?.role === "vendor") {
+    const v = await resolvePosVendor(req);
+    if (!v.ok || v.vendorId == null) {
+      res.status(403).json({ error: v.ok ? "此帳號未綁定商家" : v.error });
+      return;
+    }
+    cond = eq(posOrdersTable.vendorId, v.vendorId);
+  } else if (req.query.vendorId !== undefined) {
+    const n = Number(req.query.vendorId);
+    cond = Number.isInteger(n) && n > 0 ? eq(posOrdersTable.vendorId, n) : isNull(posOrdersTable.vendorId);
+  }
+  const orders = await db.select().from(posOrdersTable).where(cond);
+
+  // 今天（台北時間）的起點
+  const taipeiDayStart = (d: Date): string =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(d); // YYYY-MM-DD
+  const todayKey = taipeiDayStart(new Date());
+
+  let totalRevenue = 0;
+  let totalDiscount = 0;
+  let todayRevenue = 0;
+  let todayCount = 0;
+  const byMethod = new Map<string, { count: number; total: number }>();
+  const byProduct = new Map<string, { qty: number; total: number }>();
+  const byDay = new Map<string, { count: number; total: number }>();
+
+  for (const o of orders) {
+    totalRevenue += o.totalAmount;
+    totalDiscount += o.discount ?? 0;
+    const dayKey = taipeiDayStart(new Date(o.createdAt));
+    if (dayKey === todayKey) {
+      todayRevenue += o.totalAmount;
+      todayCount += 1;
+    }
+    const m = byMethod.get(o.paymentMethod) ?? { count: 0, total: 0 };
+    m.count += 1;
+    m.total += o.totalAmount;
+    byMethod.set(o.paymentMethod, m);
+    const d = byDay.get(dayKey) ?? { count: 0, total: 0 };
+    d.count += 1;
+    d.total += o.totalAmount;
+    byDay.set(dayKey, d);
+    for (const it of (o.items as PosOrderItem[] | null) ?? []) {
+      const p = byProduct.get(it.name) ?? { qty: 0, total: 0 };
+      p.qty += it.qty;
+      p.total += it.unitPrice * it.qty;
+      byProduct.set(it.name, p);
+    }
+  }
+
+  res.json({
+    orderCount: orders.length,
+    totalRevenue,
+    totalDiscount,
+    today: { count: todayCount, total: todayRevenue },
+    byMethod: [...byMethod.entries()]
+      .map(([method, v]) => ({ method, ...v }))
+      .sort((a, b) => b.total - a.total),
+    byProduct: [...byProduct.entries()]
+      .map(([name, v]) => ({ name, ...v }))
+      .sort((a, b) => b.total - a.total),
+    byDay: [...byDay.entries()]
+      .map(([day, v]) => ({ day, ...v }))
+      .sort((a, b) => (a.day < b.day ? 1 : -1)),
+  });
+});
+
 // 訂單列表：vendor 只看自己的；工作人員／主辦方可看全部（可用 ?vendorId 過濾）
 router.get("/admin/pos/orders", async (req, res): Promise<void> => {
   if (!requireAuth(req, res, "checkin", "vendor")) return;
