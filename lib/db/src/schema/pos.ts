@@ -39,6 +39,8 @@ export const posOrdersTable = pgTable(
     buyerPhone: text("buyer_phone"),
     buyerEmail: text("buyer_email"),
     items: jsonb("items").$type<PosOrderItem[]>().notNull(),
+    // 折價金額（正數，例如 50 = 折 NT$50）；totalAmount 已扣除折價
+    discount: integer("discount").notNull().default(0),
     totalAmount: integer("total_amount").notNull(),
     // cash | credit_card | online | apple_pay
     paymentMethod: text("payment_method").notNull(),

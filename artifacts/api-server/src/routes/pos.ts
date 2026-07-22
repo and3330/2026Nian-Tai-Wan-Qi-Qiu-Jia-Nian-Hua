@@ -433,7 +433,14 @@ router.post("/admin/pos/orders", async (req, res): Promise<void> => {
     }
     items.push({ productId: p.id, name: p.name, unitPrice: p.price, qty: w.qty });
   }
-  const totalAmount = items.reduce((s, it) => s + it.unitPrice * it.qty, 0);
+  const subtotal = items.reduce((s, it) => s + it.unitPrice * it.qty, 0);
+  // 折價：正整數、不得超過小計（金額仍由伺服器端計算，前端只回報折多少）
+  const discount = Number(req.body?.discount ?? 0) || 0;
+  if (!Number.isInteger(discount) || discount < 0 || discount >= subtotal) {
+    res.status(400).json({ error: "折價金額錯誤：必須為 0 以上的整數，且不得大於等於小計" });
+    return;
+  }
+  const totalAmount = subtotal - discount;
   if (totalAmount <= 0 || totalAmount > 1000000) {
     res.status(400).json({ error: "訂單金額異常" });
     return;
@@ -450,6 +457,7 @@ router.post("/admin/pos/orders", async (req, res): Promise<void> => {
       buyerPhone: reg.phone,
       buyerEmail: reg.email,
       items,
+      discount,
       totalAmount,
       paymentMethod,
       createdBy: req.adminUser?.username ?? null,
@@ -563,12 +571,18 @@ router.post("/admin/pos/orders/:id/invoice", async (req, res): Promise<void> => 
     carrierType: useCarrier,
     carrierNum: useCarrier === "phone_barcode" ? barcode : undefined,
     salesAmount: order.totalAmount,
-    items: order.items.map((it) => ({
-      name: it.name.slice(0, 100),
-      count: it.qty,
-      unitPrice: it.unitPrice,
-      amount: it.unitPrice * it.qty,
-    })),
+    items: [
+      ...order.items.map((it) => ({
+        name: it.name.slice(0, 100),
+        count: it.qty,
+        unitPrice: it.unitPrice,
+        amount: it.unitPrice * it.qty,
+      })),
+      // 折價以負數明細列出，讓明細合計 = 發票金額（totalAmount 已扣折價）
+      ...(order.discount > 0
+        ? [{ name: "折價", count: 1, unitPrice: -order.discount, amount: -order.discount }]
+        : []),
+    ],
   } satisfies InvoiceIssueOptions);
 
   if (result.success) {

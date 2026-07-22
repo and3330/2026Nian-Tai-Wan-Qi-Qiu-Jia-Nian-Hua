@@ -44,6 +44,7 @@ type PosOrder = {
   buyerName: string | null;
   buyerEmail: string | null;
   items: { productId: number; name: string; unitPrice: number; qty: number }[];
+  discount: number;
   totalAmount: number;
   paymentMethod: string;
   invoiceId: number | null;
@@ -157,6 +158,7 @@ export default function POSPage() {
   const [productsError, setProductsError] = useState<string | null>(null);
   const [cart, setCart] = useState<Record<number, number>>({});
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const [discountOn, setDiscountOn] = useState(false);
   const [checkout, setCheckout] = useState<CheckoutState>({ kind: "idle" });
 
   // ── 商品管理／訂單 ──
@@ -277,6 +279,7 @@ export default function POSPage() {
     setCheckout({ kind: "idle" });
     setCart({});
     setPaymentMethod("cash");
+    setDiscountOn(false);
     setCarrierChoice("ecpay_carrier");
     setBarcodeInput("");
     try {
@@ -308,7 +311,10 @@ export default function POSPage() {
   const cartItems = products
     .filter((p) => (cart[p.id] ?? 0) > 0)
     .map((p) => ({ product: p, qty: cart[p.id] }));
-  const cartTotal = cartItems.reduce((s, it) => s + it.product.price * it.qty, 0);
+  const cartSubtotal = cartItems.reduce((s, it) => s + it.product.price * it.qty, 0);
+  // 折價 −50：小計必須大於 50 才能套用
+  const discountAmount = discountOn && cartSubtotal > 50 ? 50 : 0;
+  const cartTotal = cartSubtotal - discountAmount;
 
   const addToCart = (id: number, delta: number) => {
     setCart((prev) => {
@@ -323,7 +329,7 @@ export default function POSPage() {
   const handleCheckout = async () => {
     if (result.kind !== "found" || cartItems.length === 0) return;
     const methodLabel = PAYMENT_LABEL[paymentMethod] ?? paymentMethod;
-    if (!window.confirm(`確認結帳？\n合計 NT$${cartTotal.toLocaleString()}（${methodLabel}）\n${cartItems.map((it) => `${it.product.name} x${it.qty}`).join("、")}`)) return;
+    if (!window.confirm(`確認結帳？\n合計 NT$${cartTotal.toLocaleString()}（${methodLabel}）${discountAmount > 0 ? `，已含折價 −NT$${discountAmount}` : ""}\n${cartItems.map((it) => `${it.product.name} x${it.qty}`).join("、")}`)) return;
     setCheckout({ kind: "submitting" });
     try {
       const res = await fetch(`/api/admin/pos/orders`, {
@@ -333,6 +339,7 @@ export default function POSPage() {
         body: JSON.stringify({
           qrToken: result.token,
           paymentMethod,
+          discount: discountAmount,
           items: cartItems.map((it) => ({ productId: it.product.id, qty: it.qty })),
           ...(isVendor ? {} : { vendorId: selectedVendorId > 0 ? selectedVendorId : undefined }),
         }),
@@ -597,6 +604,7 @@ export default function POSPage() {
     setCheckout({ kind: "idle" });
     setCart({});
     setPaymentMethod("cash");
+    setDiscountOn(false);
     setTokenInput("");
     setCarrierChoice("ecpay_carrier");
     setBarcodeInput("");
@@ -938,9 +946,32 @@ export default function POSPage() {
                           </div>
                         ))
                       )}
-                      <div className="flex justify-between items-center border-t pt-3 mt-2">
-                        <span className="font-bold">小計</span>
-                        <span className="text-2xl font-bold text-primary" data-testid="text-cart-total">NT${cartTotal.toLocaleString()}</span>
+                      <div className="border-t pt-3 mt-2 space-y-1.5">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">小計</span>
+                          <span className="font-bold">NT${cartSubtotal.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <button
+                            type="button"
+                            onClick={() => setDiscountOn((v) => !v)}
+                            disabled={cartSubtotal <= 50}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-all disabled:opacity-40",
+                              discountAmount > 0
+                                ? "border-red-400 bg-red-50 text-red-600"
+                                : "border-muted text-muted-foreground hover:border-red-300 hover:text-red-500",
+                            )}
+                            data-testid="button-discount-50"
+                          >
+                            {discountAmount > 0 ? "✓ 已折價 −$50（點擊取消）" : "折價 −$50"}
+                          </button>
+                          {discountAmount > 0 && <span className="font-bold text-red-600">−NT$50</span>}
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold">合計</span>
+                          <span className="text-2xl font-bold text-primary" data-testid="text-cart-total">NT${cartTotal.toLocaleString()}</span>
+                        </div>
                       </div>
 
                       <div className="pt-1">
@@ -998,6 +1029,12 @@ export default function POSPage() {
                         <span className="font-bold">NT${(it.unitPrice * it.qty).toLocaleString()}</span>
                       </div>
                     ))}
+                    {checkout.order.discount > 0 && (
+                      <div className="flex justify-between text-red-600">
+                        <span>折價</span>
+                        <span className="font-bold">−NT${checkout.order.discount.toLocaleString()}</span>
+                      </div>
+                    )}
                   </div>
 
                   {issueState.kind === "issued" ? (
@@ -1273,6 +1310,7 @@ export default function POSPage() {
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <span>
                         {o.buyerName || "—"}・{o.items.map((it) => `${it.name}×${it.qty}`).join("、")}
+                        {o.discount > 0 && <span className="text-red-600">・折價−${o.discount}</span>}
                       </span>
                       <span className="flex items-center gap-2">
                         <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{PAYMENT_LABEL[o.paymentMethod] ?? o.paymentMethod}</span>
