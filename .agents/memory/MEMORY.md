@@ -14,5 +14,6 @@
 - [Expose a new registration field end-to-end](api-response-schema-codegen.md) — list/lookup responses are zod-parsed (strip unknown keys); new column needs DB push + openapi.yaml + codegen + prod migration.
 - [Refund bank-info flow](refund-bank-info.md) — tokenized public form collects bank account; redact bank PII server-side for non-editor roles; refunds quoted as 7–14 working days.
 - [Payment method classification](payment-method-classification.md) — sub-method (CVS/ATM/credit) lives in raw_result.Result.PaymentType (nested, not top-level); join paid registrations on payment_ref + SUM(amount) for per-method revenue.
+- [POS cart orders](pos-cart-orders.md) — checkout totals recomputed server-side from DB prices; vendor mutations must go through resolvePosVendor; invoices issue from pos_orders with dup guard.
 - [Vendor role isolation](vendor-role-isolation.md) — vendor role is session-bound to one vendor; "any authenticated admin" endpoints are no longer safe, list explicit roles.
 - [Stale chunk after redeploy](stale-chunk-reload.md) — deploys break lazy import() on stale pages; keep the vite:preloadError one-shot reload listener in the web entry.

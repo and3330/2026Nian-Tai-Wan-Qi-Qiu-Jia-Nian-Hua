@@ -1,6 +1,14 @@
 import { Router, type IRouter } from "express";
-import { eq, like, desc, and, sql } from "drizzle-orm";
-import { db, registrationsTable, invoicesTable, vendorsTable } from "@workspace/db";
+import { eq, like, desc, and, sql, isNull, inArray } from "drizzle-orm";
+import {
+  db,
+  registrationsTable,
+  invoicesTable,
+  vendorsTable,
+  productsTable,
+  posOrdersTable,
+  type PosOrderItem,
+} from "@workspace/db";
 import { issueInvoice, type InvoiceIssueOptions } from "../lib/ecpay-invoice";
 import { logger } from "../lib/logger";
 
@@ -250,6 +258,348 @@ router.get("/admin/pos/my-sales", async (req, res): Promise<void> => {
     today: { count: today?.count ?? 0, total: today?.total ?? 0 },
     recent,
   });
+});
+
+// ── POS 商品目錄 ────────────────────────────────────────────────────────────
+// vendor 帳號永遠被鎖在自己的 vendorId；editor/owner 可用 ?vendorId= 代管任一
+// 攤位，不帶 vendorId（或 vendorId=0）代表主辦方商品（vendor_id IS NULL）。
+
+async function resolveProductScope(req: any, res: any): Promise<{ ok: true; vendorId: number | null } | { ok: false }> {
+  if (req.adminUser?.role === "vendor") {
+    const v = await resolvePosVendor(req);
+    if (!v.ok || v.vendorId == null) {
+      res.status(403).json({ error: v.ok ? "此帳號未綁定商家" : v.error });
+      return { ok: false };
+    }
+    return { ok: true, vendorId: v.vendorId };
+  }
+  const raw = req.query?.vendorId ?? req.body?.vendorId;
+  const n = Number(raw);
+  return { ok: true, vendorId: Number.isInteger(n) && n > 0 ? n : null };
+}
+
+// 給 POS 畫面的攤位清單（工作人員代攤位結帳用）：僅回傳啟用中的基本欄位，
+// 不含銷售統計，checkin 等級即可存取（/admin/vendors 完整版仍為 editor 限定）。
+router.get("/admin/pos/vendors", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin")) return;
+  const rows = await db
+    .select({ id: vendorsTable.id, name: vendorsTable.name, boothNumber: vendorsTable.boothNumber })
+    .from(vendorsTable)
+    .where(eq(vendorsTable.active, true))
+    .orderBy(vendorsTable.id);
+  res.json({ vendors: rows });
+});
+
+router.get("/admin/pos/products", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin", "vendor")) return;
+  const scope = await resolveProductScope(req, res);
+  if (!scope.ok) return;
+  const includeInactive = req.query.all === "1";
+  const vendorCond =
+    scope.vendorId == null ? isNull(productsTable.vendorId) : eq(productsTable.vendorId, scope.vendorId);
+  const rows = await db
+    .select()
+    .from(productsTable)
+    .where(includeInactive ? vendorCond : and(vendorCond, eq(productsTable.active, true)))
+    .orderBy(productsTable.sortOrder, productsTable.id);
+  res.json({ vendorId: scope.vendorId, products: rows });
+});
+
+router.post("/admin/pos/products", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor", "vendor")) return;
+  const scope = await resolveProductScope(req, res);
+  if (!scope.ok) return;
+  const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+  const price = Number(req.body?.price);
+  if (!name || name.length > 100) { res.status(400).json({ error: "請輸入商品名稱（100 字內）" }); return; }
+  if (!Number.isInteger(price) || price <= 0 || price > 1000000) {
+    res.status(400).json({ error: "價格必須為 1 ~ 1,000,000 的整數" });
+    return;
+  }
+  const [row] = await db
+    .insert(productsTable)
+    .values({ vendorId: scope.vendorId, name, price })
+    .returning();
+  logger.info({ id: row.id, vendorId: scope.vendorId, name, price }, "[POS] product created");
+  res.json({ product: row });
+});
+
+router.put("/admin/pos/products/:id", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor", "vendor")) return;
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+  const [existing] = await db.select().from(productsTable).where(eq(productsTable.id, id)).limit(1);
+  if (!existing) { res.status(404).json({ error: "找不到商品" }); return; }
+  if (req.adminUser?.role === "vendor") {
+    const v = await resolvePosVendor(req);
+    if (!v.ok || v.vendorId == null || existing.vendorId !== v.vendorId) {
+      res.status(403).json({ error: v.ok ? "只能管理自己商家的商品" : v.error });
+      return;
+    }
+  }
+  const patch: Partial<typeof existing> = {};
+  if (typeof req.body?.name === "string") {
+    const name = req.body.name.trim();
+    if (!name || name.length > 100) { res.status(400).json({ error: "請輸入商品名稱（100 字內）" }); return; }
+    patch.name = name;
+  }
+  if (req.body?.price !== undefined) {
+    const price = Number(req.body.price);
+    if (!Number.isInteger(price) || price <= 0 || price > 1000000) {
+      res.status(400).json({ error: "價格必須為 1 ~ 1,000,000 的整數" });
+      return;
+    }
+    patch.price = price;
+  }
+  if (typeof req.body?.active === "boolean") patch.active = req.body.active;
+  if (req.body?.sortOrder !== undefined && Number.isInteger(Number(req.body.sortOrder))) {
+    patch.sortOrder = Number(req.body.sortOrder);
+  }
+  if (Object.keys(patch).length === 0) { res.status(400).json({ error: "沒有要修改的欄位" }); return; }
+  const [row] = await db.update(productsTable).set(patch).where(eq(productsTable.id, id)).returning();
+  res.json({ product: row });
+});
+
+router.delete("/admin/pos/products/:id", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor", "vendor")) return;
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+  const [existing] = await db.select().from(productsTable).where(eq(productsTable.id, id)).limit(1);
+  if (!existing) { res.status(404).json({ error: "找不到商品" }); return; }
+  if (req.adminUser?.role === "vendor") {
+    const v = await resolvePosVendor(req);
+    if (!v.ok || v.vendorId == null || existing.vendorId !== v.vendorId) {
+      res.status(403).json({ error: v.ok ? "只能管理自己商家的商品" : v.error });
+      return;
+    }
+  }
+  await db.delete(productsTable).where(eq(productsTable.id, id));
+  res.json({ ok: true });
+});
+
+// ── POS 訂單（結帳）────────────────────────────────────────────────────────
+// 付款在系統外完成（現金或客人自己的卡／Apple Pay），paymentMethod 只是記錄。
+// 金額一律以資料庫目前的商品價格於伺服器端重算，不信任前端傳來的價格。
+const PAYMENT_METHODS = new Set(["cash", "credit_card", "online", "apple_pay"]);
+
+router.post("/admin/pos/orders", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin", "vendor")) return;
+  const vendorRes = await resolvePosVendor(req);
+  if (!vendorRes.ok) { res.status(403).json({ error: vendorRes.error }); return; }
+  // 非 vendor 帳號（工作人員）可代任一攤位結帳：body.vendorId 指定，不帶則為主辦方
+  let vendorId = vendorRes.vendorId;
+  if (req.adminUser?.role !== "vendor") {
+    const n = Number(req.body?.vendorId);
+    vendorId = Number.isInteger(n) && n > 0 ? n : null;
+  }
+
+  const { qrToken, paymentMethod } = req.body ?? {};
+  if (typeof qrToken !== "string" || !qrToken.trim()) {
+    res.status(400).json({ error: "缺少票券 QR token" });
+    return;
+  }
+  if (!PAYMENT_METHODS.has(paymentMethod)) {
+    res.status(400).json({ error: "付款方式錯誤" });
+    return;
+  }
+  const rawItems: unknown[] = Array.isArray(req.body?.items) ? req.body.items : [];
+  const wanted = rawItems
+    .map((it: any) => ({ productId: Number(it?.productId), qty: Number(it?.qty) }))
+    .filter((it) => Number.isInteger(it.productId) && Number.isInteger(it.qty) && it.qty > 0 && it.qty <= 99);
+  if (wanted.length === 0 || wanted.length > 50) {
+    res.status(400).json({ error: "請選擇 1~50 項商品" });
+    return;
+  }
+
+  const [reg] = await db
+    .select()
+    .from(registrationsTable)
+    .where(eq(registrationsTable.qrToken, qrToken.trim()))
+    .limit(1);
+  if (!reg) { res.status(404).json({ error: "找不到此 QR Code 對應的票券" }); return; }
+
+  const products = await db
+    .select()
+    .from(productsTable)
+    .where(inArray(productsTable.id, wanted.map((w) => w.productId)));
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const items: PosOrderItem[] = [];
+  for (const w of wanted) {
+    const p = byId.get(w.productId);
+    if (!p || !p.active) { res.status(400).json({ error: "所選商品不存在或已下架，請重新整理商品清單" }); return; }
+    if ((p.vendorId ?? null) !== (vendorId ?? null)) {
+      res.status(403).json({ error: "只能販售自己商家的商品" });
+      return;
+    }
+    items.push({ productId: p.id, name: p.name, unitPrice: p.price, qty: w.qty });
+  }
+  const totalAmount = items.reduce((s, it) => s + it.unitPrice * it.qty, 0);
+  if (totalAmount <= 0 || totalAmount > 1000000) {
+    res.status(400).json({ error: "訂單金額異常" });
+    return;
+  }
+
+  const paymentRef = `POS-${reg.id}-${Date.now()}`;
+  const [order] = await db
+    .insert(posOrdersTable)
+    .values({
+      paymentRef,
+      vendorId,
+      registrationId: reg.id,
+      buyerName: reg.parentName,
+      buyerPhone: reg.phone,
+      buyerEmail: reg.email,
+      items,
+      totalAmount,
+      paymentMethod,
+      createdBy: req.adminUser?.username ?? null,
+    })
+    .returning();
+  logger.info({ orderId: order.id, paymentRef, vendorId, totalAmount, paymentMethod }, "[POS] order created");
+  res.json({ order });
+});
+
+// 訂單列表：vendor 只看自己的；工作人員／主辦方可看全部（可用 ?vendorId 過濾）
+router.get("/admin/pos/orders", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin", "vendor")) return;
+  let cond;
+  if (req.adminUser?.role === "vendor") {
+    const v = await resolvePosVendor(req);
+    if (!v.ok || v.vendorId == null) {
+      res.status(403).json({ error: v.ok ? "此帳號未綁定商家" : v.error });
+      return;
+    }
+    cond = eq(posOrdersTable.vendorId, v.vendorId);
+  } else if (req.query.vendorId !== undefined) {
+    const n = Number(req.query.vendorId);
+    cond = Number.isInteger(n) && n > 0 ? eq(posOrdersTable.vendorId, n) : isNull(posOrdersTable.vendorId);
+  }
+  const orders = await db
+    .select()
+    .from(posOrdersTable)
+    .where(cond)
+    .orderBy(desc(posOrdersTable.id))
+    .limit(100);
+  // 帶出各訂單發票狀態（有 invoiceId 才查）
+  const invIds = orders.map((o) => o.invoiceId).filter((v): v is number => v != null);
+  const invs = invIds.length
+    ? await db
+        .select({ id: invoicesTable.id, status: invoicesTable.status, invoiceNumber: invoicesTable.invoiceNumber })
+        .from(invoicesTable)
+        .where(inArray(invoicesTable.id, invIds))
+    : [];
+  const invById = new Map(invs.map((i) => [i.id, i]));
+  res.json({
+    orders: orders.map((o) => ({
+      ...o,
+      invoice: o.invoiceId != null ? invById.get(o.invoiceId) ?? null : null,
+    })),
+  });
+});
+
+// 從訂單開立發票：品名帶入實際商品明細，paymentRef 沿用訂單的 POS- 編號。
+router.post("/admin/pos/orders/:id/invoice", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin", "vendor")) return;
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+  const [order] = await db.select().from(posOrdersTable).where(eq(posOrdersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "找不到訂單" }); return; }
+  if (req.adminUser?.role === "vendor") {
+    const v = await resolvePosVendor(req);
+    if (!v.ok || v.vendorId == null || order.vendorId !== v.vendorId) {
+      res.status(403).json({ error: "只能為自己商家的訂單開立發票" });
+      return;
+    }
+  }
+  if (order.invoiceId != null) {
+    const [existing] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, order.invoiceId)).limit(1);
+    if (existing && (existing.status === "issued" || existing.status === "pending")) {
+      res.status(400).json({ error: "此訂單已開立發票（或開立中），如需重開請先至發票管理作廢" });
+      return;
+    }
+  }
+
+  const { carrierType, carrierNum } = req.body ?? {};
+  const useCarrier: "ecpay_carrier" | "phone_barcode" =
+    carrierType === "phone_barcode" ? "phone_barcode" : "ecpay_carrier";
+  let barcode = "";
+  if (useCarrier === "phone_barcode") {
+    barcode = String(carrierNum ?? "").trim().toUpperCase();
+    if (!/^\/[0-9A-Z.+-]{7}$/.test(barcode)) {
+      res.status(400).json({ error: "手機條碼格式錯誤：應為「/」開頭共 8 碼（例如 /AB12+-.）" });
+      return;
+    }
+  }
+  if (useCarrier === "ecpay_carrier" && !order.buyerEmail) {
+    res.status(400).json({
+      error: "此訂單客人沒有 Email，無法以會員載具開立；請改掃描客人的手機條碼載具",
+    });
+    return;
+  }
+
+  const [invRow] = await db
+    .insert(invoicesTable)
+    .values({
+      paymentRef: order.paymentRef,
+      invoiceType: "personal",
+      carrierType: useCarrier,
+      carrierNum: useCarrier === "phone_barcode" ? barcode : null,
+      buyerName: order.buyerName,
+      buyerEmail: order.buyerEmail,
+      buyerPhone: order.buyerPhone,
+      vendorId: order.vendorId,
+      amount: order.totalAmount,
+      status: "pending",
+    })
+    .returning();
+  await db.update(posOrdersTable).set({ invoiceId: invRow.id }).where(eq(posOrdersTable.id, order.id));
+
+  const result = await issueInvoice({
+    relateNumber: order.paymentRef,
+    customerEmail: order.buyerEmail || "",
+    customerName: order.buyerName || undefined,
+    customerPhone: order.buyerPhone || undefined,
+    invoiceType: "personal",
+    carrierType: useCarrier,
+    carrierNum: useCarrier === "phone_barcode" ? barcode : undefined,
+    salesAmount: order.totalAmount,
+    items: order.items.map((it) => ({
+      name: it.name.slice(0, 100),
+      count: it.qty,
+      unitPrice: it.unitPrice,
+      amount: it.unitPrice * it.qty,
+    })),
+  } satisfies InvoiceIssueOptions);
+
+  if (result.success) {
+    const [updated] = await db
+      .update(invoicesTable)
+      .set({
+        status: "issued",
+        invoiceNumber: result.invoiceNumber || null,
+        invoiceDate: result.invoiceDate || null,
+        randomNumber: result.randomNumber || null,
+        rawResponse: (result.rawResponse ?? null) as Record<string, unknown> | null,
+        issuedAt: new Date(),
+        errorMessage: null,
+      })
+      .where(eq(invoicesTable.id, invRow.id))
+      .returning();
+    logger.info({ orderId: order.id, paymentRef: order.paymentRef, invoiceNumber: result.invoiceNumber }, "[POS] order invoice issued");
+    res.json({ success: true, invoice: updated });
+    return;
+  }
+
+  await db
+    .update(invoicesTable)
+    .set({
+      status: "failed",
+      errorMessage: result.message || "未知錯誤",
+      rawResponse: (result.rawResponse ?? null) as Record<string, unknown> | null,
+    })
+    .where(eq(invoicesTable.id, invRow.id));
+  logger.error({ orderId: order.id, message: result.message }, "[POS] order invoice failed");
+  res.status(502).json({ success: false, error: result.message || "發票開立失敗" });
 });
 
 export default router;

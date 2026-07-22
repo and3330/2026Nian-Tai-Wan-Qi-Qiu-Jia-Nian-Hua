@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ReceiptText, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff, Store } from "lucide-react";
+import {
+  ReceiptText, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff,
+  Store, ShoppingCart, Plus, Minus, Banknote, CreditCard, Smartphone, Globe,
+  Package, Trash2, ListOrdered, Pencil,
+} from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { cn } from "@/lib/utils";
 
@@ -22,11 +26,42 @@ type PosInvoice = {
   createdAt: string;
 };
 
+type Product = {
+  id: number;
+  vendorId: number | null;
+  name: string;
+  price: number;
+  active: boolean;
+  sortOrder: number;
+};
+
+type PosVendor = { id: number; name: string; boothNumber: string | null };
+
+type PosOrder = {
+  id: number;
+  paymentRef: string;
+  vendorId: number | null;
+  buyerName: string | null;
+  buyerEmail: string | null;
+  items: { productId: number; name: string; unitPrice: number; qty: number }[];
+  totalAmount: number;
+  paymentMethod: string;
+  invoiceId: number | null;
+  invoice: { id: number; status: string; invoiceNumber: string | null } | null;
+  createdAt: string;
+};
+
 type LookupResult =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "found"; reg: PosRegistration; recentInvoices: PosInvoice[]; token: string }
   | { kind: "error"; message: string };
+
+type CheckoutState =
+  | { kind: "idle" }
+  | { kind: "submitting" }
+  | { kind: "created"; order: PosOrder }
+  | { kind: "failed"; message: string };
 
 type IssueState =
   | { kind: "idle" }
@@ -39,6 +74,20 @@ type MySales = {
   totals: { count: number; total: number };
   today: { count: number; total: number };
   recent: { id: number; amount: number; status: string; invoiceNumber: string | null; buyerName: string | null; createdAt: string }[];
+};
+
+const PAYMENT_METHODS = [
+  { value: "cash", label: "現金", icon: Banknote },
+  { value: "credit_card", label: "信用卡", icon: CreditCard },
+  { value: "online", label: "線上付款", icon: Globe },
+  { value: "apple_pay", label: "Apple Pay", icon: Smartphone },
+] as const;
+
+const PAYMENT_LABEL: Record<string, string> = {
+  cash: "現金",
+  credit_card: "信用卡",
+  online: "線上付款",
+  apple_pay: "Apple Pay",
 };
 
 const SCANNER_ELEMENT_ID = "pos-qr-scanner-container";
@@ -79,13 +128,13 @@ function describeCameraError(err: unknown): string {
 }
 
 export default function POSPage() {
-  const { role } = useAuth();
+  const { role, hasRole } = useAuth();
   const isVendor = role === "vendor";
+  const canManageProducts = isVendor || hasRole("editor");
   const [mySales, setMySales] = useState<MySales | null>(null);
   const [mySalesError, setMySalesError] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState("");
   const [result, setResult] = useState<LookupResult>({ kind: "idle" });
-  const [amountInput, setAmountInput] = useState("");
   const [issueState, setIssueState] = useState<IssueState>({ kind: "idle" });
   const [carrierChoice, setCarrierChoice] = useState<"ecpay_carrier" | "phone_barcode">("ecpay_carrier");
   const [barcodeInput, setBarcodeInput] = useState("");
@@ -96,12 +145,30 @@ export default function POSPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastScannedRef = useRef<string>("");
   const lastScanTimeRef = useRef<number>(0);
-  // Dedicated inline camera for the customer's phone-barcode carrier
-  // (財政部手機條碼, Code39 "/XXXXXXX") — rendered next to the barcode field
-  // so the staffer never has to scroll back up mid-checkout.
   const carrierScannerRef = useRef<any>(null);
   const [carrierScanning, setCarrierScanning] = useState(false);
   const [carrierCameraError, setCarrierCameraError] = useState<string | null>(null);
+
+  // ── 商品／購物車／結帳 ──
+  const [vendors, setVendors] = useState<PosVendor[]>([]);
+  // 0 = 主辦方（vendorId null）；vendor 帳號無此選擇（後端鎖定）
+  const [selectedVendorId, setSelectedVendorId] = useState<number>(0);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [cart, setCart] = useState<Record<number, number>>({});
+  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const [checkout, setCheckout] = useState<CheckoutState>({ kind: "idle" });
+
+  // ── 商品管理／訂單 ──
+  const [manageOpen, setManageOpen] = useState(false);
+  const [manageProducts, setManageProducts] = useState<Product[]>([]);
+  const [newName, setNewName] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [orders, setOrders] = useState<PosOrder[]>([]);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
+  const vendorQuery = isVendor ? "" : selectedVendorId > 0 ? `vendorId=${selectedVendorId}` : "";
 
   const refreshMySales = useCallback(async () => {
     if (!isVendor) return;
@@ -119,9 +186,73 @@ export default function POSPage() {
     }
   }, [isVendor]);
 
+  const refreshProducts = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/pos/products${vendorQuery ? `?${vendorQuery}` : ""}`, { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setProductsError(data.error || `載入商品失敗 (${res.status})`);
+        return;
+      }
+      setProductsError(null);
+      setProducts(data.products || []);
+    } catch (err) {
+      setProductsError((err as Error).message);
+    }
+  }, [vendorQuery]);
+
+  const refreshManageProducts = useCallback(async () => {
+    if (!canManageProducts) return;
+    try {
+      const sep = vendorQuery ? `?${vendorQuery}&all=1` : "?all=1";
+      const res = await fetch(`/api/admin/pos/products${sep}`, { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setManageProducts(data.products || []);
+    } catch { /* section is auxiliary — list stays stale on error */ }
+  }, [canManageProducts, vendorQuery]);
+
+  const refreshOrders = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/pos/orders${vendorQuery ? `?${vendorQuery}` : ""}`, { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setOrdersError(data.error || `載入訂單失敗 (${res.status})`);
+        return;
+      }
+      setOrdersError(null);
+      setOrders(data.orders || []);
+    } catch (err) {
+      setOrdersError((err as Error).message);
+    }
+  }, [vendorQuery]);
+
   useEffect(() => {
     refreshMySales();
   }, [refreshMySales]);
+
+  useEffect(() => {
+    refreshProducts();
+    setCart({});
+  }, [refreshProducts]);
+
+  useEffect(() => {
+    if (manageOpen) refreshManageProducts();
+  }, [manageOpen, refreshManageProducts]);
+
+  useEffect(() => {
+    if (ordersOpen) refreshOrders();
+  }, [ordersOpen, refreshOrders]);
+
+  useEffect(() => {
+    if (isVendor) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/pos/vendors`, { credentials: "include" });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) setVendors(data.vendors || []);
+      } catch { /* vendor selector simply stays 主辦方-only */ }
+    })();
+  }, [isVendor]);
 
   const stopCarrierScanner = useCallback(async () => {
     if (carrierScannerRef.current) {
@@ -143,7 +274,9 @@ export default function POSPage() {
     await stopCarrierScanner();
     setResult({ kind: "loading" });
     setIssueState({ kind: "idle" });
-    setAmountInput("");
+    setCheckout({ kind: "idle" });
+    setCart({});
+    setPaymentMethod("cash");
     setCarrierChoice("ecpay_carrier");
     setBarcodeInput("");
     try {
@@ -172,31 +305,68 @@ export default function POSPage() {
     performLookup(tokenInput.trim());
   };
 
-  const handleIssue = async () => {
-    if (result.kind !== "found") return;
-    const amt = Number(amountInput);
-    if (!Number.isInteger(amt) || amt <= 0) {
-      setIssueState({ kind: "failed", message: "請輸入正確的整數金額" });
-      return;
+  const cartItems = products
+    .filter((p) => (cart[p.id] ?? 0) > 0)
+    .map((p) => ({ product: p, qty: cart[p.id] }));
+  const cartTotal = cartItems.reduce((s, it) => s + it.product.price * it.qty, 0);
+
+  const addToCart = (id: number, delta: number) => {
+    setCart((prev) => {
+      const next = { ...prev };
+      const q = (next[id] ?? 0) + delta;
+      if (q <= 0) delete next[id];
+      else next[id] = Math.min(q, 99);
+      return next;
+    });
+  };
+
+  const handleCheckout = async () => {
+    if (result.kind !== "found" || cartItems.length === 0) return;
+    const methodLabel = PAYMENT_LABEL[paymentMethod] ?? paymentMethod;
+    if (!window.confirm(`確認結帳？\n合計 NT$${cartTotal.toLocaleString()}（${methodLabel}）\n${cartItems.map((it) => `${it.product.name} x${it.qty}`).join("、")}`)) return;
+    setCheckout({ kind: "submitting" });
+    try {
+      const res = await fetch(`/api/admin/pos/orders`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          qrToken: result.token,
+          paymentMethod,
+          items: cartItems.map((it) => ({ productId: it.product.id, qty: it.qty })),
+          ...(isVendor ? {} : { vendorId: selectedVendorId > 0 ? selectedVendorId : undefined }),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.order) {
+        setCheckout({ kind: "failed", message: data.error || `結帳失敗 (${res.status})` });
+        return;
+      }
+      setCheckout({ kind: "created", order: data.order });
+      refreshMySales();
+    } catch (err) {
+      setCheckout({ kind: "failed", message: (err as Error).message });
     }
+  };
+
+  const handleIssueForOrder = async () => {
+    if (checkout.kind !== "created" || result.kind !== "found") return;
     const barcode = barcodeInput.trim().toUpperCase();
     if (carrierChoice === "phone_barcode" && !/^\/[0-9A-Z.+-]{7}$/.test(barcode)) {
       setIssueState({ kind: "failed", message: "手機條碼格式錯誤：應為「/」開頭共 8 碼" });
       return;
     }
     const carrierLabel = carrierChoice === "phone_barcode" ? `手機條碼 ${barcode}` : "綠界會員載具（Email）";
-    if (!window.confirm(`確認向「${result.reg.parentName}」開立 NT$${amt.toLocaleString()} 電子發票？\n載具：${carrierLabel}`)) {
+    if (!window.confirm(`確認開立 NT$${checkout.order.totalAmount.toLocaleString()} 電子發票？\n載具：${carrierLabel}`)) {
       return;
     }
     setIssueState({ kind: "submitting" });
     try {
-      const res = await fetch(`/api/admin/pos/invoice`, {
+      const res = await fetch(`/api/admin/pos/orders/${checkout.order.id}/invoice`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          qrToken: result.token,
-          amount: amt,
           carrierType: carrierChoice,
           ...(carrierChoice === "phone_barcode" ? { carrierNum: barcode } : {}),
         }),
@@ -209,12 +379,64 @@ export default function POSPage() {
       setIssueState({
         kind: "issued",
         invoiceNumber: data.invoice?.invoiceNumber ?? null,
-        amount: amt,
+        amount: checkout.order.totalAmount,
       });
       refreshMySales();
     } catch (err) {
       setIssueState({ kind: "failed", message: (err as Error).message });
     }
+  };
+
+  // ── 商品管理操作 ──
+  const createProduct = async () => {
+    const price = Number(newPrice);
+    if (!newName.trim() || !Number.isInteger(price) || price <= 0) return;
+    const res = await fetch(`/api/admin/pos/products${vendorQuery ? `?${vendorQuery}` : ""}`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim(), price }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      window.alert(data.error || "新增失敗");
+      return;
+    }
+    setNewName("");
+    setNewPrice("");
+    refreshManageProducts();
+    refreshProducts();
+  };
+
+  const updateProduct = async (id: number, patch: Record<string, unknown>) => {
+    const res = await fetch(`/api/admin/pos/products/${id}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      window.alert(data.error || "修改失敗");
+      return;
+    }
+    refreshManageProducts();
+    refreshProducts();
+  };
+
+  const deleteProduct = async (p: Product) => {
+    if (!window.confirm(`確定刪除商品「${p.name}」？（過去的訂單紀錄不受影響）`)) return;
+    const res = await fetch(`/api/admin/pos/products/${p.id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      window.alert(data.error || "刪除失敗");
+      return;
+    }
+    refreshManageProducts();
+    refreshProducts();
   };
 
   const stopScanner = useCallback(async () => {
@@ -249,8 +471,6 @@ export default function POSPage() {
 
   const onCarrierDecoded = useCallback(
     (decodedText: string) => {
-      // Normalise and drop the phone-barcode into the field, then stop the
-      // dedicated carrier camera.
       setBarcodeInput(decodedText.trim().toUpperCase());
       stopCarrierScanner();
     },
@@ -374,8 +594,10 @@ export default function POSPage() {
     await stopCarrierScanner();
     setResult({ kind: "idle" });
     setIssueState({ kind: "idle" });
+    setCheckout({ kind: "idle" });
+    setCart({});
+    setPaymentMethod("cash");
     setTokenInput("");
-    setAmountInput("");
     setCarrierChoice("ecpay_carrier");
     setBarcodeInput("");
     setCarrierCameraError(null);
@@ -385,12 +607,33 @@ export default function POSPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-display flex items-center gap-3">
-          <ReceiptText className="text-primary" /> 現場收費開發票
+          <ShoppingCart className="text-primary" /> 現場 POS 收銀
         </h1>
         <p className="text-muted-foreground mt-1">
-          掃描客人門票 QR Code，輸入現金消費金額，立即開立電子發票（品名固定為「商品」）
+          掃描客人門票 QR Code → 點選商品加入購物車 → 選擇付款方式結帳，之後可立即開立電子發票
         </p>
       </div>
+
+      {!isVendor && vendors.length > 0 && (
+        <div className="bg-white rounded-3xl border shadow-sm p-4 flex items-center gap-3 flex-wrap" data-testid="pos-vendor-select">
+          <Store size={18} className="text-primary shrink-0" />
+          <span className="text-sm font-bold">結帳攤位：</span>
+          <select
+            value={selectedVendorId}
+            onChange={(e) => setSelectedVendorId(Number(e.target.value))}
+            className="px-3 py-2 border-2 rounded-xl text-sm focus:outline-none focus:border-primary"
+            data-testid="select-pos-vendor"
+          >
+            <option value={0}>主辦方</option>
+            {vendors.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}{v.boothNumber ? `（攤位 ${v.boothNumber}）` : ""}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-muted-foreground">商品清單、訂單與發票都會歸到所選攤位</span>
+        </div>
+      )}
 
       {isVendor && (
         <div className="bg-white rounded-3xl border-2 border-primary/20 shadow-sm p-6" data-testid="vendor-sales-panel">
@@ -445,7 +688,7 @@ export default function POSPage() {
         <div className="bg-white rounded-3xl border shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-lg flex items-center gap-2">
-              <Camera size={20} /> 相機掃描
+              <Camera size={20} /> 掃描客人 QR Code
             </h2>
             <button
               onClick={() => {
@@ -534,14 +777,14 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* Result panel */}
+      {/* Result / checkout panel */}
       {result.kind !== "idle" && result.kind !== "loading" && (
         <div
           className={cn(
-            "rounded-3xl border-2 shadow-sm p-8",
+            "rounded-3xl border-2 shadow-sm p-6 sm:p-8",
             result.kind === "error"
               ? "bg-red-50 border-red-200"
-              : issueState.kind === "issued"
+              : checkout.kind === "created"
                 ? "bg-green-50 border-green-300"
                 : "bg-white border-primary/20",
           )}
@@ -560,22 +803,20 @@ export default function POSPage() {
           {result.kind === "found" && (
             <>
               <div className="flex items-start gap-4 mb-4">
-                {issueState.kind === "issued" ? (
+                {checkout.kind === "created" ? (
                   <CheckCircle2 size={40} className="text-green-600 shrink-0" />
                 ) : (
-                  <ReceiptText size={40} className="text-primary shrink-0" />
+                  <ShoppingCart size={40} className="text-primary shrink-0" />
                 )}
                 <div className="flex-1">
                   <h3 className="font-bold text-xl mb-1">
-                    {issueState.kind === "issued" ? "發票開立成功 ✓" : "客人資料"}
+                    {checkout.kind === "created" ? "結帳完成 ✓" : "客人資料"}
                   </h3>
-                  {issueState.kind === "issued" && (
+                  {checkout.kind === "created" && (
                     <p className="text-sm text-green-700">
-                      金額 NT${issueState.amount.toLocaleString()}
-                      {issueState.invoiceNumber && <>・發票號碼 <span className="font-mono font-bold">{issueState.invoiceNumber}</span></>}
-                      {carrierChoice === "phone_barcode"
-                        ? "，發票已歸戶至客人的手機條碼載具。"
-                        : "，發票已存入綠界電子發票平台並寄送 Email 通知客人。"}
+                      訂單 <span className="font-mono">{checkout.order.paymentRef}</span>
+                      ・合計 NT${checkout.order.totalAmount.toLocaleString()}
+                      ・{PAYMENT_LABEL[checkout.order.paymentMethod] ?? checkout.order.paymentMethod}
                     </p>
                   )}
                 </div>
@@ -594,7 +835,7 @@ export default function POSPage() {
                 <div className="font-bold text-primary">{result.reg.eventDate}</div>
               </div>
 
-              {result.recentInvoices.length > 0 && (
+              {checkout.kind !== "created" && result.recentInvoices.length > 0 && (
                 <div className="mt-4 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm">
                   <p className="font-bold text-amber-800 mb-2 flex items-center gap-2">
                     <AlertTriangle size={16} /> 此票券近期已開立的現場發票
@@ -612,131 +853,251 @@ export default function POSPage() {
                 </div>
               )}
 
-              {issueState.kind !== "issued" && (
-                <div className="mt-6 space-y-3">
-                  <label className="block font-bold text-sm">發票載具</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        // Await teardown before the carrier section unmounts.
-                        await stopCarrierScanner();
-                        setCarrierChoice("ecpay_carrier");
-                      }}
-                      className={cn(
-                        "px-4 py-3 rounded-xl border-2 text-sm font-bold text-left transition-all",
-                        carrierChoice === "ecpay_carrier"
-                          ? "border-primary bg-primary/5 text-primary"
-                          : "border-muted text-muted-foreground hover:border-primary/40",
-                      )}
-                      data-testid="button-carrier-ecpay"
-                    >
-                      綠界電子發票（Email 通知）
-                      <span className="block text-xs font-normal mt-0.5">
-                        {result.reg.email ? `寄到 ${result.reg.email}` : "此票券沒有 Email，請改用手機條碼"}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCarrierChoice("phone_barcode")}
-                      className={cn(
-                        "px-4 py-3 rounded-xl border-2 text-sm font-bold text-left transition-all",
-                        carrierChoice === "phone_barcode"
-                          ? "border-primary bg-primary/5 text-primary"
-                          : "border-muted text-muted-foreground hover:border-primary/40",
-                      )}
-                      data-testid="button-carrier-phone"
-                    >
-                      手機條碼載具
-                      <span className="block text-xs font-normal mt-0.5">掃描客人的「/」開頭條碼</span>
-                    </button>
+              {/* ── 點餐／購物車 ── */}
+              {checkout.kind !== "created" && (
+                <div className="mt-6 space-y-4">
+                  <div>
+                    <label className="block font-bold text-sm mb-2">選擇商品</label>
+                    {productsError ? (
+                      <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {productsError}</p>
+                    ) : products.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        目前沒有商品。{canManageProducts ? "請先在下方「商品管理」新增商品。" : "請聯絡主辦方建立商品清單。"}
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {products.map((p) => {
+                          const qty = cart[p.id] ?? 0;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => addToCart(p.id, 1)}
+                              className={cn(
+                                "relative px-3 py-4 rounded-xl border-2 text-left transition-all",
+                                qty > 0
+                                  ? "border-primary bg-primary/5"
+                                  : "border-muted hover:border-primary/40",
+                              )}
+                              data-testid={`product-${p.id}`}
+                            >
+                              <div className="font-bold text-sm leading-tight">{p.name}</div>
+                              <div className="text-primary font-bold mt-1">NT${p.price.toLocaleString()}</div>
+                              {qty > 0 && (
+                                <span className="absolute top-2 right-2 min-w-6 h-6 px-1 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
+                                  {qty}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
-                  {carrierChoice === "phone_barcode" && (
-                    <>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={barcodeInput}
-                          onChange={(e) => setBarcodeInput(e.target.value.toUpperCase())}
-                          placeholder="/AB12345"
-                          maxLength={8}
-                          className="flex-1 px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-primary font-mono text-lg"
-                          data-testid="input-pos-barcode"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (carrierScanning) {
-                              stopCarrierScanner();
-                            } else {
-                              startCarrierScanner();
-                            }
-                          }}
-                          className={cn(
-                            "px-4 py-3 rounded-xl border-2 font-bold text-sm transition-all flex items-center gap-2",
-                            carrierScanning
-                              ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
-                              : "border-primary/30 text-primary hover:bg-primary/5",
-                          )}
-                          data-testid="button-scan-barcode"
-                        >
-                          {carrierScanning ? <><CameraOff size={16} /> 停止</> : <><Camera size={16} /> 掃描條碼</>}
-                        </button>
+                  {cartItems.length > 0 && (
+                    <div className="rounded-2xl border-2 border-primary/20 p-4 space-y-2" data-testid="pos-cart">
+                      <div className="font-bold text-sm flex items-center gap-2"><ShoppingCart size={16} /> 購物車</div>
+                      {cartItems.map(({ product: p, qty }) => (
+                        <div key={p.id} className="flex items-center gap-2 text-sm">
+                          <span className="flex-1 font-medium">{p.name}</span>
+                          <span className="text-muted-foreground">NT${p.price.toLocaleString()}</span>
+                          <button type="button" onClick={() => addToCart(p.id, -1)} className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted" data-testid={`cart-minus-${p.id}`}>
+                            <Minus size={14} />
+                          </button>
+                          <span className="w-6 text-center font-bold">{qty}</span>
+                          <button type="button" onClick={() => addToCart(p.id, 1)} className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted" data-testid={`cart-plus-${p.id}`}>
+                            <Plus size={14} />
+                          </button>
+                          <span className="w-20 text-right font-bold">NT${(p.price * qty).toLocaleString()}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between items-center border-t pt-2 mt-2">
+                        <span className="font-bold">合計</span>
+                        <span className="text-2xl font-bold text-primary" data-testid="text-cart-total">NT${cartTotal.toLocaleString()}</span>
                       </div>
-                      {/* Dedicated inline carrier camera — opens right here so the
-                          staffer never scrolls back to the top scanner. Target div
-                          kept FREE of React children (html5-qrcode owns it). */}
-                      <div
-                        className={cn(
-                          "w-full bg-muted/30 rounded-2xl overflow-hidden",
-                          carrierScanning ? "min-h-[220px]" : "hidden",
-                        )}
-                      >
-                        <div id={CARRIER_SCANNER_ELEMENT_ID} className="w-full" />
-                      </div>
-                      {carrierScanning && (
-                        <p className="text-xs text-primary text-center">
-                          請對準客人手機上的「/」開頭條碼，掃到後會自動填入
-                        </p>
-                      )}
-                      {carrierCameraError && (
-                        <p className="text-xs text-red-600 text-center flex items-center justify-center gap-1">
-                          <AlertTriangle size={14} /> {carrierCameraError}
-                        </p>
-                      )}
-                    </>
+                    </div>
                   )}
 
-                  <label className="block font-bold text-sm">消費金額（現金，NT$）</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    step={1}
-                    value={amountInput}
-                    onChange={(e) => setAmountInput(e.target.value)}
-                    placeholder="輸入金額，例如 500"
-                    className="w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:border-primary text-2xl font-bold text-center"
-                    data-testid="input-pos-amount"
-                  />
-                  {issueState.kind === "failed" && (
+                  <div>
+                    <label className="block font-bold text-sm mb-2">付款方式（實際收款在系統外完成，這裡只做紀錄）</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {PAYMENT_METHODS.map((m) => (
+                        <button
+                          key={m.value}
+                          type="button"
+                          onClick={() => setPaymentMethod(m.value)}
+                          className={cn(
+                            "px-3 py-3 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all",
+                            paymentMethod === m.value
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-muted text-muted-foreground hover:border-primary/40",
+                          )}
+                          data-testid={`payment-${m.value}`}
+                        >
+                          <m.icon size={16} /> {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {checkout.kind === "failed" && (
                     <p className="text-sm text-red-600 flex items-center gap-2">
-                      <XCircle size={16} /> {issueState.message}
+                      <XCircle size={16} /> {checkout.message}
                     </p>
                   )}
                   <button
-                    onClick={handleIssue}
-                    disabled={issueState.kind === "submitting" || !amountInput.trim()}
-                    className="w-full py-4 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    data-testid="button-pos-issue"
+                    onClick={handleCheckout}
+                    disabled={checkout.kind === "submitting" || cartItems.length === 0}
+                    className="w-full py-4 rounded-xl bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    data-testid="button-pos-checkout"
                   >
-                    <ReceiptText size={20} />
-                    {issueState.kind === "submitting" ? "開立中，請稍候..." : "開立電子發票"}
+                    <CheckCircle2 size={20} />
+                    {checkout.kind === "submitting"
+                      ? "結帳中..."
+                      : cartItems.length === 0
+                        ? "請先選擇商品"
+                        : `結帳 NT$${cartTotal.toLocaleString()}（${PAYMENT_LABEL[paymentMethod]}）`}
                   </button>
-                  <p className="text-xs text-muted-foreground text-center">
-                    品名固定為「商品」・買受人資料自動帶入客人購票時的姓名 / Email / 電話
-                  </p>
+                </div>
+              )}
+
+              {/* ── 結帳完成後：開立發票 ── */}
+              {checkout.kind === "created" && (
+                <div className="mt-6 space-y-3">
+                  <div className="rounded-2xl bg-white/70 p-4 text-sm space-y-1">
+                    {checkout.order.items.map((it, i) => (
+                      <div key={i} className="flex justify-between">
+                        <span>{it.name} × {it.qty}</span>
+                        <span className="font-bold">NT${(it.unitPrice * it.qty).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {issueState.kind === "issued" ? (
+                    <div className="rounded-2xl bg-green-100 border border-green-300 p-4 text-sm text-green-800">
+                      <p className="font-bold flex items-center gap-2"><ReceiptText size={16} /> 發票開立成功 ✓</p>
+                      <p className="mt-1">
+                        金額 NT${issueState.amount.toLocaleString()}
+                        {issueState.invoiceNumber && <>・發票號碼 <span className="font-mono font-bold">{issueState.invoiceNumber}</span></>}
+                        {carrierChoice === "phone_barcode"
+                          ? "，發票已歸戶至客人的手機條碼載具。"
+                          : "，發票已存入綠界電子發票平台並寄送 Email 通知客人。"}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <label className="block font-bold text-sm">開立電子發票（可跳過，之後也能從訂單補開）</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await stopCarrierScanner();
+                            setCarrierChoice("ecpay_carrier");
+                          }}
+                          className={cn(
+                            "px-4 py-3 rounded-xl border-2 text-sm font-bold text-left transition-all",
+                            carrierChoice === "ecpay_carrier"
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-muted text-muted-foreground hover:border-primary/40",
+                          )}
+                          data-testid="button-carrier-ecpay"
+                        >
+                          綠界電子發票（Email 通知）
+                          <span className="block text-xs font-normal mt-0.5">
+                            {result.reg.email ? `寄到 ${result.reg.email}` : "此票券沒有 Email，請改用手機條碼"}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCarrierChoice("phone_barcode")}
+                          className={cn(
+                            "px-4 py-3 rounded-xl border-2 text-sm font-bold text-left transition-all",
+                            carrierChoice === "phone_barcode"
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-muted text-muted-foreground hover:border-primary/40",
+                          )}
+                          data-testid="button-carrier-phone"
+                        >
+                          手機條碼載具
+                          <span className="block text-xs font-normal mt-0.5">掃描客人的「/」開頭條碼</span>
+                        </button>
+                      </div>
+
+                      {carrierChoice === "phone_barcode" && (
+                        <>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={barcodeInput}
+                              onChange={(e) => setBarcodeInput(e.target.value.toUpperCase())}
+                              placeholder="/AB12345"
+                              maxLength={8}
+                              className="flex-1 px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-primary font-mono text-lg"
+                              data-testid="input-pos-barcode"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (carrierScanning) {
+                                  stopCarrierScanner();
+                                } else {
+                                  startCarrierScanner();
+                                }
+                              }}
+                              className={cn(
+                                "px-4 py-3 rounded-xl border-2 font-bold text-sm transition-all flex items-center gap-2",
+                                carrierScanning
+                                  ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                                  : "border-primary/30 text-primary hover:bg-primary/5",
+                              )}
+                              data-testid="button-scan-barcode"
+                            >
+                              {carrierScanning ? <><CameraOff size={16} /> 停止</> : <><Camera size={16} /> 掃描條碼</>}
+                            </button>
+                          </div>
+                          {/* Dedicated inline carrier camera. Target div kept FREE
+                              of React children (html5-qrcode owns it). */}
+                          <div
+                            className={cn(
+                              "w-full bg-muted/30 rounded-2xl overflow-hidden",
+                              carrierScanning ? "min-h-[220px]" : "hidden",
+                            )}
+                          >
+                            <div id={CARRIER_SCANNER_ELEMENT_ID} className="w-full" />
+                          </div>
+                          {carrierScanning && (
+                            <p className="text-xs text-primary text-center">
+                              請對準客人手機上的「/」開頭條碼，掃到後會自動填入
+                            </p>
+                          )}
+                          {carrierCameraError && (
+                            <p className="text-xs text-red-600 text-center flex items-center justify-center gap-1">
+                              <AlertTriangle size={14} /> {carrierCameraError}
+                            </p>
+                          )}
+                        </>
+                      )}
+
+                      {issueState.kind === "failed" && (
+                        <p className="text-sm text-red-600 flex items-center gap-2">
+                          <XCircle size={16} /> {issueState.message}
+                        </p>
+                      )}
+                      <button
+                        onClick={handleIssueForOrder}
+                        disabled={issueState.kind === "submitting"}
+                        className="w-full py-4 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        data-testid="button-pos-issue"
+                      >
+                        <ReceiptText size={20} />
+                        {issueState.kind === "submitting" ? "開立中，請稍候..." : "開立電子發票"}
+                      </button>
+                      <p className="text-xs text-muted-foreground text-center">
+                        發票品名將帶入實際購買的商品明細
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -751,6 +1112,166 @@ export default function POSPage() {
           )}
         </div>
       )}
+
+      {/* ── 商品管理 ── */}
+      {canManageProducts && (
+        <div className="bg-white rounded-3xl border shadow-sm p-6">
+          <button
+            type="button"
+            onClick={() => setManageOpen((v) => !v)}
+            className="w-full flex items-center justify-between"
+            data-testid="button-toggle-products-manage"
+          >
+            <h2 className="font-bold text-lg flex items-center gap-2">
+              <Package size={20} className="text-primary" /> 商品管理
+              {!isVendor && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  （{selectedVendorId > 0 ? vendors.find((v) => v.id === selectedVendorId)?.name ?? "攤位" : "主辦方"}）
+                </span>
+              )}
+            </h2>
+            <span className="text-sm text-muted-foreground">{manageOpen ? "收合 ▲" : "展開 ▼"}</span>
+          </button>
+          {manageOpen && (
+            <div className="mt-4 space-y-4">
+              <div className="flex gap-2 flex-wrap">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="商品名稱"
+                  className="flex-1 min-w-[160px] px-4 py-2.5 border-2 rounded-xl text-sm focus:outline-none focus:border-primary"
+                  data-testid="input-new-product-name"
+                />
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={newPrice}
+                  onChange={(e) => setNewPrice(e.target.value)}
+                  placeholder="價格"
+                  className="w-28 px-4 py-2.5 border-2 rounded-xl text-sm focus:outline-none focus:border-primary"
+                  data-testid="input-new-product-price"
+                />
+                <button
+                  type="button"
+                  onClick={createProduct}
+                  disabled={!newName.trim() || !newPrice.trim()}
+                  className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5"
+                  data-testid="button-add-product"
+                >
+                  <Plus size={16} /> 新增
+                </button>
+              </div>
+              {manageProducts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">尚未建立商品。</p>
+              ) : (
+                <ul className="divide-y">
+                  {manageProducts.map((p) => (
+                    <li key={p.id} className="py-2.5 flex items-center gap-3 text-sm" data-testid={`manage-product-${p.id}`}>
+                      <span className={cn("flex-1 font-medium", !p.active && "line-through text-muted-foreground")}>{p.name}</span>
+                      <span className="font-bold">NT${p.price.toLocaleString()}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const name = window.prompt("商品名稱：", p.name);
+                          if (name === null) return;
+                          const priceStr = window.prompt("價格（NT$）：", String(p.price));
+                          if (priceStr === null) return;
+                          updateProduct(p.id, { name: name.trim(), price: Number(priceStr) });
+                        }}
+                        className="p-2 rounded-lg border hover:bg-muted"
+                        title="編輯"
+                        data-testid={`button-edit-product-${p.id}`}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateProduct(p.id, { active: !p.active })}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg border text-xs font-bold",
+                          p.active ? "text-amber-700 border-amber-300 hover:bg-amber-50" : "text-green-700 border-green-300 hover:bg-green-50",
+                        )}
+                        data-testid={`button-toggle-product-${p.id}`}
+                      >
+                        {p.active ? "下架" : "上架"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteProduct(p)}
+                        className="p-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50"
+                        title="刪除"
+                        data-testid={`button-delete-product-${p.id}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── 最近訂單 ── */}
+      <div className="bg-white rounded-3xl border shadow-sm p-6">
+        <button
+          type="button"
+          onClick={() => setOrdersOpen((v) => !v)}
+          className="w-full flex items-center justify-between"
+          data-testid="button-toggle-orders"
+        >
+          <h2 className="font-bold text-lg flex items-center gap-2">
+            <ListOrdered size={20} className="text-primary" /> 最近訂單
+          </h2>
+          <span className="text-sm text-muted-foreground">{ordersOpen ? "收合 ▲" : "展開 ▼"}</span>
+        </button>
+        {ordersOpen && (
+          <div className="mt-4">
+            {ordersError ? (
+              <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {ordersError}</p>
+            ) : orders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">尚無訂單。</p>
+            ) : (
+              <ul className="divide-y text-sm">
+                {orders.map((o) => (
+                  <li key={o.id} className="py-3 space-y-1" data-testid={`order-${o.id}`}>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <span className="font-mono text-xs text-muted-foreground">{o.paymentRef}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(o.createdAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <span>
+                        {o.buyerName || "—"}・{o.items.map((it) => `${it.name}×${it.qty}`).join("、")}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{PAYMENT_LABEL[o.paymentMethod] ?? o.paymentMethod}</span>
+                        <span className="font-bold">NT${o.totalAmount.toLocaleString()}</span>
+                        <span className={cn(
+                          "text-xs",
+                          o.invoice?.status === "issued" ? "text-green-600" : o.invoice?.status === "failed" ? "text-red-500" : "text-muted-foreground",
+                        )}>
+                          {o.invoice?.status === "issued"
+                            ? `發票 ${o.invoice.invoiceNumber ?? "已開立"}`
+                            : o.invoice?.status === "failed"
+                              ? "發票失敗"
+                              : o.invoice?.status === "voided"
+                                ? "發票已作廢"
+                                : "未開發票"}
+                        </span>
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
