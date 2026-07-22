@@ -158,7 +158,7 @@ export default function POSPage() {
   const [productsError, setProductsError] = useState<string | null>(null);
   const [cart, setCart] = useState<Record<number, number>>({});
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
-  const [discountOn, setDiscountOn] = useState(false);
+  const [discountChoice, setDiscountChoice] = useState<number>(0);
   const [checkout, setCheckout] = useState<CheckoutState>({ kind: "idle" });
 
   // ── 商品管理／訂單 ──
@@ -279,7 +279,7 @@ export default function POSPage() {
     setCheckout({ kind: "idle" });
     setCart({});
     setPaymentMethod("cash");
-    setDiscountOn(false);
+    setDiscountChoice(0);
     setCarrierChoice("ecpay_carrier");
     setBarcodeInput("");
     try {
@@ -312,8 +312,8 @@ export default function POSPage() {
     .filter((p) => (cart[p.id] ?? 0) > 0)
     .map((p) => ({ product: p, qty: cart[p.id] }));
   const cartSubtotal = cartItems.reduce((s, it) => s + it.product.price * it.qty, 0);
-  // 折價 −50：小計必須大於 50 才能套用
-  const discountAmount = discountOn && cartSubtotal > 50 ? 50 : 0;
+  // 折價 −20／−50：小計必須大於折價金額才能套用
+  const discountAmount = discountChoice > 0 && cartSubtotal > discountChoice ? discountChoice : 0;
   const cartTotal = cartSubtotal - discountAmount;
 
   const addToCart = (id: number, delta: number) => {
@@ -612,7 +612,7 @@ export default function POSPage() {
     setCheckout({ kind: "idle" });
     setCart({});
     setPaymentMethod("cash");
-    setDiscountOn(false);
+    setDiscountChoice(0);
     setTokenInput("");
     setCarrierChoice("ecpay_carrier");
     setBarcodeInput("");
@@ -962,21 +962,26 @@ export default function POSPage() {
                           <span className="font-bold">NT${cartSubtotal.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
-                          <button
-                            type="button"
-                            onClick={() => setDiscountOn((v) => !v)}
-                            disabled={cartSubtotal <= 50}
-                            className={cn(
-                              "px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-all disabled:opacity-40",
-                              discountAmount > 0
-                                ? "border-red-400 bg-red-50 text-red-600"
-                                : "border-muted text-muted-foreground hover:border-red-300 hover:text-red-500",
-                            )}
-                            data-testid="button-discount-50"
-                          >
-                            {discountAmount > 0 ? "✓ 已折價 −$50（點擊取消）" : "折價 −$50"}
-                          </button>
-                          {discountAmount > 0 && <span className="font-bold text-red-600">−NT$50</span>}
+                          <div className="flex gap-2">
+                            {[20, 50].map((amt) => (
+                              <button
+                                key={amt}
+                                type="button"
+                                onClick={() => setDiscountChoice((v) => (v === amt ? 0 : amt))}
+                                disabled={cartSubtotal <= amt}
+                                className={cn(
+                                  "px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-all disabled:opacity-40",
+                                  discountAmount === amt
+                                    ? "border-red-400 bg-red-50 text-red-600"
+                                    : "border-muted text-muted-foreground hover:border-red-300 hover:text-red-500",
+                                )}
+                                data-testid={`button-discount-${amt}`}
+                              >
+                                {discountAmount === amt ? `✓ 已折價 −$${amt}` : `折價 −$${amt}`}
+                              </button>
+                            ))}
+                          </div>
+                          {discountAmount > 0 && <span className="font-bold text-red-600">−NT${discountAmount}</span>}
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="font-bold">合計</span>
