@@ -16,6 +16,10 @@ A ticket is admissible at check-in only if `paymentStatus === 'paid'` OR the ord
 For paid orders the buyer's confirmation (which carries the QR) must fire on the paid-transition, not at registration creation. Only free orders (`amount === 0`) get it at creation.
 **Why:** Sending a valid entry QR before payment lets an unpaid buyer present a "購票成功" ticket.
 
+## Reminder emails (7-day/1-day) must apply the same paid/free gate
+The hourly reminder scheduler carries the entry QR, so its candidate query must filter `paymentStatus='paid' OR amount=0` — not just email+qrToken.
+**Why:** It originally selected every registration with an email, so unpaid orders received QR-bearing reminders. `sendConfirmationEmail` also enforces the gate internally (even on forced resends) as defense-in-depth.
+
 ## Paid transition must be atomic + idempotent
 The status flip to `paid` and all downstream side effects (Slack notify, confirmation email) must run exactly once per order. Use a conditional `UPDATE ... WHERE status <> 'paid'` and only fire side effects when it actually changed a row.
 **Why:** NewebPay sends both a server notify AND a browser return; Stripe sends webhook + a client-poll confirm fallback; bank transfer adds a manual admin confirm. Several can race for the same order.

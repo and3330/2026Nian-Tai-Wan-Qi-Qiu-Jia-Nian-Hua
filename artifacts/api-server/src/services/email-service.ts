@@ -580,6 +580,16 @@ export async function sendConfirmationEmail(
     .where(eq(registrationsTable.id, registrationId))
     .limit(1);
   if (!reg || !reg.email || !reg.qrToken) return null;
+  // Defense-in-depth: the confirmation carries the entry QR, so it must only
+  // go to paid orders or genuinely free ones (amount = 0; NULL is NOT free).
+  // Applies even to forced admin resends — mark the order paid first.
+  if (reg.paymentStatus !== "paid" && reg.amount !== 0) {
+    logger.warn(
+      { regId: reg.id, paymentStatus: reg.paymentStatus, amount: reg.amount },
+      "[Email] confirmation blocked: registration not paid/free",
+    );
+    return null;
+  }
   // Idempotent: never send the confirmation twice for the same registration —
   // unless an admin explicitly forces a resend (e.g. buyer lost the email).
   if (!opts?.force && reg.confirmationEmailSentAt) return null;

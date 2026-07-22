@@ -1,5 +1,5 @@
 import { db, registrationsTable } from "@workspace/db";
-import { and, eq, isNull, isNotNull } from "drizzle-orm";
+import { and, eq, isNull, isNotNull, or } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import {
   buildRegistrationVars,
@@ -17,10 +17,22 @@ function daysBetween(from: Date, toIso: string): number {
 }
 
 export async function processReminders(now: Date = new Date()): Promise<{ week: number; day: number }> {
+  // Only remind entitled attendees: paid orders, or genuinely free orders
+  // (amount = 0 — a NULL amount is NOT free). Unpaid/pending/refunded orders
+  // must never receive a reminder (it carries the entry QR).
   const candidates = await db
     .select()
     .from(registrationsTable)
-    .where(and(isNotNull(registrationsTable.email), isNotNull(registrationsTable.qrToken)));
+    .where(
+      and(
+        isNotNull(registrationsTable.email),
+        isNotNull(registrationsTable.qrToken),
+        or(
+          eq(registrationsTable.paymentStatus, "paid"),
+          eq(registrationsTable.amount, 0),
+        ),
+      ),
+    );
 
   let weekSent = 0;
   let daySent = 0;
