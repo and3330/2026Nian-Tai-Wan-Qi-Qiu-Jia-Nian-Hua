@@ -182,6 +182,9 @@ export default function POSPage() {
   const [statsOpen, setStatsOpen] = useState(false);
   const [stats, setStats] = useState<PosStats | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<number>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [voidBusyId, setVoidBusyId] = useState<number | null>(null);
 
   const vendorQuery = isVendor ? "" : selectedVendorId > 0 ? `vendorId=${selectedVendorId}` : "";
 
@@ -276,6 +279,110 @@ export default function POSPage() {
   useEffect(() => {
     if (statsOpen) refreshStats();
   }, [statsOpen, refreshStats]);
+
+  // 換攤位／重新載入清單時清空批量勾選（避免勾到已不在畫面上的訂單）
+  useEffect(() => {
+    setSelectedOrderIds(new Set());
+  }, [orders]);
+
+  const toggleOrderSelected = (id: number) => {
+    setSelectedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const voidOrderInvoice = async (o: PosOrder) => {
+    if (!window.confirm(`確定作廢此訂單的發票？\n${o.paymentRef}・NT$${o.totalAmount.toLocaleString()}\n（退款情境用；作廢後如需發票須重新開立）`)) return;
+    setVoidBusyId(o.id);
+    try {
+      const res = await fetch(`/api/admin/pos/orders/${o.id}/invoice/void`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "現場退款" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        window.alert(data.error || `發票作廢失敗 (${res.status})`);
+        return;
+      }
+      await refreshOrders();
+    } catch (err) {
+      window.alert((err as Error).message);
+    } finally {
+      setVoidBusyId(null);
+    }
+  };
+
+  const batchIssueInvoices = async () => {
+    const targets = orders.filter(
+      (o) => selectedOrderIds.has(o.id) && o.invoice?.status !== "issued" && o.invoice?.status !== "pending",
+    );
+    if (targets.length === 0) {
+      window.alert("勾選的訂單中沒有可開立發票的（已開立或開立中的會跳過）。");
+      return;
+    }
+    const noEmail = targets.filter((o) => !o.buyerEmail).length;
+    if (!window.confirm(
+      `批量開立發票：共 ${targets.length} 筆（以客人 Email 會員載具開立）。` +
+      (noEmail > 0 ? `\n注意：其中 ${noEmail} 筆客人沒有 Email，將開立失敗，需個別以手機條碼開立。` : "") +
+      `\n確定執行？`,
+    )) return;
+    setBatchBusy(true);
+    let ok = 0;
+    const fails: string[] = [];
+    for (const o of targets) {
+      try {
+        const res = await fetch(`/api/admin/pos/orders/${o.id}/invoice`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ carrierType: "ecpay_carrier" }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) ok += 1;
+        else fails.push(`${o.paymentRef}：${data.error || res.status}`);
+      } catch (err) {
+        fails.push(`${o.paymentRef}：${(err as Error).message}`);
+      }
+    }
+    setBatchBusy(false);
+    await refreshOrders();
+    window.alert(`批量開立完成：成功 ${ok} 筆、失敗 ${fails.length} 筆${fails.length ? `\n${fails.join("\n")}` : ""}`);
+  };
+
+  const batchVoidInvoices = async () => {
+    const targets = orders.filter((o) => selectedOrderIds.has(o.id) && o.invoice?.status === "issued");
+    if (targets.length === 0) {
+      window.alert("勾選的訂單中沒有已開立的發票可作廢。");
+      return;
+    }
+    if (!window.confirm(`批量作廢發票：共 ${targets.length} 筆（退款情境用，作廢後無法復原）。確定執行？`)) return;
+    setBatchBusy(true);
+    let ok = 0;
+    const fails: string[] = [];
+    for (const o of targets) {
+      try {
+        const res = await fetch(`/api/admin/pos/orders/${o.id}/invoice/void`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "現場退款" }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) ok += 1;
+        else fails.push(`${o.paymentRef}：${data.error || res.status}`);
+      } catch (err) {
+        fails.push(`${o.paymentRef}：${(err as Error).message}`);
+      }
+    }
+    setBatchBusy(false);
+    await refreshOrders();
+    window.alert(`批量作廢完成：成功 ${ok} 筆、失敗 ${fails.length} 筆${fails.length ? `\n${fails.join("\n")}` : ""}`);
+  };
 
   useEffect(() => {
     if (isVendor) return;
@@ -1435,40 +1542,95 @@ export default function POSPage() {
             ) : orders.length === 0 ? (
               <p className="text-sm text-muted-foreground">尚無訂單。</p>
             ) : (
-              <ul className="divide-y text-sm">
-                {orders.map((o) => (
-                  <li key={o.id} className="py-3 space-y-1" data-testid={`order-${o.id}`}>
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <span className="font-mono text-xs text-muted-foreground">{o.paymentRef}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(o.createdAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <span>
-                        {o.buyerName || "—"}・{o.items.map((it) => `${it.name}×${it.qty}`).join("、")}
-                        {o.discount > 0 && <span className="text-red-600">・折價−${o.discount}</span>}
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{PAYMENT_LABEL[o.paymentMethod] ?? o.paymentMethod}</span>
-                        <span className="font-bold">NT${o.totalAmount.toLocaleString()}</span>
-                        <span className={cn(
-                          "text-xs",
-                          o.invoice?.status === "issued" ? "text-green-600" : o.invoice?.status === "failed" ? "text-red-500" : "text-muted-foreground",
-                        )}>
-                          {o.invoice?.status === "issued"
-                            ? `發票 ${o.invoice.invoiceNumber ?? "已開立"}`
-                            : o.invoice?.status === "failed"
-                              ? "發票失敗"
-                              : o.invoice?.status === "voided"
-                                ? "發票已作廢"
-                                : "未開發票"}
+              <>
+                {/* 批量工具列 */}
+                <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={selectedOrderIds.size === orders.length && orders.length > 0}
+                      onChange={(e) =>
+                        setSelectedOrderIds(e.target.checked ? new Set(orders.map((o) => o.id)) : new Set())
+                      }
+                      data-testid="checkbox-select-all-orders"
+                    />
+                    全選（已勾 {selectedOrderIds.size} 筆）
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={batchIssueInvoices}
+                      disabled={batchBusy || selectedOrderIds.size === 0}
+                      className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 disabled:opacity-40"
+                      data-testid="button-batch-issue"
+                    >
+                      {batchBusy ? "處理中..." : "批量開立發票"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={batchVoidInvoices}
+                      disabled={batchBusy || selectedOrderIds.size === 0}
+                      className="px-3 py-1.5 rounded-lg border-2 border-red-300 text-red-600 text-xs font-bold hover:bg-red-50 disabled:opacity-40"
+                      data-testid="button-batch-void"
+                    >
+                      {batchBusy ? "處理中..." : "批量作廢發票"}
+                    </button>
+                  </div>
+                </div>
+                <ul className="divide-y text-sm">
+                  {orders.map((o) => (
+                    <li key={o.id} className="py-3 space-y-1" data-testid={`order-${o.id}`}>
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <span className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.has(o.id)}
+                            onChange={() => toggleOrderSelected(o.id)}
+                            data-testid={`checkbox-order-${o.id}`}
+                          />
+                          <span className="font-mono text-xs text-muted-foreground">{o.paymentRef}</span>
                         </span>
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(o.createdAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <span>
+                          {o.buyerName || "—"}・{o.items.map((it) => `${it.name}×${it.qty}`).join("、")}
+                          {o.discount > 0 && <span className="text-red-600">・折價−${o.discount}</span>}
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{PAYMENT_LABEL[o.paymentMethod] ?? o.paymentMethod}</span>
+                          <span className="font-bold">NT${o.totalAmount.toLocaleString()}</span>
+                          <span className={cn(
+                            "text-xs",
+                            o.invoice?.status === "issued" ? "text-green-600" : o.invoice?.status === "failed" ? "text-red-500" : "text-muted-foreground",
+                          )}>
+                            {o.invoice?.status === "issued"
+                              ? `發票 ${o.invoice.invoiceNumber ?? "已開立"}`
+                              : o.invoice?.status === "failed"
+                                ? "發票失敗"
+                                : o.invoice?.status === "voided"
+                                  ? "發票已作廢"
+                                  : "未開發票"}
+                          </span>
+                          {o.invoice?.status === "issued" && (
+                            <button
+                              type="button"
+                              onClick={() => voidOrderInvoice(o)}
+                              disabled={voidBusyId === o.id || batchBusy}
+                              className="text-xs px-2 py-1 rounded-lg border border-red-300 text-red-600 font-bold hover:bg-red-50 disabled:opacity-40"
+                              data-testid={`button-void-${o.id}`}
+                            >
+                              {voidBusyId === o.id ? "作廢中..." : "作廢發票"}
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         )}

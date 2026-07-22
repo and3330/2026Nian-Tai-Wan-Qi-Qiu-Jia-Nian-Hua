@@ -9,7 +9,7 @@ import {
   posOrdersTable,
   type PosOrderItem,
 } from "@workspace/db";
-import { issueInvoice, type InvoiceIssueOptions } from "../lib/ecpay-invoice";
+import { issueInvoice, voidInvoice, type InvoiceIssueOptions } from "../lib/ecpay-invoice";
 import { logger } from "../lib/logger";
 
 // On-site POS: staff scans a ticket QR, enters a cash amount, and issues an
@@ -686,6 +686,48 @@ router.post("/admin/pos/orders/:id/invoice", async (req, res): Promise<void> => 
     .where(eq(invoicesTable.id, invRow.id));
   logger.error({ orderId: order.id, message: result.message }, "[POS] order invoice failed");
   res.status(502).json({ success: false, error: result.message || "發票開立失敗" });
+});
+
+// 作廢訂單的發票（退款情境）：呼叫 ECPay 作廢後把發票標記 voided。
+// vendor 只能作廢自己攤位的訂單發票；工作人員／主辦方可作廢任何 POS 訂單發票。
+router.post("/admin/pos/orders/:id/invoice/void", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin", "vendor")) return;
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+  const [order] = await db.select().from(posOrdersTable).where(eq(posOrdersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "找不到訂單" }); return; }
+  if (req.adminUser?.role === "vendor") {
+    const v = await resolvePosVendor(req);
+    if (!v.ok || v.vendorId == null || order.vendorId !== v.vendorId) {
+      res.status(403).json({ error: "只能作廢自己商家的訂單發票" });
+      return;
+    }
+  }
+  if (order.invoiceId == null) { res.status(400).json({ error: "此訂單尚未開立發票" }); return; }
+  const [invoice] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, order.invoiceId)).limit(1);
+  if (!invoice || invoice.status !== "issued" || !invoice.invoiceNumber || !invoice.invoiceDate) {
+    res.status(400).json({ error: "此訂單沒有已開立的發票可作廢" });
+    return;
+  }
+  const reason = String(req.body?.reason || "現場退款").slice(0, 20) || "現場退款";
+  // ECPay 回傳的 invoiceDate 可能是 "YYYY-MM-DD+HH:MM:SS"；作廢 API 只要日期。
+  const dateOnly = invoice.invoiceDate.split("+")[0]?.split(" ")[0]?.split("T")[0] ?? invoice.invoiceDate;
+  try {
+    const result = await voidInvoice(invoice.invoiceNumber, dateOnly, reason);
+    if (result.success) {
+      await db
+        .update(invoicesTable)
+        .set({ status: "voided", voidedAt: new Date() })
+        .where(eq(invoicesTable.id, invoice.id));
+      logger.info({ orderId: order.id, invoiceNumber: invoice.invoiceNumber }, "[POS] order invoice voided");
+      res.json({ success: true });
+      return;
+    }
+    res.status(502).json({ success: false, error: result.message || "發票作廢失敗" });
+  } catch (err) {
+    logger.error({ err, orderId: order.id }, "[POS] invoice void error");
+    res.status(500).json({ error: "發票作廢失敗，請稍後再試" });
+  }
 });
 
 export default router;
