@@ -21,7 +21,7 @@ type Registration = {
 type LookupResult =
   | { kind: "idle" }
   | { kind: "loading" }
-  | { kind: "found"; reg: Registration; alreadyCheckedIn: boolean }
+  | { kind: "found"; reg: Registration; alreadyCheckedIn: boolean; admissible: boolean }
   | { kind: "checked"; reg: Registration; alreadyCheckedIn: boolean; checkedInNow?: number }
   | { kind: "error"; message: string };
 
@@ -87,7 +87,12 @@ export default function CheckinPage() {
       }
       const data = await res.json();
       setCheckinCount(remainingOf(data.registration));
-      setResult({ kind: "found", reg: data.registration, alreadyCheckedIn: data.alreadyCheckedIn });
+      setResult({
+        kind: "found",
+        reg: data.registration,
+        alreadyCheckedIn: data.alreadyCheckedIn,
+        admissible: data.admissible !== false,
+      });
     } catch (err) {
       setResult({ kind: "error", message: (err as Error).message });
     }
@@ -337,6 +342,8 @@ export default function CheckinPage() {
             "rounded-3xl border-2 shadow-sm p-8",
             result.kind === "error"
               ? "bg-red-50 border-red-200"
+              : result.kind === "found" && !result.admissible
+                ? "bg-red-50 border-red-300"
               : result.kind === "checked" && !result.alreadyCheckedIn
                 ? "bg-green-50 border-green-300"
                 : result.kind === "found" && result.alreadyCheckedIn
@@ -358,7 +365,9 @@ export default function CheckinPage() {
           {(result.kind === "found" || result.kind === "checked") && (
             <>
               <div className="flex items-start gap-4 mb-4">
-                {result.kind === "checked" && !result.alreadyCheckedIn ? (
+                {result.kind === "found" && !result.admissible ? (
+                  <XCircle size={40} className="text-red-600 shrink-0" />
+                ) : result.kind === "checked" && !result.alreadyCheckedIn ? (
                   <CheckCircle2 size={40} className="text-green-600 shrink-0" />
                 ) : result.alreadyCheckedIn ? (
                   <AlertTriangle size={40} className="text-amber-600 shrink-0" />
@@ -366,13 +375,20 @@ export default function CheckinPage() {
                   <ScanLine size={40} className="text-primary shrink-0" />
                 )}
                 <div className="flex-1">
-                  <h3 className="font-bold text-xl mb-1">
-                    {result.kind === "checked" && !result.alreadyCheckedIn
-                      ? `報到成功 ✓${result.checkedInNow ? `（本次 ${result.checkedInNow} 位）` : ""}`
-                      : result.alreadyCheckedIn
-                        ? "已全數報到"
-                        : "票券資訊"}
+                  <h3 className={cn("font-bold text-xl mb-1", result.kind === "found" && !result.admissible && "text-red-700")}>
+                    {result.kind === "found" && !result.admissible
+                      ? "此票沒付款，不得進來"
+                      : result.kind === "checked" && !result.alreadyCheckedIn
+                        ? `報到成功 ✓${result.checkedInNow ? `（本次 ${result.checkedInNow} 位）` : ""}`
+                        : result.alreadyCheckedIn
+                          ? "已全數報到"
+                          : "票券資訊"}
                   </h3>
+                  {result.kind === "found" && !result.admissible && (
+                    <p className="text-sm text-red-700 font-bold">
+                      此票券尚未完成付款，請勿放行。可請客人出示付款證明，或至訂單管理確認付款狀態。
+                    </p>
+                  )}
                   {result.alreadyCheckedIn && result.reg.checkedInAt && (
                     <p className="text-sm text-amber-700">
                       此票券 {result.reg.ticketCount} 位已全數報到（最後報到 {new Date(result.reg.checkedInAt).toLocaleString("zh-TW")}）
@@ -427,7 +443,7 @@ export default function CheckinPage() {
                 )}
               </div>
 
-              {result.kind === "found" && !result.alreadyCheckedIn && result.reg.qrToken && (
+              {result.kind === "found" && result.admissible && !result.alreadyCheckedIn && result.reg.qrToken && (
                 <div className="mt-6 space-y-3">
                   {remainingOf(result.reg) > 1 && (
                     <div className="bg-white/60 rounded-2xl p-4">
