@@ -61,13 +61,13 @@ type LookupResult =
 type CheckoutState =
   | { kind: "idle" }
   | { kind: "submitting" }
-  | { kind: "created"; order: PosOrder }
+  | { kind: "created"; orders: PosOrder[] }
   | { kind: "failed"; message: string };
 
 type IssueState =
   | { kind: "idle" }
   | { kind: "submitting" }
-  | { kind: "issued"; invoiceNumber: string | null; amount: number }
+  | { kind: "issued"; invoiceNumbers: string[]; amount: number }
   | { kind: "failed"; message: string };
 
 type MySales = {
@@ -186,7 +186,12 @@ export default function POSPage() {
   const [batchBusy, setBatchBusy] = useState(false);
   const [voidBusyId, setVoidBusyId] = useState<number | null>(null);
 
+  // selectedVendorId：-1 = 全部攤商（跨攤結帳）、0 = 主辦方、>0 = 指定攤商
+  const allVendorMode = !isVendor && selectedVendorId === -1;
   const vendorQuery = isVendor ? "" : selectedVendorId > 0 ? `vendorId=${selectedVendorId}` : "";
+  const productsQuery = allVendorMode ? "vendorId=all" : vendorQuery;
+  const vendorNameOf = (vid: number | null) =>
+    vid == null ? "主辦方" : vendors.find((v) => v.id === vid)?.name ?? `攤位 #${vid}`;
 
   const refreshMySales = useCallback(async () => {
     if (!isVendor) return;
@@ -206,7 +211,7 @@ export default function POSPage() {
 
   const refreshProducts = useCallback(async () => {
     try {
-      const res = await fetch(`/api/admin/pos/products${vendorQuery ? `?${vendorQuery}` : ""}`, { credentials: "include" });
+      const res = await fetch(`/api/admin/pos/products${productsQuery ? `?${productsQuery}` : ""}`, { credentials: "include" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setProductsError(data.error || `載入商品失敗 (${res.status})`);
@@ -217,7 +222,7 @@ export default function POSPage() {
     } catch (err) {
       setProductsError((err as Error).message);
     }
-  }, [vendorQuery]);
+  }, [productsQuery]);
 
   const refreshManageProducts = useCallback(async () => {
     if (!canManageProducts) return;
@@ -468,7 +473,13 @@ export default function POSPage() {
   const handleCheckout = async () => {
     if (result.kind !== "found" || cartItems.length === 0) return;
     const methodLabel = PAYMENT_LABEL[paymentMethod] ?? paymentMethod;
-    if (!window.confirm(`確認結帳？\n合計 NT$${cartTotal.toLocaleString()}（${methodLabel}）${discountAmount > 0 ? `，已含折價 −NT$${discountAmount}` : ""}\n${cartItems.map((it) => `${it.product.name} x${it.qty}`).join("、")}`)) return;
+    const crossVendors = allVendorMode
+      ? new Set(cartItems.map((it) => it.product.vendorId ?? null)).size
+      : 1;
+    if (!window.confirm(
+      `確認結帳？\n合計 NT$${cartTotal.toLocaleString()}（${methodLabel}）${discountAmount > 0 ? `，已含折價 −NT$${discountAmount}` : ""}\n${cartItems.map((it) => `${it.product.name} x${it.qty}`).join("、")}` +
+      (crossVendors > 1 ? `\n（含 ${crossVendors} 個攤商的商品，將自動拆成 ${crossVendors} 筆訂單，各歸各攤商）` : ""),
+    )) return;
     setCheckout({ kind: "submitting" });
     try {
       const res = await fetch(`/api/admin/pos/orders`, {
@@ -480,15 +491,18 @@ export default function POSPage() {
           paymentMethod,
           discount: discountAmount,
           items: cartItems.map((it) => ({ productId: it.product.id, qty: it.qty })),
-          ...(isVendor ? {} : { vendorId: selectedVendorId > 0 ? selectedVendorId : undefined }),
+          ...(isVendor
+            ? {}
+            : { vendorId: allVendorMode ? "all" : selectedVendorId > 0 ? selectedVendorId : undefined }),
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.order) {
+      const created: PosOrder[] = Array.isArray(data.orders) ? data.orders : data.order ? [data.order] : [];
+      if (!res.ok || created.length === 0) {
         setCheckout({ kind: "failed", message: data.error || `結帳失敗 (${res.status})` });
         return;
       }
-      setCheckout({ kind: "created", order: data.order });
+      setCheckout({ kind: "created", orders: created });
       refreshMySales();
     } catch (err) {
       setCheckout({ kind: "failed", message: (err as Error).message });
@@ -502,35 +516,48 @@ export default function POSPage() {
       setIssueState({ kind: "failed", message: "手機條碼格式錯誤：應為「/」開頭共 8 碼" });
       return;
     }
+    const totalAll = checkout.orders.reduce((s, o) => s + o.totalAmount, 0);
     const carrierLabel = carrierChoice === "phone_barcode" ? `手機條碼 ${barcode}` : "綠界會員載具（Email）";
-    if (!window.confirm(`確認開立 NT$${checkout.order.totalAmount.toLocaleString()} 電子發票？\n載具：${carrierLabel}`)) {
+    if (!window.confirm(
+      `確認開立電子發票？合計 NT$${totalAll.toLocaleString()}` +
+      (checkout.orders.length > 1 ? `（共 ${checkout.orders.length} 張，各攤商分別開立）` : "") +
+      `\n載具：${carrierLabel}`,
+    )) {
       return;
     }
     setIssueState({ kind: "submitting" });
-    try {
-      const res = await fetch(`/api/admin/pos/orders/${checkout.order.id}/invoice`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          carrierType: carrierChoice,
-          ...(carrierChoice === "phone_barcode" ? { carrierNum: barcode } : {}),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        setIssueState({ kind: "failed", message: data.error || `發票開立失敗 (${res.status})` });
-        return;
+    const numbers: string[] = [];
+    const fails: string[] = [];
+    for (const order of checkout.orders) {
+      try {
+        const res = await fetch(`/api/admin/pos/orders/${order.id}/invoice`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            carrierType: carrierChoice,
+            ...(carrierChoice === "phone_barcode" ? { carrierNum: barcode } : {}),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          fails.push(`${vendorNameOf(order.vendorId)}：${data.error || res.status}`);
+        } else if (data.invoice?.invoiceNumber) {
+          numbers.push(data.invoice.invoiceNumber);
+        }
+      } catch (err) {
+        fails.push(`${vendorNameOf(order.vendorId)}：${(err as Error).message}`);
       }
-      setIssueState({
-        kind: "issued",
-        invoiceNumber: data.invoice?.invoiceNumber ?? null,
-        amount: checkout.order.totalAmount,
-      });
-      refreshMySales();
-    } catch (err) {
-      setIssueState({ kind: "failed", message: (err as Error).message });
     }
+    if (fails.length > 0) {
+      setIssueState({
+        kind: "failed",
+        message: `${numbers.length > 0 ? `已開立 ${numbers.length} 張成功；` : ""}失敗：${fails.join("；")}（失敗的可稍後從訂單補開）`,
+      });
+    } else {
+      setIssueState({ kind: "issued", invoiceNumbers: numbers, amount: totalAll });
+    }
+    refreshMySales();
   };
 
   // ── 商品管理操作 ──
@@ -779,6 +806,7 @@ export default function POSPage() {
             className="px-3 py-2 border-2 rounded-xl text-sm focus:outline-none focus:border-primary"
             data-testid="select-pos-vendor"
           >
+            <option value={-1}>全部攤商（自動拆單）</option>
             <option value={0}>主辦方</option>
             {vendors.map((v) => (
               <option key={v.id} value={v.id}>
@@ -786,7 +814,11 @@ export default function POSPage() {
               </option>
             ))}
           </select>
-          <span className="text-xs text-muted-foreground">商品清單、訂單與發票都會歸到所選攤位</span>
+          <span className="text-xs text-muted-foreground">
+            {allVendorMode
+              ? "可同時選多個攤商的商品，結帳後金額會自動拆單歸到各攤商"
+              : "商品清單、訂單與發票都會歸到所選攤位"}
+          </span>
         </div>
       )}
 
@@ -971,9 +1003,9 @@ export default function POSPage() {
                   </h3>
                   {checkout.kind === "created" && (
                     <p className="text-sm text-green-700">
-                      訂單 <span className="font-mono">{checkout.order.paymentRef}</span>
-                      ・合計 NT${checkout.order.totalAmount.toLocaleString()}
-                      ・{PAYMENT_LABEL[checkout.order.paymentMethod] ?? checkout.order.paymentMethod}
+                      {checkout.orders.length > 1 && <>已拆成 {checkout.orders.length} 筆訂單・</>}
+                      合計 NT${checkout.orders.reduce((s, o) => s + o.totalAmount, 0).toLocaleString()}
+                      ・{PAYMENT_LABEL[checkout.orders[0].paymentMethod] ?? checkout.orders[0].paymentMethod}
                     </p>
                   )}
                 </div>
@@ -1022,6 +1054,53 @@ export default function POSPage() {
                       <p className="text-sm text-muted-foreground">
                         目前沒有商品。{canManageProducts ? "請先在下方「商品管理」新增商品。" : "請聯絡主辦方建立商品清單。"}
                       </p>
+                    ) : allVendorMode ? (
+                      <div className="space-y-4">
+                        {[...new Map(products.map((p) => [p.vendorId ?? null, true])).keys()].map((vid) => (
+                          <div key={vid ?? 0}>
+                            <div className="text-xs font-bold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                              <Store size={13} /> {vendorNameOf(vid)}
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {products.filter((p) => (p.vendorId ?? null) === vid).map((p) => {
+                                const qty = cart[p.id] ?? 0;
+                                return (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => addToCart(p.id, 1)}
+                                    className={cn(
+                                      "relative rounded-2xl border-2 text-left transition-all overflow-hidden",
+                                      qty > 0
+                                        ? "border-primary shadow-md"
+                                        : "border-muted hover:border-primary/40 hover:shadow-sm",
+                                    )}
+                                    data-testid={`product-${p.id}`}
+                                  >
+                                    <div
+                                      className={cn(
+                                        "h-16 sm:h-20 flex items-center justify-center text-3xl",
+                                        ["bg-orange-100", "bg-sky-100", "bg-green-100", "bg-pink-100", "bg-amber-100", "bg-violet-100"][p.id % 6],
+                                      )}
+                                    >
+                                      <Package size={28} className="text-black/20" />
+                                    </div>
+                                    <div className="px-3 py-2.5">
+                                      <div className="font-bold text-sm leading-tight line-clamp-2">{p.name}</div>
+                                      <div className="text-primary font-bold mt-0.5">NT${p.price.toLocaleString()}</div>
+                                    </div>
+                                    {qty > 0 && (
+                                      <span className="absolute top-2 right-2 min-w-6 h-6 px-1 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center shadow">
+                                        {qty}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {products.map((p) => {
@@ -1176,27 +1255,41 @@ export default function POSPage() {
               {/* ── 結帳完成後：開立發票 ── */}
               {checkout.kind === "created" && (
                 <div className="mt-6 space-y-3">
-                  <div className="rounded-2xl bg-white/70 p-4 text-sm space-y-1">
-                    {checkout.order.items.map((it, i) => (
-                      <div key={i} className="flex justify-between">
-                        <span>{it.name} × {it.qty}</span>
-                        <span className="font-bold">NT${(it.unitPrice * it.qty).toLocaleString()}</span>
-                      </div>
-                    ))}
-                    {checkout.order.discount > 0 && (
-                      <div className="flex justify-between text-red-600">
-                        <span>折價</span>
-                        <span className="font-bold">−NT${checkout.order.discount.toLocaleString()}</span>
-                      </div>
-                    )}
-                  </div>
+                  {checkout.orders.map((order) => (
+                    <div key={order.id} className="rounded-2xl bg-white/70 p-4 text-sm space-y-1">
+                      {checkout.orders.length > 1 && (
+                        <div className="flex justify-between text-xs text-muted-foreground pb-1 border-b mb-1">
+                          <span className="font-bold">{vendorNameOf(order.vendorId)}</span>
+                          <span className="font-mono">{order.paymentRef}</span>
+                        </div>
+                      )}
+                      {order.items.map((it, i) => (
+                        <div key={i} className="flex justify-between">
+                          <span>{it.name} × {it.qty}</span>
+                          <span className="font-bold">NT${(it.unitPrice * it.qty).toLocaleString()}</span>
+                        </div>
+                      ))}
+                      {order.discount > 0 && (
+                        <div className="flex justify-between text-red-600">
+                          <span>折價</span>
+                          <span className="font-bold">−NT${order.discount.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {checkout.orders.length > 1 && (
+                        <div className="flex justify-between font-bold pt-1 border-t mt-1">
+                          <span>小計</span>
+                          <span>NT${order.totalAmount.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
 
                   {issueState.kind === "issued" ? (
                     <div className="rounded-2xl bg-green-100 border border-green-300 p-4 text-sm text-green-800">
                       <p className="font-bold flex items-center gap-2"><ReceiptText size={16} /> 發票開立成功 ✓</p>
                       <p className="mt-1">
                         金額 NT${issueState.amount.toLocaleString()}
-                        {issueState.invoiceNumber && <>・發票號碼 <span className="font-mono font-bold">{issueState.invoiceNumber}</span></>}
+                        {issueState.invoiceNumbers.length > 0 && <>・發票號碼 <span className="font-mono font-bold">{issueState.invoiceNumbers.join("、")}</span></>}
                         {carrierChoice === "phone_barcode"
                           ? "，發票已歸戶至客人的手機條碼載具。"
                           : "，發票已存入綠界電子發票平台並寄送 Email 通知客人。"}
@@ -1343,7 +1436,7 @@ export default function POSPage() {
               <Package size={20} className="text-primary" /> 商品管理
               {!isVendor && (
                 <span className="text-xs font-normal text-muted-foreground">
-                  （{selectedVendorId > 0 ? vendors.find((v) => v.id === selectedVendorId)?.name ?? "攤位" : "主辦方"}）
+                  （{allVendorMode ? "主辦方 — 管理攤商商品請切換至該攤位" : selectedVendorId > 0 ? vendors.find((v) => v.id === selectedVendorId)?.name ?? "攤位" : "主辦方"}）
                 </span>
               )}
             </h2>

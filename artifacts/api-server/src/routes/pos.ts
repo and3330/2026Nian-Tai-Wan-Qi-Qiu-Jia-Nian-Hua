@@ -292,6 +292,17 @@ router.get("/admin/pos/vendors", async (req, res): Promise<void> => {
 
 router.get("/admin/pos/products", async (req, res): Promise<void> => {
   if (!requireAuth(req, res, "checkin", "vendor")) return;
+  // 工作人員可用 ?vendorId=all 一次取回所有攤商＋主辦方的商品（跨攤結帳用）
+  if (req.adminUser?.role !== "vendor" && req.query.vendorId === "all") {
+    const includeInactive = req.query.all === "1";
+    const rows = await db
+      .select()
+      .from(productsTable)
+      .where(includeInactive ? undefined : eq(productsTable.active, true))
+      .orderBy(productsTable.vendorId, productsTable.sortOrder, productsTable.id);
+    res.json({ vendorId: "all", products: rows });
+    return;
+  }
   const scope = await resolveProductScope(req, res);
   if (!scope.ok) return;
   const includeInactive = req.query.all === "1";
@@ -386,9 +397,11 @@ router.post("/admin/pos/orders", async (req, res): Promise<void> => {
   if (!requireAuth(req, res, "checkin", "vendor")) return;
   const vendorRes = await resolvePosVendor(req);
   if (!vendorRes.ok) { res.status(403).json({ error: vendorRes.error }); return; }
-  // 非 vendor 帳號（工作人員）可代任一攤位結帳：body.vendorId 指定，不帶則為主辦方
+  // 非 vendor 帳號（工作人員）可代任一攤位結帳：body.vendorId 指定，不帶則為主辦方；
+  // vendorId="all" → 跨攤結帳，依商品所屬攤商自動拆單。
   let vendorId = vendorRes.vendorId;
-  if (req.adminUser?.role !== "vendor") {
+  const splitMode = req.adminUser?.role !== "vendor" && req.body?.vendorId === "all";
+  if (req.adminUser?.role !== "vendor" && !splitMode) {
     const n = Number(req.body?.vendorId);
     vendorId = Number.isInteger(n) && n > 0 ? n : null;
   }
@@ -423,15 +436,16 @@ router.post("/admin/pos/orders", async (req, res): Promise<void> => {
     .from(productsTable)
     .where(inArray(productsTable.id, wanted.map((w) => w.productId)));
   const byId = new Map(products.map((p) => [p.id, p]));
-  const items: PosOrderItem[] = [];
+  type LineItem = PosOrderItem & { vendorId: number | null };
+  const items: LineItem[] = [];
   for (const w of wanted) {
     const p = byId.get(w.productId);
     if (!p || !p.active) { res.status(400).json({ error: "所選商品不存在或已下架，請重新整理商品清單" }); return; }
-    if ((p.vendorId ?? null) !== (vendorId ?? null)) {
+    if (!splitMode && (p.vendorId ?? null) !== (vendorId ?? null)) {
       res.status(403).json({ error: "只能販售自己商家的商品" });
       return;
     }
-    items.push({ productId: p.id, name: p.name, unitPrice: p.price, qty: w.qty });
+    items.push({ productId: p.id, name: p.name, unitPrice: p.price, qty: w.qty, vendorId: p.vendorId ?? null });
   }
   const subtotal = items.reduce((s, it) => s + it.unitPrice * it.qty, 0);
   // 折價：正整數、不得超過小計（金額仍由伺服器端計算，前端只回報折多少）
@@ -440,31 +454,71 @@ router.post("/admin/pos/orders", async (req, res): Promise<void> => {
     res.status(400).json({ error: "折價金額錯誤：必須為 0 以上的整數，且不得大於等於小計" });
     return;
   }
-  const totalAmount = subtotal - discount;
-  if (totalAmount <= 0 || totalAmount > 1000000) {
+  if (subtotal - discount <= 0 || subtotal - discount > 1000000) {
     res.status(400).json({ error: "訂單金額異常" });
     return;
   }
 
-  const paymentRef = `POS-${reg.id}-${Date.now()}`;
-  const [order] = await db
-    .insert(posOrdersTable)
-    .values({
-      paymentRef,
-      vendorId,
-      registrationId: reg.id,
-      buyerName: reg.parentName,
-      buyerPhone: reg.phone,
-      buyerEmail: reg.email,
-      items,
-      discount,
-      totalAmount,
-      paymentMethod,
-      createdBy: req.adminUser?.username ?? null,
-    })
-    .returning();
-  logger.info({ orderId: order.id, paymentRef, vendorId, totalAmount, paymentMethod }, "[POS] order created");
-  res.json({ order });
+  // 依攤商分組（非拆單模式全部同一組）。拆單時折價按各組小計比例分攤，
+  // 尾差調整到小計最大的一組，確保各單合計 = 原始應收金額。
+  const groups = new Map<number | null, LineItem[]>();
+  for (const it of items) {
+    const key = splitMode ? it.vendorId : (vendorId ?? null);
+    const g = groups.get(key) ?? [];
+    g.push(it);
+    groups.set(key, g);
+  }
+  const groupList = [...groups.entries()].map(([gVendorId, gItems]) => ({
+    vendorId: gVendorId,
+    items: gItems.map(({ vendorId: _v, ...rest }) => rest),
+    subtotal: gItems.reduce((s, it) => s + it.unitPrice * it.qty, 0),
+    discount: 0,
+  }));
+  if (discount > 0) {
+    let allocated = 0;
+    for (const g of groupList) {
+      g.discount = Math.floor((discount * g.subtotal) / subtotal);
+      allocated += g.discount;
+    }
+    // 尾差給小計最大的一組（保證該組折後仍 > 0，因 discount < subtotal）
+    const largest = groupList.reduce((a, b) => (b.subtotal > a.subtotal ? b : a));
+    largest.discount += discount - allocated;
+  }
+  for (const g of groupList) {
+    if (g.subtotal - g.discount <= 0) {
+      res.status(400).json({ error: "折價金額過大，無法分攤到各攤商訂單" });
+      return;
+    }
+  }
+
+  const ts = Date.now();
+  const createdOrders = [];
+  for (let i = 0; i < groupList.length; i++) {
+    const g = groupList[i];
+    const paymentRef = groupList.length === 1 ? `POS-${reg.id}-${ts}` : `POS-${reg.id}-${ts}-${i + 1}`;
+    const [order] = await db
+      .insert(posOrdersTable)
+      .values({
+        paymentRef,
+        vendorId: g.vendorId,
+        registrationId: reg.id,
+        buyerName: reg.parentName,
+        buyerPhone: reg.phone,
+        buyerEmail: reg.email,
+        items: g.items,
+        discount: g.discount,
+        totalAmount: g.subtotal - g.discount,
+        paymentMethod,
+        createdBy: req.adminUser?.username ?? null,
+      })
+      .returning();
+    logger.info(
+      { orderId: order.id, paymentRef, vendorId: g.vendorId, totalAmount: order.totalAmount, paymentMethod, split: splitMode },
+      "[POS] order created",
+    );
+    createdOrders.push(order);
+  }
+  res.json({ order: createdOrders[0], orders: createdOrders });
 });
 
 // 銷售統計：以 pos_orders 為準（含未開發票的訂單）。vendor 只看自己的；
