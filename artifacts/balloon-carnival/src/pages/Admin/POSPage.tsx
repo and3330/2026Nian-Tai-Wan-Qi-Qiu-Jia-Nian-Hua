@@ -853,10 +853,11 @@ export default function POSPage() {
                 </div>
               )}
 
-              {/* ── 點餐／購物車 ── */}
+              {/* ── 點餐／購物車：Shopify POS 式雙欄（左商品格點、右購物車結帳欄）── */}
               {checkout.kind !== "created" && (
-                <div className="mt-6 space-y-4">
-                  <div>
+                <div className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
+                  {/* 左：商品格點 */}
+                  <div className="lg:col-span-3">
                     <label className="block font-bold text-sm mb-2">選擇商品</label>
                     {productsError ? (
                       <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {productsError}</p>
@@ -874,17 +875,28 @@ export default function POSPage() {
                               type="button"
                               onClick={() => addToCart(p.id, 1)}
                               className={cn(
-                                "relative px-3 py-4 rounded-xl border-2 text-left transition-all",
+                                "relative rounded-2xl border-2 text-left transition-all overflow-hidden",
                                 qty > 0
-                                  ? "border-primary bg-primary/5"
-                                  : "border-muted hover:border-primary/40",
+                                  ? "border-primary shadow-md"
+                                  : "border-muted hover:border-primary/40 hover:shadow-sm",
                               )}
                               data-testid={`product-${p.id}`}
                             >
-                              <div className="font-bold text-sm leading-tight">{p.name}</div>
-                              <div className="text-primary font-bold mt-1">NT${p.price.toLocaleString()}</div>
+                              {/* 色塊頭部代替商品照片，顏色依商品 id 輪替 */}
+                              <div
+                                className={cn(
+                                  "h-16 sm:h-20 flex items-center justify-center text-3xl",
+                                  ["bg-orange-100", "bg-sky-100", "bg-green-100", "bg-pink-100", "bg-amber-100", "bg-violet-100"][p.id % 6],
+                                )}
+                              >
+                                <Package size={28} className="text-black/20" />
+                              </div>
+                              <div className="px-3 py-2.5">
+                                <div className="font-bold text-sm leading-tight line-clamp-2">{p.name}</div>
+                                <div className="text-primary font-bold mt-0.5">NT${p.price.toLocaleString()}</div>
+                              </div>
                               {qty > 0 && (
-                                <span className="absolute top-2 right-2 min-w-6 h-6 px-1 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
+                                <span className="absolute top-2 right-2 min-w-6 h-6 px-1 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center shadow">
                                   {qty}
                                 </span>
                               )}
@@ -895,70 +907,84 @@ export default function POSPage() {
                     )}
                   </div>
 
-                  {cartItems.length > 0 && (
-                    <div className="rounded-2xl border-2 border-primary/20 p-4 space-y-2" data-testid="pos-cart">
-                      <div className="font-bold text-sm flex items-center gap-2"><ShoppingCart size={16} /> 購物車</div>
-                      {cartItems.map(({ product: p, qty }) => (
-                        <div key={p.id} className="flex items-center gap-2 text-sm">
-                          <span className="flex-1 font-medium">{p.name}</span>
-                          <span className="text-muted-foreground">NT${p.price.toLocaleString()}</span>
-                          <button type="button" onClick={() => addToCart(p.id, -1)} className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted" data-testid={`cart-minus-${p.id}`}>
-                            <Minus size={14} />
-                          </button>
-                          <span className="w-6 text-center font-bold">{qty}</span>
-                          <button type="button" onClick={() => addToCart(p.id, 1)} className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted" data-testid={`cart-plus-${p.id}`}>
-                            <Plus size={14} />
-                          </button>
-                          <span className="w-20 text-right font-bold">NT${(p.price * qty).toLocaleString()}</span>
-                        </div>
-                      ))}
-                      <div className="flex justify-between items-center border-t pt-2 mt-2">
-                        <span className="font-bold">合計</span>
+                  {/* 右：購物車結帳欄（桌機固定在側邊） */}
+                  <div className="lg:col-span-2 lg:sticky lg:top-4 rounded-2xl border-2 border-primary/20 bg-white shadow-sm overflow-hidden" data-testid="pos-cart">
+                    <div className="px-4 py-3 border-b bg-primary/5 font-bold text-sm flex items-center gap-2">
+                      <ShoppingCart size={16} /> 購物車
+                      {cartItems.length > 0 && (
+                        <span className="text-xs font-normal text-muted-foreground">
+                          （{cartItems.reduce((s, it) => s + it.qty, 0)} 件）
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-4 space-y-2">
+                      {cartItems.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-6">點左邊的商品加入購物車</p>
+                      ) : (
+                        cartItems.map(({ product: p, qty }) => (
+                          <div key={p.id} className="flex items-center gap-2 text-sm">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">{p.name}</div>
+                              <div className="text-xs text-muted-foreground">NT${p.price.toLocaleString()}</div>
+                            </div>
+                            <button type="button" onClick={() => addToCart(p.id, -1)} className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted shrink-0" data-testid={`cart-minus-${p.id}`}>
+                              <Minus size={14} />
+                            </button>
+                            <span className="w-6 text-center font-bold shrink-0">{qty}</span>
+                            <button type="button" onClick={() => addToCart(p.id, 1)} className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted shrink-0" data-testid={`cart-plus-${p.id}`}>
+                              <Plus size={14} />
+                            </button>
+                            <span className="w-16 text-right font-bold shrink-0">NT${(p.price * qty).toLocaleString()}</span>
+                          </div>
+                        ))
+                      )}
+                      <div className="flex justify-between items-center border-t pt-3 mt-2">
+                        <span className="font-bold">小計</span>
                         <span className="text-2xl font-bold text-primary" data-testid="text-cart-total">NT${cartTotal.toLocaleString()}</span>
                       </div>
-                    </div>
-                  )}
 
-                  <div>
-                    <label className="block font-bold text-sm mb-2">付款方式（實際收款在系統外完成，這裡只做紀錄）</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {PAYMENT_METHODS.map((m) => (
-                        <button
-                          key={m.value}
-                          type="button"
-                          onClick={() => setPaymentMethod(m.value)}
-                          className={cn(
-                            "px-3 py-3 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-2 transition-all",
-                            paymentMethod === m.value
-                              ? "border-primary bg-primary/5 text-primary"
-                              : "border-muted text-muted-foreground hover:border-primary/40",
-                          )}
-                          data-testid={`payment-${m.value}`}
-                        >
-                          <m.icon size={16} /> {m.label}
-                        </button>
-                      ))}
+                      <div className="pt-1">
+                        <label className="block font-bold text-xs text-muted-foreground mb-1.5">付款方式（僅記錄，實際收款在系統外完成）</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {PAYMENT_METHODS.map((m) => (
+                            <button
+                              key={m.value}
+                              type="button"
+                              onClick={() => setPaymentMethod(m.value)}
+                              className={cn(
+                                "px-2 py-2.5 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-1.5 transition-all",
+                                paymentMethod === m.value
+                                  ? "border-primary bg-primary/5 text-primary"
+                                  : "border-muted text-muted-foreground hover:border-primary/40",
+                              )}
+                              data-testid={`payment-${m.value}`}
+                            >
+                              <m.icon size={15} /> {m.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {checkout.kind === "failed" && (
+                        <p className="text-sm text-red-600 flex items-center gap-2">
+                          <XCircle size={16} /> {checkout.message}
+                        </p>
+                      )}
+                      <button
+                        onClick={handleCheckout}
+                        disabled={checkout.kind === "submitting" || cartItems.length === 0}
+                        className="w-full py-4 rounded-xl bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        data-testid="button-pos-checkout"
+                      >
+                        <CheckCircle2 size={20} />
+                        {checkout.kind === "submitting"
+                          ? "結帳中..."
+                          : cartItems.length === 0
+                            ? "請先選擇商品"
+                            : `結帳 NT$${cartTotal.toLocaleString()}`}
+                      </button>
                     </div>
                   </div>
-
-                  {checkout.kind === "failed" && (
-                    <p className="text-sm text-red-600 flex items-center gap-2">
-                      <XCircle size={16} /> {checkout.message}
-                    </p>
-                  )}
-                  <button
-                    onClick={handleCheckout}
-                    disabled={checkout.kind === "submitting" || cartItems.length === 0}
-                    className="w-full py-4 rounded-xl bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    data-testid="button-pos-checkout"
-                  >
-                    <CheckCircle2 size={20} />
-                    {checkout.kind === "submitting"
-                      ? "結帳中..."
-                      : cartItems.length === 0
-                        ? "請先選擇商品"
-                        : `結帳 NT$${cartTotal.toLocaleString()}（${PAYMENT_LABEL[paymentMethod]}）`}
-                  </button>
                 </div>
               )}
 
