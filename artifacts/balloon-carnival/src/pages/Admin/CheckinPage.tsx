@@ -90,6 +90,7 @@ export default function CheckinPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastScannedRef = useRef<string>("");
   const lastScanTimeRef = useRef<number>(0);
+  const decodeLockRef = useRef(false);
 
   const performLookup = useCallback(async (token: string) => {
     if (!token) return;
@@ -151,34 +152,44 @@ export default function CheckinPage() {
   };
 
   const stopScanner = useCallback(async () => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-      } catch {}
-      try {
-        await scannerRef.current.clear();
-      } catch {}
-      scannerRef.current = null;
-    }
+    // Detach the ref first so a concurrent startScanner can't have its new
+    // scanner instance nulled out by this (possibly slow) stop sequence.
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
     setScanning(false);
+    if (scanner) {
+      try {
+        await scanner.stop();
+      } catch {}
+      try {
+        await scanner.clear();
+      } catch {}
+    }
   }, []);
 
   const onDecoded = useCallback(
     (decodedText: string) => {
+      // 一次掃描只處理一張票：鎖定後忽略相機停止前的後續回呼，
+      // 直到下一次 startScanner 才解鎖。
+      if (decodeLockRef.current) return;
+      decodeLockRef.current = true;
       const now = Date.now();
-      if (decodedText === lastScannedRef.current && now - lastScanTimeRef.current < 3000) {
-        return;
-      }
       lastScannedRef.current = decodedText;
       lastScanTimeRef.current = now;
       setTokenInput(decodedText);
+      // 掃到票券後先關閉相機，畫面聚焦在票券資料；按「掃描下一位」再重新開啟。
+      stopScanner();
       performLookup(decodedText);
     },
-    [performLookup],
+    [performLookup, stopScanner],
   );
 
   const startScanner = useCallback(async () => {
     setCameraError(null);
+    // 開始新一輪掃描時清掉上一位的票券資料並解除掃描鎖。
+    decodeLockRef.current = false;
+    setResult({ kind: "idle" });
+    setTokenInput("");
     // Make the scanner container visible BEFORE calling start(). Some mobile
     // browsers fail to initialise the camera against a hidden (display:none)
     // element because they can't measure it.
@@ -218,6 +229,8 @@ export default function CheckinPage() {
       e.target.value = "";
       if (!file) return;
       setCameraError(null);
+      // 拍照掃描屬於新一輪查詢，解除掃描鎖。
+      decodeLockRef.current = false;
       setDecodingFile(true);
       try {
         const { Html5Qrcode } = await import("html5-qrcode");
@@ -397,12 +410,21 @@ export default function CheckinPage() {
           data-testid="result-panel"
         >
           {result.kind === "error" && (
-            <div className="text-red-700 flex items-start gap-4">
-              <XCircle size={32} className="shrink-0 mt-1" />
-              <div>
-                <h3 className="font-bold text-lg mb-1">無法找到票券</h3>
-                <p className="text-sm">{result.message}</p>
+            <div>
+              <div className="text-red-700 flex items-start gap-4">
+                <XCircle size={32} className="shrink-0 mt-1" />
+                <div>
+                  <h3 className="font-bold text-lg mb-1">無法找到票券</h3>
+                  <p className="text-sm">{result.message}</p>
+                </div>
               </div>
+              <button
+                onClick={() => startScanner()}
+                className="mt-4 w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
+                data-testid="button-scan-next-error"
+              >
+                <Camera size={18} /> 掃描下一位
+              </button>
             </div>
           )}
 
@@ -526,11 +548,11 @@ export default function CheckinPage() {
               )}
 
               <button
-                onClick={() => { setResult({ kind: "idle" }); setTokenInput(""); }}
-                className="mt-4 w-full py-2 text-sm text-muted-foreground hover:text-foreground"
+                onClick={() => startScanner()}
+                className="mt-4 w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
                 data-testid="button-clear"
               >
-                清除並查詢下一張
+                <Camera size={18} /> 掃描下一位
               </button>
             </>
           )}

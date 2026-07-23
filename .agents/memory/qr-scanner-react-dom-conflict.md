@@ -21,3 +21,11 @@ bug, not a missing browser plugin/permission.
 **How to apply:** keep the target div empty; toggle its visibility with a class
 (`hidden`) instead of conditionally rendering content inside it. Same applies to the
 file-scan target div used by `scanFile`.
+
+## Scan lifecycle: one scan → freeze → next
+The check-in UX stops the camera as soon as a QR is decoded and only restarts on an
+explicit "scan next" action. Two races must be guarded whenever this pattern is used:
+1. Decode callbacks keep firing while `stop()` is in flight — gate with a lock ref set
+   on first decode, cleared only when a new scan cycle starts (incl. photo scan).
+2. An old async `stop()` can null the ref of a newly started scanner — snapshot the
+   scanner instance and null the shared ref *before* awaiting stop/clear.
