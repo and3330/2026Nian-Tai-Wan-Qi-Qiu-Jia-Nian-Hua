@@ -94,6 +94,36 @@ router.get("/admin/pos/lookup/:token", async (req, res): Promise<void> => {
   });
 });
 
+// 手機號碼查客人：現場收費時客人報電話比掃 QR 快。回傳該手機的所有票券
+// （含 qrToken），前端選定一筆後走原本的 lookup 流程。
+router.get("/admin/pos/by-phone/:phone", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin", "vendor")) return;
+  const digits = (req.params.phone || "").replace(/\D/g, "");
+  if (digits.length < 8) {
+    res.status(400).json({ error: "請輸入完整手機號碼（至少 8 碼）" });
+    return;
+  }
+  const regs = await db
+    .select({
+      id: registrationsTable.id,
+      parentName: registrationsTable.parentName,
+      phone: registrationsTable.phone,
+      eventDate: registrationsTable.eventDate,
+      ticketType: registrationsTable.ticketType,
+      ticketCount: registrationsTable.ticketCount,
+      checkedInAt: registrationsTable.checkedInAt,
+      qrToken: registrationsTable.qrToken,
+    })
+    .from(registrationsTable)
+    .where(sql`regexp_replace(coalesce(${registrationsTable.phone}, ''), '\\D', '', 'g') = ${digits}`)
+    .orderBy(registrationsTable.eventDate);
+  if (regs.length === 0) {
+    res.status(404).json({ error: "找不到此手機號碼的票券" });
+    return;
+  }
+  res.json({ registrations: regs });
+});
+
 router.post("/admin/pos/invoice", async (req, res): Promise<void> => {
   if (!requireAuth(req, res, "checkin", "vendor")) return;
   const vendorRes = await resolvePosVendor(req);

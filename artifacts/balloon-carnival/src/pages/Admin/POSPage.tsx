@@ -18,6 +18,8 @@ type PosRegistration = {
   checkedInAt: string | null;
 };
 
+type PosPhoneEntry = Omit<PosRegistration, "email"> & { qrToken: string | null };
+
 type PosInvoice = {
   id: number;
   amount: number;
@@ -146,6 +148,10 @@ export default function POSPage() {
   const [mySales, setMySales] = useState<MySales | null>(null);
   const [mySalesError, setMySalesError] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
+  const [phoneSearching, setPhoneSearching] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [phoneEntries, setPhoneEntries] = useState<PosPhoneEntry[] | null>(null);
   const [result, setResult] = useState<LookupResult>({ kind: "idle" });
   const [issueState, setIssueState] = useState<IssueState>({ kind: "idle" });
   const [carrierChoice, setCarrierChoice] = useState<"ecpay_carrier" | "phone_barcode">("ecpay_carrier");
@@ -503,6 +509,34 @@ export default function POSPage() {
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     performLookup(tokenInput.trim());
+  };
+
+  const handlePhoneSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const digits = phoneInput.replace(/\D/g, "");
+    if (digits.length < 8) {
+      setPhoneError("請輸入完整手機號碼（至少 8 碼）");
+      setPhoneEntries(null);
+      return;
+    }
+    setPhoneSearching(true);
+    setPhoneError(null);
+    setPhoneEntries(null);
+    try {
+      const res = await fetch(`/api/admin/pos/by-phone/${encodeURIComponent(digits)}`, {
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPhoneError(data?.error || `查詢失敗 (${res.status})`);
+        return;
+      }
+      setPhoneEntries(data.registrations || []);
+    } catch (err) {
+      setPhoneError((err as Error).message);
+    } finally {
+      setPhoneSearching(false);
+    }
   };
 
   const cartItems = products
@@ -1016,6 +1050,72 @@ export default function POSPage() {
               {result.kind === "loading" ? "查詢中..." : "查詢票券"}
             </button>
           </form>
+        </div>
+
+        {/* Phone lookup */}
+        <div className="bg-white rounded-3xl border shadow-sm p-6 lg:col-span-2">
+          <h2 className="font-bold text-lg mb-1 flex items-center gap-2">
+            <Smartphone size={20} /> 手機號碼查詢
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            客人不方便出示 QR Code 時，輸入購票時填寫的手機號碼即可查到票券。
+          </p>
+          <form onSubmit={handlePhoneSearch} className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={phoneInput}
+              onChange={(e) => setPhoneInput(e.target.value)}
+              placeholder="例如 0912345678"
+              className="flex-1 px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-primary text-sm"
+              data-testid="input-pos-phone"
+            />
+            <button
+              type="submit"
+              disabled={phoneSearching || !phoneInput.trim()}
+              className="px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all disabled:opacity-50"
+              data-testid="button-pos-phone-search"
+            >
+              {phoneSearching ? "查詢中..." : "查詢客人"}
+            </button>
+          </form>
+          {phoneError && (
+            <div className="mt-3 text-sm text-red-600 flex items-center gap-2">
+              <XCircle size={16} /> {phoneError}
+            </div>
+          )}
+          {phoneEntries && phoneEntries.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {phoneEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+                >
+                  <div className="flex-1 text-sm">
+                    <div className="font-bold">
+                      {entry.parentName}
+                      <span className="ml-2 text-muted-foreground font-normal">{entry.phone}</span>
+                    </div>
+                    <div className="text-muted-foreground mt-0.5">
+                      {entry.eventDate}・{entry.ticketCount} 位
+                      {entry.checkedInAt ? "・已報到" : ""}
+                    </div>
+                  </div>
+                  {entry.qrToken ? (
+                    <button
+                      onClick={() => performLookup(entry.qrToken!)}
+                      className="px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-all whitespace-nowrap"
+                      data-testid={`button-pos-phone-select-${entry.id}`}
+                    >
+                      選擇此客人
+                    </button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">此票券沒有 QR token</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
