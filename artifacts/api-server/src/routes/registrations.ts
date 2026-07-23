@@ -99,6 +99,12 @@ const TOURNAMENT_COMPANION_TYPE = "tournament-companion";
 // create route rejects new orders regardless of remaining capacity.
 const TOURNAMENT_REGISTRATION_OPEN = false;
 
+// Master switch for GENERAL carnival ticket sales (single + combo). When
+// false, both create routes reject new orders — pair this with the matching
+// TICKET_SALES_OPEN constant in the frontend CarnivalPage.
+const TICKET_SALES_OPEN = false;
+const TICKET_SALES_PAUSED_MESSAGE = "售票暫停中，請稍後再試或關注官方公告";
+
 // SQL fragment: a row belongs to the general carnival inventory (i.e. it is NOT
 // a tournament participant/companion leg). Used everywhere the 500-per-day cap
 // is computed so tournament sales stay isolated.
@@ -287,6 +293,10 @@ export async function ensureTournamentCapacityForPayment(
 }
 
 router.post("/registrations", async (req, res): Promise<void> => {
+  if (!TICKET_SALES_OPEN) {
+    res.status(403).json({ error: TICKET_SALES_PAUSED_MESSAGE, code: "SALES_PAUSED" });
+    return;
+  }
   const parsed = parseRegistrationBody(req.body);
   if (!parsed.ok) {
     res.status(400).json({ error: parsed.error });
@@ -378,6 +388,10 @@ router.post("/registrations", async (req, res): Promise<void> => {
 // before inserting either. Prevents the orphan-registration bug where the
 // frontend had to make two sequential POSTs.
 router.post("/registrations/combo", async (req, res): Promise<void> => {
+  if (!TICKET_SALES_OPEN) {
+    res.status(403).json({ error: TICKET_SALES_PAUSED_MESSAGE, code: "SALES_PAUSED" });
+    return;
+  }
   const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : null;
   if (!body) {
     res.status(400).json({ error: "Invalid body" });

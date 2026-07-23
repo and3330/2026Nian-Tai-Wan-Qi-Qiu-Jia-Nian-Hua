@@ -73,6 +73,11 @@ const publicSchedule = [
   },
 ];
 
+// Master switch for general ticket sales — keep in sync with TICKET_SALES_OPEN
+// in api-server routes/registrations.ts. When false, the purchase section shows
+// a paused notice and the form is hidden.
+const TICKET_SALES_OPEN = false;
+
 export default function CarnivalPage() {
   const queryClient = useQueryClient();
   const { data: availability, isLoading: isAvailabilityLoading } = useGetRegistrationAvailability({
@@ -366,6 +371,18 @@ export default function CarnivalPage() {
           </p>
         </div>
 
+        {!TICKET_SALES_OPEN && (
+          <div className="max-w-2xl mx-auto bg-amber-50 border-2 border-amber-200 rounded-3xl p-10 text-center shadow-sm" data-testid="sales-paused-notice">
+            <AlertCircle className="w-14 h-14 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-amber-800 mb-3">售票暫停中</h3>
+            <p className="text-amber-700 text-lg">
+              線上售票目前暫停，請關注官方公告獲得最新開賣資訊。已完成購票者不受影響，入場 QR Code 依然有效。
+            </p>
+          </div>
+        )}
+
+        {TICKET_SALES_OPEN && (
+        <>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-10 max-w-2xl mx-auto">
           <button
             type="button"
@@ -757,6 +774,8 @@ export default function CarnivalPage() {
               </div>
             </div>
           </div>
+        )}
+        </>
         )}
 
       </section>
