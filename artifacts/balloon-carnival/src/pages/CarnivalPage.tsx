@@ -73,10 +73,8 @@ const publicSchedule = [
   },
 ];
 
-// Master switch for general ticket sales — keep in sync with TICKET_SALES_OPEN
-// in api-server routes/registrations.ts. When false, the purchase section shows
-// a paused notice and the form is hidden.
-const TICKET_SALES_OPEN = false;
+// Master switch moved to src/lib/ticketSales.ts (shared with HomePage).
+import { TICKET_SALES_OPEN } from "@/lib/ticketSales";
 
 export default function CarnivalPage() {
   const queryClient = useQueryClient();

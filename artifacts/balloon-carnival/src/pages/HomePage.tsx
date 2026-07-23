@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/EventCountdown";
+import { TICKET_SALES_OPEN } from "@/lib/ticketSales";
 
 export default function HomePage() {
   const { data: news } = useListNews();
@@ -178,9 +179,11 @@ export default function HomePage() {
                     <span className="text-muted-foreground mr-1">{new Date(day.date).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}</span>
                     <span className={cn(
                       "font-bold",
-                      day.remaining <= 0 ? "text-amber-600" : day.remaining < 50 ? "text-amber-600" : "text-emerald-600"
+                      !TICKET_SALES_OPEN || day.remaining <= 0 ? "text-amber-600" : day.remaining < 50 ? "text-amber-600" : "text-emerald-600"
                     )}>
-                      {day.remaining <= 0 ? "名額有限" : <>剩 <AnimatedNumber value={day.remaining} /></>}
+                      {!TICKET_SALES_OPEN
+                        ? "已售清"
+                        : day.remaining <= 0 ? "名額有限" : <>剩 <AnimatedNumber value={day.remaining} /></>}
                     </span>
                   </span>
                 ))}
