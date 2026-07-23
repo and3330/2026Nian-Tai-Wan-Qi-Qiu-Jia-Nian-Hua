@@ -45,6 +45,9 @@ export const posOrdersTable = pgTable(
     // cash | credit_card | online | apple_pay
     paymentMethod: text("payment_method").notNull(),
     invoiceId: integer("invoice_id"),
+    // 現場退款時間 — 非 null 代表此單已退款，統計時排除。已開立的發票須先作廢
+    // 才能退款；退款後訂單保留供對帳（刪除是另一個更重的操作）。
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

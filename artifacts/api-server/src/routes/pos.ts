@@ -537,7 +537,12 @@ router.get("/admin/pos/stats", async (req, res): Promise<void> => {
     const n = Number(req.query.vendorId);
     cond = Number.isInteger(n) && n > 0 ? eq(posOrdersTable.vendorId, n) : isNull(posOrdersTable.vendorId);
   }
-  const orders = await db.select().from(posOrdersTable).where(cond);
+  // 已退款訂單不計入任何統計
+  const refundFilter = isNull(posOrdersTable.refundedAt);
+  const orders = await db
+    .select()
+    .from(posOrdersTable)
+    .where(cond ? and(cond, refundFilter) : refundFilter);
 
   // 今天（台北時間）的起點
   const taipeiDayStart = (d: Date): string =>
@@ -782,6 +787,69 @@ router.post("/admin/pos/orders/:id/invoice/void", async (req, res): Promise<void
     logger.error({ err, orderId: order.id }, "[POS] invoice void error");
     res.status(500).json({ error: "發票作廢失敗，請稍後再試" });
   }
+});
+
+// 現場退款：把訂單標記為已退款（統計自動排除）。已開立的發票必須先作廢
+// （前端會引導先按「作廢發票」），避免帳上有發票但錢已退的狀態。
+// vendor 只能退自己攤位的訂單；工作人員／主辦方可退任何訂單。
+router.post("/admin/pos/orders/:id/refund", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin", "vendor")) return;
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+  const [order] = await db.select().from(posOrdersTable).where(eq(posOrdersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "找不到訂單" }); return; }
+  if (req.adminUser?.role === "vendor") {
+    const v = await resolvePosVendor(req);
+    if (!v.ok || v.vendorId == null || order.vendorId !== v.vendorId) {
+      res.status(403).json({ error: "只能退款自己商家的訂單" });
+      return;
+    }
+  }
+  if (order.refundedAt != null) { res.status(400).json({ error: "此訂單已退款" }); return; }
+  // 以 paymentRef 查發票（比只看 invoiceId 穩：涵蓋任何以此訂單開出的發票）
+  const invs = await db.select().from(invoicesTable).where(eq(invoicesTable.paymentRef, order.paymentRef));
+  if (invs.some((i) => i.status === "issued" || i.status === "pending")) {
+    res.status(400).json({ error: "此訂單已開立發票，請先作廢發票再退款" });
+    return;
+  }
+  const [updated] = await db
+    .update(posOrdersTable)
+    .set({ refundedAt: new Date() })
+    .where(and(eq(posOrdersTable.id, id), isNull(posOrdersTable.refundedAt)))
+    .returning();
+  if (!updated) { res.status(400).json({ error: "此訂單已退款" }); return; }
+  logger.info({ orderId: id, paymentRef: order.paymentRef }, "[POS] order refunded");
+  res.json({ success: true });
+});
+
+// 刪除訂單（打錯單等情況）：連同尚未成立的發票草稿（pending/failed 不會有、
+// 已作廢或失敗的紀錄一併清掉）。已開立（issued/pending）的發票必須先作廢。
+router.delete("/admin/pos/orders/:id", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin", "vendor")) return;
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+  const [order] = await db.select().from(posOrdersTable).where(eq(posOrdersTable.id, id)).limit(1);
+  if (!order) { res.status(404).json({ error: "找不到訂單" }); return; }
+  if (req.adminUser?.role === "vendor") {
+    const v = await resolvePosVendor(req);
+    if (!v.ok || v.vendorId == null || order.vendorId !== v.vendorId) {
+      res.status(403).json({ error: "只能刪除自己商家的訂單" });
+      return;
+    }
+  }
+  const invs = await db.select().from(invoicesTable).where(eq(invoicesTable.paymentRef, order.paymentRef));
+  if (invs.some((i) => i.status === "issued" || i.status === "pending")) {
+    res.status(400).json({ error: "此訂單已開立發票，請先作廢發票再刪除" });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    // 只清掉這張訂單自己的發票紀錄（failed / voided 草稿），paymentRef 為
+    // POS 訂單專屬字串，不會誤刪其他訂單的發票。
+    await tx.delete(invoicesTable).where(eq(invoicesTable.paymentRef, order.paymentRef));
+    await tx.delete(posOrdersTable).where(eq(posOrdersTable.id, id));
+  });
+  logger.info({ orderId: id, paymentRef: order.paymentRef }, "[POS] order deleted");
+  res.json({ success: true });
 });
 
 export default router;

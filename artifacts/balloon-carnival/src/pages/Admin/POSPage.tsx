@@ -49,6 +49,7 @@ type PosOrder = {
   paymentMethod: string;
   invoiceId: number | null;
   invoice: { id: number; status: string; invoiceNumber: string | null } | null;
+  refundedAt: string | null;
   createdAt: string;
 };
 
@@ -185,6 +186,8 @@ export default function POSPage() {
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<number>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
   const [voidBusyId, setVoidBusyId] = useState<number | null>(null);
+  const [refundBusyId, setRefundBusyId] = useState<number | null>(null);
+  const [deleteBusyId, setDeleteBusyId] = useState<number | null>(null);
 
   // selectedVendorId：-1 = 全部攤商（跨攤結帳）、0 = 主辦方、>0 = 指定攤商
   const allVendorMode = !isVendor && selectedVendorId === -1;
@@ -319,6 +322,56 @@ export default function POSPage() {
       window.alert((err as Error).message);
     } finally {
       setVoidBusyId(null);
+    }
+  };
+
+  const refundOrder = async (o: PosOrder) => {
+    if (o.invoice?.status === "issued") {
+      window.alert("此訂單已開立發票，請先按「作廢發票」再退款。");
+      return;
+    }
+    if (!window.confirm(`確定將此訂單標記為已退款？\n${o.paymentRef}・NT$${o.totalAmount.toLocaleString()}\n（退款後將不計入銷售統計；請記得實際退還款項給客人）`)) return;
+    setRefundBusyId(o.id);
+    try {
+      const res = await fetch(`/api/admin/pos/orders/${o.id}/refund`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        window.alert(data.error || `退款失敗 (${res.status})`);
+        return;
+      }
+      await refreshOrders();
+    } catch (err) {
+      window.alert((err as Error).message);
+    } finally {
+      setRefundBusyId(null);
+    }
+  };
+
+  const deleteOrder = async (o: PosOrder) => {
+    if (o.invoice?.status === "issued") {
+      window.alert("此訂單已開立發票，請先按「作廢發票」再刪除。");
+      return;
+    }
+    if (!window.confirm(`確定刪除此訂單？此動作無法復原。\n${o.paymentRef}・NT$${o.totalAmount.toLocaleString()}`)) return;
+    setDeleteBusyId(o.id);
+    try {
+      const res = await fetch(`/api/admin/pos/orders/${o.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        window.alert(data.error || `刪除失敗 (${res.status})`);
+        return;
+      }
+      await refreshOrders();
+    } catch (err) {
+      window.alert((err as Error).message);
+    } finally {
+      setDeleteBusyId(null);
     }
   };
 
@@ -1707,6 +1760,9 @@ export default function POSPage() {
                                   ? "發票已作廢"
                                   : "未開發票"}
                           </span>
+                          {o.refundedAt && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold">已退款</span>
+                          )}
                           {o.invoice?.status === "issued" && (
                             <button
                               type="button"
@@ -1716,6 +1772,28 @@ export default function POSPage() {
                               data-testid={`button-void-${o.id}`}
                             >
                               {voidBusyId === o.id ? "作廢中..." : "作廢發票"}
+                            </button>
+                          )}
+                          {!o.refundedAt && o.invoice?.status !== "issued" && (
+                            <button
+                              type="button"
+                              onClick={() => refundOrder(o)}
+                              disabled={refundBusyId === o.id || batchBusy}
+                              className="text-xs px-2 py-1 rounded-lg border border-orange-300 text-orange-600 font-bold hover:bg-orange-50 disabled:opacity-40"
+                              data-testid={`button-refund-${o.id}`}
+                            >
+                              {refundBusyId === o.id ? "退款中..." : "退款"}
+                            </button>
+                          )}
+                          {o.invoice?.status !== "issued" && (
+                            <button
+                              type="button"
+                              onClick={() => deleteOrder(o)}
+                              disabled={deleteBusyId === o.id || batchBusy}
+                              className="text-xs px-2 py-1 rounded-lg border border-red-300 text-red-600 font-bold hover:bg-red-50 disabled:opacity-40"
+                              data-testid={`button-delete-${o.id}`}
+                            >
+                              {deleteBusyId === o.id ? "刪除中..." : "刪除"}
                             </button>
                           )}
                         </span>
