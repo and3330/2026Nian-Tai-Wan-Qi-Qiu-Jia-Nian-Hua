@@ -28,6 +28,22 @@ function isAdmissible(reg: {
   return reg.paymentStatus === "paid" || reg.amount === 0;
 }
 
+// 每日報到統計：各活動日已報到人數 / 應到人數（可入場票券的總人頭數）。
+router.get("/admin/checkin/stats", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin")) return;
+  const rows = await db
+    .select({
+      eventDate: registrationsTable.eventDate,
+      checkedIn: sql<number>`coalesce(sum(${registrationsTable.checkedInCount}), 0)::int`,
+      total: sql<number>`coalesce(sum(${registrationsTable.ticketCount}), 0)::int`,
+    })
+    .from(registrationsTable)
+    .where(sql`${registrationsTable.paymentStatus} = 'paid' OR ${registrationsTable.amount} = 0`)
+    .groupBy(registrationsTable.eventDate)
+    .orderBy(registrationsTable.eventDate);
+  res.json({ days: rows });
+});
+
 router.get("/admin/checkin/lookup/:token", async (req, res): Promise<void> => {
   if (!requireAuth(req, res, "checkin")) return;
   const token = req.params.token;

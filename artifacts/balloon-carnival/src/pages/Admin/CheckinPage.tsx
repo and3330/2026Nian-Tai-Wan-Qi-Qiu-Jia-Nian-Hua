@@ -61,8 +61,26 @@ function describeCameraError(err: unknown): string {
   return `${msg || "無法啟動相機"}。若使用 LINE / FB / IG 內建瀏覽器，請改用 Safari 或 Chrome 開啟，或使用下方「拍照掃描」。`;
 }
 
+type DayStat = { eventDate: string; checkedIn: number; total: number };
+
 export default function CheckinPage() {
   const [tokenInput, setTokenInput] = useState("");
+  const [dayStats, setDayStats] = useState<DayStat[]>([]);
+
+  const refreshStats = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/checkin/stats`, { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json().catch(() => ({}));
+      setDayStats(Array.isArray(data.days) ? data.days : []);
+    } catch { /* stats are non-critical; keep last known values */ }
+  }, []);
+
+  useEffect(() => {
+    refreshStats();
+    const t = setInterval(refreshStats, 30000);
+    return () => clearInterval(t);
+  }, [refreshStats]);
   const [result, setResult] = useState<LookupResult>({ kind: "idle" });
   const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -126,6 +144,7 @@ export default function CheckinPage() {
         alreadyCheckedIn: false,
         checkedInNow: data.checkedInNow,
       });
+      refreshStats();
     } catch (err) {
       setResult({ kind: "error", message: (err as Error).message });
     }
@@ -239,6 +258,31 @@ export default function CheckinPage() {
           掃描入場 QR Code 或手動輸入 token 進行報到驗票
         </p>
       </div>
+
+      {/* 每日已報到人數 */}
+      {dayStats.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {dayStats.map((d) => (
+            <div key={d.eventDate} className="bg-white rounded-3xl border shadow-sm p-5 flex items-center justify-between" data-testid={`checkin-stat-${d.eventDate}`}>
+              <div>
+                <div className="text-sm text-muted-foreground font-bold">
+                  {new Date(d.eventDate).toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" })} 已報到
+                </div>
+                <div className="mt-1 flex items-baseline gap-1.5">
+                  <span className="text-3xl font-bold text-primary">{d.checkedIn.toLocaleString()}</span>
+                  <span className="text-sm text-muted-foreground">/ {d.total.toLocaleString()} 人</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-emerald-600">
+                  {d.total > 0 ? Math.round((d.checkedIn / d.total) * 100) : 0}%
+                </div>
+                <div className="text-xs text-muted-foreground">報到率</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Camera scanner */}

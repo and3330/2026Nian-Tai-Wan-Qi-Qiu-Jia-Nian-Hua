@@ -13,12 +13,12 @@ type NavItem = {
 };
 
 const ALL_NAVS: NavItem[] = [
-  { href: "/admin", label: "報名監控總覽", icon: LayoutDashboard, exact: true, roles: ["viewer", "editor", "checkin"] },
+  { href: "/admin", label: "報名監控總覽", icon: LayoutDashboard, exact: true, roles: ["viewer", "editor"] },
   { href: "/admin/orders", label: "訂單管理", icon: ShoppingCart, roles: ["editor"] },
   { href: "/admin/invoices", label: "發票管理", icon: ReceiptText, roles: ["editor"] },
   { href: "/admin/tournament", label: "戰鬥陀螺賽", icon: Trophy, roles: ["editor"] },
   { href: "/admin/checkin", label: "現場報到", icon: ScanLine, roles: ["checkin"] },
-  { href: "/admin/pos", label: "現場收費開發票", icon: ReceiptText, roles: ["checkin", "vendor"] },
+  { href: "/admin/pos", label: "現場收費開發票", icon: ReceiptText, roles: ["vendor"] },
   { href: "/admin/vendors", label: "攤位商家管理", icon: Store, roles: ["editor"] },
   { href: "/admin/email-templates", label: "Email 模板", icon: Mail, roles: ["editor"] },
   { href: "/admin/news", label: "最新消息管理", icon: Newspaper, roles: ["editor"] },
@@ -28,7 +28,7 @@ const ALL_NAVS: NavItem[] = [
   { href: "/admin/social-posts", label: "社群貼文", icon: FileText, roles: ["editor"] },
   { href: "/admin/automation", label: "自動化設定", icon: Settings, roles: ["editor"] },
   { href: "/admin/promo-codes", label: "優惠碼管理", icon: Tag, roles: ["editor"] },
-  { href: "/admin/refund-requests", label: "退票 / 改票", icon: Undo2, roles: ["editor", "viewer", "checkin"] },
+  { href: "/admin/refund-requests", label: "退票 / 改票", icon: Undo2, roles: ["editor", "viewer"] },
   { href: "/admin/users", label: "帳號管理", icon: ShieldCheck, roles: [] }, // owner-only
 ];
 
@@ -74,6 +74,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (!isAuthenticated) return <Redirect to="/admin/login" />;
   // Vendor accounts have no dashboard access — send them straight to POS.
   if (role === "vendor" && location === "/admin") return <Redirect to="/admin/pos" />;
+  // Check-in staff accounts only do check-in — send them straight there.
+  if (role === "checkin" && location === "/admin") return <Redirect to="/admin/checkin" />;
 
   const navs = ALL_NAVS.filter((n) => hasRole(...n.roles));
   const currentNav = ALL_NAVS.find(n => n.exact ? location === n.href : location.startsWith(n.href));
