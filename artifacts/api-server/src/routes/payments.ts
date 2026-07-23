@@ -383,12 +383,17 @@ router.post("/payments/lookup", async (req, res): Promise<void> => {
       .from(registrationsTable)
       .where(sql`lower(${registrationsTable.email}) = ${emailNorm}`);
 
-    const matchedRegs = candidates.filter(
-      (r) =>
-        (r.parentName || "").replace(/\s+/g, "").toLowerCase() === nameNorm &&
-        phoneDigits.length >= 8 &&
-        (r.phone || "").replace(/\D/g, "") === phoneDigits,
+    // Identity check: at least ONE registration must match name + phone + email
+    // exactly. Some rows can carry incomplete phone data (e.g. manually created
+    // orders), so we verify identity once, then show ALL orders under the same
+    // email + name so the buyer sees every order they own.
+    const sameName = candidates.filter(
+      (r) => (r.parentName || "").replace(/\s+/g, "").toLowerCase() === nameNorm,
     );
+    const identityVerified =
+      phoneDigits.length >= 8 &&
+      sameName.some((r) => (r.phone || "").replace(/\D/g, "") === phoneDigits);
+    const matchedRegs = identityVerified ? sameName : [];
 
     // Distinct payment refs (a buyer may have several orders).
     const refs = Array.from(
@@ -405,12 +410,13 @@ router.post("/payments/lookup", async (req, res): Promise<void> => {
         .select()
         .from(paymentTransactionsTable)
         .where(eq(paymentTransactionsTable.paymentRef, ref));
-      if (!tx) continue;
       const regs = await db
         .select()
         .from(registrationsTable)
         .where(eq(registrationsTable.paymentRef, ref));
       if (!regs.length) continue;
+      // Manually created orders may have no payment transaction row —
+      // synthesize order info from the registrations instead of hiding them.
       const [invoice] = await db
         .select()
         .from(invoicesTable)
@@ -418,15 +424,16 @@ router.post("/payments/lookup", async (req, res): Promise<void> => {
         .orderBy(desc(invoicesTable.id))
         .limit(1);
 
+      const allPaid = regs.every((r) => r.paymentStatus === "paid" || (r.amount ?? 1) === 0);
       orders.push({
-        createdAt: tx.createdAt,
-        paymentRef: tx.paymentRef,
-        provider: tx.provider,
-        amount: tx.amount,
-        status: tx.status,
-        itemName: tx.itemName,
-        paidAt: tx.paidAt,
-        bankInfo: tx.provider === "bank" ? BANK_INFO : null,
+        createdAt: tx?.createdAt ?? regs[0].createdAt,
+        paymentRef: ref,
+        provider: tx?.provider ?? "manual",
+        amount: tx?.amount ?? regs.reduce((sum, r) => sum + (r.amount ?? 0), 0),
+        status: tx?.status ?? (allPaid ? "paid" : "pending"),
+        itemName: tx?.itemName ?? regs.map((r) => `${r.eventDate} 入場券 x${r.ticketCount}`).join("、"),
+        paidAt: tx?.paidAt ?? null,
+        bankInfo: tx?.provider === "bank" ? BANK_INFO : null,
         registrations: regs.map((r) => ({
           id: r.id,
           parentName: r.parentName,

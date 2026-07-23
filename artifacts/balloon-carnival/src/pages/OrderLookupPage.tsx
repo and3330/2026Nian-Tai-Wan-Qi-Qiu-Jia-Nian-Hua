@@ -510,6 +510,7 @@ function providerLabel(p: string) {
   if (p === "newebpay") return "藍新金流";
   if (p === "stripe") return "Stripe 信用卡";
   if (p === "bank") return "銀行轉帳";
+  if (p === "manual") return "現場 / 人工建立";
   return p;
 }
 
