@@ -136,7 +136,7 @@ function buildOrders(registrations: Registration[]): Order[] {
       paymentMethod: head.paymentMethod ?? null,
       paymentStatus: head.paymentStatus,
       createdAt: head.createdAt as unknown as string,
-      checkedInCount: legs.filter((l) => l.checkedInAt).length,
+      checkedInCount: legs.reduce((sum, l) => sum + (l.checkedInCount ?? 0), 0),
       isVip: legs.some((l) => l.isVip),
     });
   }
@@ -580,6 +580,49 @@ export default function OrdersManage() {
       window.alert(err instanceof Error ? err.message : "確認失敗，請稍後再試");
     } finally {
       setConfirmingRef(null);
+    }
+  };
+
+  const [checkinRef, setCheckinRef] = useState<string | null>(null);
+
+  const handleCheckinOrder = async (o: Order) => {
+    const totalSeats = o.legs.reduce((sum, l) => sum + (l.ticketCount ?? 0), 0);
+    const remaining = totalSeats - o.checkedInCount;
+    if (remaining <= 0) return;
+    if (
+      !window.confirm(
+        `確認為此訂單報到？\n購買人：${o.buyerName}\n將簽到剩餘 ${remaining} 位（共 ${totalSeats} 位）。`,
+      )
+    ) {
+      return;
+    }
+    setCheckinRef(o.ref);
+    try {
+      const failed: string[] = [];
+      for (const leg of o.legs) {
+        const legRemaining = (leg.ticketCount ?? 0) - (leg.checkedInCount ?? 0);
+        if (legRemaining <= 0) continue;
+        const res = await fetch(`/api/admin/checkin/by-id/${leg.id}`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          failed.push(
+            `${eventDateLabel(leg.eventDate)}：${data?.error || "報到失敗"}`,
+          );
+        }
+      }
+      await refetch();
+      if (failed.length > 0) {
+        window.alert(`部分報到失敗：\n${failed.join("\n")}`);
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "報到失敗，請稍後再試");
+    } finally {
+      setCheckinRef(null);
     }
   };
 
@@ -1181,7 +1224,10 @@ export default function OrdersManage() {
                 </tr>
               ) : (
                 filtered.map((o) => {
-                  const totalSeats = o.legs.length;
+                  const totalSeats = o.legs.reduce(
+                    (sum, l) => sum + (l.ticketCount ?? 0),
+                    0,
+                  );
                   const isSelected = selected.has(o.ref);
                   return (
                     <tr
@@ -1246,13 +1292,30 @@ export default function OrdersManage() {
                       </td>
                       <td className="p-4">{statusBadge(o.paymentStatus)}</td>
                       <td className="p-4 whitespace-nowrap text-xs">
-                        {o.checkedInCount > 0 ? (
-                          <span className="text-green-600 font-medium">
-                            已報到 {o.checkedInCount}/{totalSeats}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">未報到</span>
-                        )}
+                        <div className="flex flex-col items-start gap-1.5">
+                          {o.checkedInCount > 0 ? (
+                            <span className="text-green-600 font-medium">
+                              已報到 {o.checkedInCount}/{totalSeats}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              未報到
+                            </span>
+                          )}
+                          {canConfirm &&
+                            normalizeStatus(o.paymentStatus) === "paid" &&
+                            o.checkedInCount < totalSeats && (
+                              <button
+                                onClick={() => handleCheckinOrder(o)}
+                                disabled={checkinRef === o.ref}
+                                title="現場簽到：將此訂單剩餘人數全部報到"
+                                className="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap inline-flex items-center gap-1"
+                              >
+                                <CheckCircle2 size={12} />
+                                {checkinRef === o.ref ? "處理中..." : "簽到"}
+                              </button>
+                            )}
+                        </div>
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex flex-col items-end gap-2">

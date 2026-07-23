@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ScanLine, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff, Crown } from "lucide-react";
+import { ScanLine, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff, Crown, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Registration = {
@@ -63,9 +63,21 @@ function describeCameraError(err: unknown): string {
 
 type DayStat = { eventDate: string; checkedIn: number; total: number };
 
+type PhoneEntry = {
+  registration: Registration;
+  alreadyCheckedIn: boolean;
+  remaining: number;
+  admissible: boolean;
+};
+
 export default function CheckinPage() {
   const [tokenInput, setTokenInput] = useState("");
   const [dayStats, setDayStats] = useState<DayStat[]>([]);
+  const [phoneInput, setPhoneInput] = useState("");
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [phoneEntries, setPhoneEntries] = useState<PhoneEntry[] | null>(null);
+  const [phoneCheckingId, setPhoneCheckingId] = useState<number | null>(null);
 
   const refreshStats = useCallback(async () => {
     try {
@@ -120,6 +132,65 @@ export default function CheckinPage() {
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     performLookup(tokenInput.trim());
+  };
+
+  const handlePhoneSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const phone = phoneInput.trim();
+    if (!phone) return;
+    setPhoneLoading(true);
+    setPhoneError(null);
+    setPhoneEntries(null);
+    try {
+      const res = await fetch(`/api/admin/checkin/by-phone/${encodeURIComponent(phone)}`, {
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPhoneError(data.error || `查詢失敗 (${res.status})`);
+        return;
+      }
+      setPhoneEntries(data.registrations ?? []);
+    } catch (err) {
+      setPhoneError((err as Error).message);
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
+
+  const phoneCheckin = async (regId: number) => {
+    setPhoneCheckingId(regId);
+    try {
+      const res = await fetch(`/api/admin/checkin/by-id/${regId}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPhoneError(data.error || `報到失敗 (${res.status})`);
+        return;
+      }
+      setPhoneError(null);
+      setPhoneEntries((prev) =>
+        (prev ?? []).map((en) =>
+          en.registration.id === regId
+            ? {
+                registration: data.registration,
+                alreadyCheckedIn: data.registration.checkedInCount >= data.registration.ticketCount,
+                remaining: Math.max(0, data.registration.ticketCount - data.registration.checkedInCount),
+                admissible: true,
+              }
+            : en,
+        ),
+      );
+      refreshStats();
+    } catch (err) {
+      setPhoneError((err as Error).message);
+    } finally {
+      setPhoneCheckingId(null);
+    }
   };
 
   const performCheckin = async (token: string, count: number) => {
@@ -390,6 +461,89 @@ export default function CheckinPage() {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* 手機號碼報到：QR 無法掃描時的備援 */}
+      <div className="bg-white rounded-3xl border shadow-sm p-6">
+        <h2 className="font-bold text-lg mb-1 flex items-center gap-2">
+          <Phone size={20} /> 手機號碼報到
+        </h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          客人 QR Code 無法掃描時，輸入購票時填寫的手機號碼即可查出票券直接報到
+        </p>
+        <form onSubmit={handlePhoneSearch} className="flex gap-3">
+          <input
+            type="tel"
+            value={phoneInput}
+            onChange={(e) => setPhoneInput(e.target.value)}
+            placeholder="輸入客人手機號碼"
+            className="flex-1 px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-primary text-sm"
+            data-testid="input-phone-checkin"
+          />
+          <button
+            type="submit"
+            disabled={!phoneInput.trim() || phoneLoading}
+            className="px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all disabled:opacity-50 shrink-0"
+            data-testid="button-phone-search"
+          >
+            {phoneLoading ? "查詢中..." : "查詢"}
+          </button>
+        </form>
+
+        {phoneError && (
+          <div className="mt-4 rounded-2xl bg-red-50 border-2 border-red-200 p-4 text-sm text-red-700 flex items-start gap-2">
+            <XCircle size={18} className="shrink-0 mt-0.5" /> {phoneError}
+          </div>
+        )}
+
+        {phoneEntries && phoneEntries.length > 0 && (
+          <div className="mt-4 space-y-3">
+            {phoneEntries.map((en) => {
+              const r = en.registration;
+              return (
+                <div
+                  key={r.id}
+                  className={cn(
+                    "rounded-2xl border-2 p-4 flex flex-wrap items-center gap-3 justify-between",
+                    !en.admissible
+                      ? "bg-red-50 border-red-200"
+                      : en.alreadyCheckedIn
+                        ? "bg-amber-50 border-amber-200"
+                        : "bg-white border-border",
+                  )}
+                  data-testid={`phone-entry-${r.id}`}
+                >
+                  <div className="text-sm">
+                    <div className="font-bold text-base flex items-center gap-2">
+                      {r.parentName}
+                      {r.isVip && <Crown size={16} className="text-amber-500" />}
+                      <span className="text-primary font-bold">{r.eventDate}</span>
+                    </div>
+                    <div className="text-muted-foreground mt-0.5">
+                      共 {r.ticketCount} 位・已報到 {r.checkedInCount ?? 0} 位
+                      {!en.admissible && <span className="text-red-600 font-bold">・未付款，不可入場</span>}
+                    </div>
+                  </div>
+                  {en.admissible && !en.alreadyCheckedIn ? (
+                    <button
+                      onClick={() => phoneCheckin(r.id)}
+                      disabled={phoneCheckingId === r.id}
+                      className="px-5 py-2.5 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                      data-testid={`button-phone-checkin-${r.id}`}
+                    >
+                      <CheckCircle2 size={18} />
+                      {phoneCheckingId === r.id ? "報到中..." : `報到 ${en.remaining} 位`}
+                    </button>
+                  ) : en.alreadyCheckedIn ? (
+                    <span className="text-amber-700 font-bold text-sm flex items-center gap-1">
+                      <CheckCircle2 size={16} /> 已全數報到
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Result panel */}

@@ -64,18 +64,34 @@ router.get("/admin/checkin/lookup/:token", async (req, res): Promise<void> => {
   });
 });
 
-router.post("/admin/checkin/:token", async (req, res): Promise<void> => {
+// 手機號碼查票：找出該手機的所有票券（依活動日排序），供無法掃 QR 時報到。
+router.get("/admin/checkin/by-phone/:phone", async (req, res): Promise<void> => {
   if (!requireAuth(req, res, "checkin")) return;
-  const token = req.params.token;
-  const [reg] = await db
-    .select()
-    .from(registrationsTable)
-    .where(eq(registrationsTable.qrToken, token))
-    .limit(1);
-  if (!reg) {
-    res.status(404).json({ error: "找不到此 QR Code 對應的票券" });
+  const digits = (req.params.phone || "").replace(/\D/g, "");
+  if (digits.length < 8) {
+    res.status(400).json({ error: "請輸入完整手機號碼（至少 8 碼）" });
     return;
   }
+  const regs = await db
+    .select()
+    .from(registrationsTable)
+    .where(sql`regexp_replace(coalesce(${registrationsTable.phone}, ''), '\\D', '', 'g') = ${digits}`)
+    .orderBy(registrationsTable.eventDate);
+  if (regs.length === 0) {
+    res.status(404).json({ error: "找不到此手機號碼的票券" });
+    return;
+  }
+  res.json({
+    registrations: regs.map((reg) => ({
+      registration: reg,
+      alreadyCheckedIn: reg.checkedInCount >= reg.ticketCount,
+      remaining: Math.max(0, reg.ticketCount - reg.checkedInCount),
+      admissible: isAdmissible(reg),
+    })),
+  });
+});
+
+async function handleCheckin(req: any, res: any, reg: typeof registrationsTable.$inferSelect): Promise<void> {
   if (!isAdmissible(reg)) {
     res.status(402).json({
       registration: reg,
@@ -134,6 +150,41 @@ router.post("/admin/checkin/:token", async (req, res): Promise<void> => {
     checkedInNow: count,
     remaining: updated.ticketCount - updated.checkedInCount,
   });
+}
+
+// 以報名 ID 報到（手機查票 / 訂單管理列表用）。
+router.post("/admin/checkin/by-id/:id", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin", "editor")) return;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    res.status(400).json({ error: "無效的報名 ID" });
+    return;
+  }
+  const [reg] = await db
+    .select()
+    .from(registrationsTable)
+    .where(eq(registrationsTable.id, id))
+    .limit(1);
+  if (!reg) {
+    res.status(404).json({ error: "找不到此報名資料" });
+    return;
+  }
+  await handleCheckin(req, res, reg);
+});
+
+router.post("/admin/checkin/:token", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "checkin")) return;
+  const token = req.params.token;
+  const [reg] = await db
+    .select()
+    .from(registrationsTable)
+    .where(eq(registrationsTable.qrToken, token))
+    .limit(1);
+  if (!reg) {
+    res.status(404).json({ error: "找不到此 QR Code 對應的票券" });
+    return;
+  }
+  await handleCheckin(req, res, reg);
 });
 
 export default router;

@@ -30,6 +30,8 @@ export interface Registration {
   qrToken?: string | null;
   /** @nullable */
   checkedInAt?: Date | null;
+  /** How many of ticketCount heads have been admitted so far. */
+  checkedInCount?: number;
   /** @nullable */
   confirmationEmailSentAt?: Date | null;
   /** @nullable */

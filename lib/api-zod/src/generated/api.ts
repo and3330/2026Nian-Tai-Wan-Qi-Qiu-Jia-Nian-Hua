@@ -503,6 +503,10 @@ export const AdminListRegistrationsResponseItem = zod.object({
   paymentRef: zod.string().nullish(),
   qrToken: zod.string().nullish(),
   checkedInAt: zod.date().nullish(),
+  checkedInCount: zod
+    .number()
+    .optional()
+    .describe("How many of ticketCount heads have been admitted so far."),
   confirmationEmailSentAt: zod.date().nullish(),
   weekReminderSentAt: zod.date().nullish(),
   dayReminderSentAt: zod.date().nullish(),
@@ -681,6 +685,10 @@ export const AdminLookupCheckinResponse = zod.object({
     paymentRef: zod.string().nullish(),
     qrToken: zod.string().nullish(),
     checkedInAt: zod.date().nullish(),
+    checkedInCount: zod
+      .number()
+      .optional()
+      .describe("How many of ticketCount heads have been admitted so far."),
     confirmationEmailSentAt: zod.date().nullish(),
     weekReminderSentAt: zod.date().nullish(),
     dayReminderSentAt: zod.date().nullish(),
@@ -723,6 +731,10 @@ export const AdminPerformCheckinResponse = zod.object({
     paymentRef: zod.string().nullish(),
     qrToken: zod.string().nullish(),
     checkedInAt: zod.date().nullish(),
+    checkedInCount: zod
+      .number()
+      .optional()
+      .describe("How many of ticketCount heads have been admitted so far."),
     confirmationEmailSentAt: zod.date().nullish(),
     weekReminderSentAt: zod.date().nullish(),
     dayReminderSentAt: zod.date().nullish(),
