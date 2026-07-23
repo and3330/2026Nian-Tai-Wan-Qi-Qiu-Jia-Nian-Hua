@@ -47,6 +47,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   newebpay: "藍新金流",
   stripe: "Stripe 信用卡",
   bank: "銀行轉帳 / ATM",
+  onsite: "現場售票",
 };
 
 const TICKET_TYPE_LABELS: Record<string, string> = {
@@ -210,6 +211,59 @@ export default function OrdersManage() {
   const [isBulkIssuing, setIsBulkIssuing] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isReconciling, setIsReconciling] = useState(false);
+
+  // 現場售票：後台直接建立已付款訂單
+  const [createOpen, setCreateOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    parentName: "",
+    phone: "",
+    email: "",
+    ticketCount: 1,
+    amount: 300,
+    eventDate: "2026-07-25",
+  });
+
+  const handleCreateOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isCreating) return;
+    setIsCreating(true);
+    try {
+      const res = await fetch("/api/admin/registrations/manual", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parentName: createForm.parentName.trim(),
+          phone: createForm.phone.trim(),
+          email: createForm.email.trim() || undefined,
+          ticketCount: createForm.ticketCount,
+          amount: createForm.amount,
+          eventDate: createForm.eventDate,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        window.alert(data?.error || "建立訂單失敗");
+        return;
+      }
+      window.alert(
+        `訂單建立成功（已付款）！\n訂單編號：${data.paymentRef}\n` +
+          (createForm.email.trim()
+            ? data.emailSent
+              ? "入場 QR Code 確認信已寄出。"
+              : "確認信寄送失敗，可稍後在列表中「補寄確認信」。"
+            : "未填 Email，不會寄送 QR Code；入場時可用姓名/電話查詢。"),
+      );
+      setCreateOpen(false);
+      setCreateForm({ parentName: "", phone: "", email: "", ticketCount: 1, amount: 300, eventDate: createForm.eventDate });
+      await refetch();
+    } catch {
+      window.alert("建立訂單失敗，請稍後再試");
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   // Only one bulk action may run at a time — concurrent batch mutations would
   // race on the same orders and produce confusing partial results.
@@ -823,8 +877,108 @@ export default function OrdersManage() {
             <Download size={18} />
             {isExporting ? "匯出中..." : "匯出 CSV"}
           </button>
+          {canConfirm && (
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="bg-green-600 text-white px-5 py-2.5 rounded-full font-bold flex items-center gap-2 hover:bg-green-700 transition-all shadow-md"
+              data-testid="button-create-order"
+            >
+              <Package size={18} />
+              新增訂單
+            </button>
+          )}
         </div>
       </div>
+
+      {createOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !isCreating && setCreateOpen(false)}>
+          <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xl font-bold">新增訂單（現場售票）</h2>
+              <button onClick={() => !isCreating && setCreateOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X size={22} />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-5">
+              建立後訂單立即為「已付款」狀態；若填寫 Email 會自動寄送入場 QR Code 確認信。
+            </p>
+            <form onSubmit={handleCreateOrder} className="space-y-4">
+              <div>
+                <label className="text-sm font-bold block mb-1.5">姓名 <span className="text-destructive">*</span></label>
+                <input
+                  required type="text" value={createForm.parentName}
+                  onChange={(e) => setCreateForm({ ...createForm, parentName: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:border-primary"
+                  data-testid="input-create-name"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-bold block mb-1.5">電話 <span className="text-destructive">*</span></label>
+                <input
+                  required type="tel" value={createForm.phone}
+                  onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:border-primary"
+                  data-testid="input-create-phone"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-bold block mb-1.5">Email <span className="text-xs font-normal text-muted-foreground">（選填，填寫將寄送 QR Code）</span></label>
+                <input
+                  type="email" value={createForm.email}
+                  onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:border-primary"
+                  data-testid="input-create-email"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-bold block mb-1.5">入場日期 <span className="text-destructive">*</span></label>
+                <select
+                  value={createForm.eventDate}
+                  onChange={(e) => setCreateForm({ ...createForm, eventDate: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:border-primary bg-white"
+                  data-testid="select-create-date"
+                >
+                  {EVENT_DATES.map((d) => (
+                    <option key={d} value={d}>{eventDateLabel(d)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-bold block mb-1.5">張數 <span className="text-destructive">*</span></label>
+                  <input
+                    required type="number" min={1} max={50} value={createForm.ticketCount}
+                    onChange={(e) => {
+                      const n = Math.max(1, Math.min(50, Number(e.target.value) || 1));
+                      setCreateForm({ ...createForm, ticketCount: n, amount: n * 300 });
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:border-primary"
+                    data-testid="input-create-count"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-bold block mb-1.5">總金額（NT$）<span className="text-destructive">*</span></label>
+                  <input
+                    required type="number" min={0} step={1} value={createForm.amount}
+                    onChange={(e) => setCreateForm({ ...createForm, amount: Math.max(0, Math.round(Number(e.target.value) || 0)) })}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:border-primary"
+                    data-testid="input-create-amount"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">張數調整時金額會自動帶入 300/張，可再手動修改總金額。</p>
+              <button
+                type="submit"
+                disabled={isCreating}
+                className="w-full py-3.5 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-all"
+                data-testid="button-create-submit"
+              >
+                {isCreating ? "建立中..." : "建立訂單（已付款）"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

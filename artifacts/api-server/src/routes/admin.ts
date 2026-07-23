@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { Router, type IRouter } from "express";
 import { eq, desc, sql, inArray, or, and, isNull } from "drizzle-orm";
 import {
@@ -540,6 +541,79 @@ router.post("/admin/registrations/resend-confirmation", async (req, res): Promis
 //  2. Truly manual orders with no transaction row (or no paymentRef at all):
 //     flip the registration legs to paid, backfill paymentMethod="manual" where
 //     unset, and send each leg its confirmation email + QR.
+// 現場售票：後台直接建立一筆已付款訂單（姓名/電話/email、張數、總金額、日期）。
+// The row is created as PAID immediately (cash collected on site), with a
+// synthetic MANUAL- paymentRef so it never collides with gateway refs. If an
+// email is provided, the confirmation email with the entry QR code is sent
+// right away (paid rows qualify for QR per the payment-to-entry lifecycle).
+router.post("/admin/registrations/manual", async (req, res): Promise<void> => {
+  if (!requireAuth(req, res, "editor", "checkin")) return;
+
+  const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
+  const parentName = typeof body.parentName === "string" ? body.parentName.trim() : "";
+  const phone = typeof body.phone === "string" ? body.phone.trim() : "";
+  const email = typeof body.email === "string" && body.email.trim() ? body.email.trim() : null;
+  const ticketCount = Number(body.ticketCount);
+  const amount = Number(body.amount);
+  const eventDate = typeof body.eventDate === "string" ? body.eventDate : "";
+
+  if (!parentName || !phone) {
+    res.status(400).json({ error: "請填寫姓名與電話" });
+    return;
+  }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ error: "Email 格式不正確" });
+    return;
+  }
+  if (!Number.isInteger(ticketCount) || ticketCount < 1 || ticketCount > 50) {
+    res.status(400).json({ error: "張數需為 1–50 的整數" });
+    return;
+  }
+  if (!Number.isFinite(amount) || !Number.isInteger(amount) || amount < 0 || amount > 1000000) {
+    res.status(400).json({ error: "金額需為 0 以上的整數" });
+    return;
+  }
+  if (!EVENT_DATES.includes(eventDate)) {
+    res.status(400).json({ error: "請選擇有效的活動日期" });
+    return;
+  }
+
+  try {
+    const qrToken = crypto.randomBytes(16).toString("hex");
+    const paymentRef = `MANUAL-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`;
+    const [reg] = await db
+      .insert(registrationsTable)
+      .values({
+        parentName,
+        phone,
+        email,
+        ticketCount,
+        eventDate,
+        ticketType: "single",
+        amount,
+        paymentMethod: "onsite",
+        paymentStatus: "paid",
+        paymentRef,
+        qrToken,
+      })
+      .returning();
+
+    let emailSent = false;
+    if (reg.email) {
+      const result = await sendConfirmationEmail(reg.id).catch((err) => {
+        logger.error({ err, regId: reg.id }, "[ManualOrder] confirmation email failed");
+        return null;
+      });
+      emailSent = Boolean(result && (result as { sent?: boolean }).sent !== false);
+    }
+
+    res.status(201).json({ id: reg.id, paymentRef, qrToken, emailSent });
+  } catch (err) {
+    logger.error({ err }, "[ManualOrder] create failed");
+    res.status(500).json({ error: "建立訂單失敗，請稍後再試" });
+  }
+});
+
 router.post("/admin/registrations/mark-paid", async (req, res): Promise<void> => {
   if (!requireAuth(req, res, "editor")) return;
 
