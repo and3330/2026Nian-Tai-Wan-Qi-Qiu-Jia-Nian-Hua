@@ -102,7 +102,7 @@ const TOURNAMENT_REGISTRATION_OPEN = false;
 // Master switch for GENERAL carnival ticket sales (single + combo). When
 // false, both create routes reject new orders — pair this with the matching
 // TICKET_SALES_OPEN constant in the frontend CarnivalPage.
-const TICKET_SALES_OPEN = false;
+const TICKET_SALES_OPEN = true;
 const TICKET_SALES_PAUSED_MESSAGE = "售票暫停中，請稍後再試或關注官方公告";
 
 // 綠色通道：售票暫停期間，持有私下分享連結（/carnival?pass=<code>）的買家
