@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { ArrowRight, Cpu, Baby, Sparkles, Eye, Calendar, Clock, MapPin, Ticket, Star, Users, Phone, Mail, AlertCircle, CheckCircle2, QrCode, Tag, ZoomIn, X as XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -78,6 +78,13 @@ import { TICKET_SALES_OPEN } from "@/lib/ticketSales";
 
 export default function CarnivalPage() {
   const queryClient = useQueryClient();
+  // 綠色通道：私下分享的連結帶 ?pass=<code>，售票暫停時仍顯示購票表單，
+  // 通道碼會隨訂單送到後端驗證（前端不驗證真偽）。
+  const salesPass = useMemo(
+    () => new URLSearchParams(window.location.search).get("pass") ?? "",
+    [],
+  );
+  const salesOpen = TICKET_SALES_OPEN || salesPass.length > 0;
   const { data: availability, isLoading: isAvailabilityLoading } = useGetRegistrationAvailability({
     query: {
       queryKey: ["getRegistrationAvailability"],
@@ -221,6 +228,7 @@ export default function CarnivalPage() {
             ticketType: "combo",
             amount: comboTotal,
             ...(appliedPromo ? { promoCode: appliedPromo.code } : {}),
+            ...(salesPass ? { salesPass } : {}),
           } as any,
         });
         for (const r of result.registrations) {
@@ -244,6 +252,7 @@ export default function CarnivalPage() {
             ticketType: "single",
             amount: singleTotal,
             ...(appliedPromo ? { promoCode: appliedPromo.code } : {}),
+            ...(salesPass ? { salesPass } : {}),
           } as any,
         });
         created.push(r);
@@ -369,7 +378,7 @@ export default function CarnivalPage() {
           </p>
         </div>
 
-        {!TICKET_SALES_OPEN && (
+        {!salesOpen && (
           <div className="max-w-2xl mx-auto bg-amber-50 border-2 border-amber-200 rounded-3xl p-10 text-center shadow-sm" data-testid="sales-paused-notice">
             <AlertCircle className="w-14 h-14 text-amber-500 mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-amber-800 mb-3">售票暫停中</h3>
@@ -379,7 +388,13 @@ export default function CarnivalPage() {
           </div>
         )}
 
-        {TICKET_SALES_OPEN && (
+        {salesOpen && !TICKET_SALES_OPEN && (
+          <div className="max-w-2xl mx-auto mb-8 bg-green-50 border-2 border-green-200 rounded-2xl px-6 py-4 text-center text-green-700 font-bold" data-testid="green-channel-notice">
+            您正透過專屬通道購票，請直接填寫下方資料完成購買。
+          </div>
+        )}
+
+        {salesOpen && (
         <>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-10 max-w-2xl mx-auto">
           <button

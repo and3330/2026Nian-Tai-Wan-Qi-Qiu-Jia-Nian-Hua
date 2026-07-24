@@ -105,6 +105,18 @@ const TOURNAMENT_REGISTRATION_OPEN = false;
 const TICKET_SALES_OPEN = false;
 const TICKET_SALES_PAUSED_MESSAGE = "售票暫停中，請稍後再試或關注官方公告";
 
+// 綠色通道：售票暫停期間，持有私下分享連結（/carnival?pass=<code>）的買家
+// 仍可購票。前端會把 pass 原樣放進訂單 body 的 salesPass，後端在此驗證。
+// 通道碼存在環境變數 GREEN_CHANNEL_PASS（未設定時通道關閉）；要讓舊連結
+// 失效，改環境變數後重新發布即可。
+function salesAllowed(req: { body?: unknown }): boolean {
+  if (TICKET_SALES_OPEN) return true;
+  const pass = process.env.GREEN_CHANNEL_PASS;
+  if (!pass) return false;
+  const body = req.body as Record<string, unknown> | null | undefined;
+  return typeof body?.salesPass === "string" && body.salesPass === pass;
+}
+
 // SQL fragment: a row belongs to the general carnival inventory (i.e. it is NOT
 // a tournament participant/companion leg). Used everywhere the 500-per-day cap
 // is computed so tournament sales stay isolated.
@@ -293,7 +305,7 @@ export async function ensureTournamentCapacityForPayment(
 }
 
 router.post("/registrations", async (req, res): Promise<void> => {
-  if (!TICKET_SALES_OPEN) {
+  if (!salesAllowed(req)) {
     res.status(403).json({ error: TICKET_SALES_PAUSED_MESSAGE, code: "SALES_PAUSED" });
     return;
   }
@@ -388,7 +400,7 @@ router.post("/registrations", async (req, res): Promise<void> => {
 // before inserting either. Prevents the orphan-registration bug where the
 // frontend had to make two sequential POSTs.
 router.post("/registrations/combo", async (req, res): Promise<void> => {
-  if (!TICKET_SALES_OPEN) {
+  if (!salesAllowed(req)) {
     res.status(403).json({ error: TICKET_SALES_PAUSED_MESSAGE, code: "SALES_PAUSED" });
     return;
   }
