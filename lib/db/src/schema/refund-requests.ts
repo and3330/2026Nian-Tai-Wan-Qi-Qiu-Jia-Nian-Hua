@@ -11,6 +11,8 @@ export const refundRequestsTable = pgTable(
     // pending | approved | rejected | rescheduled
     status: text("status").notNull().default("pending"),
     refundAmount: integer("refund_amount"),
+    // 申請退票的張數（人頭數）。null 或等於訂單總張數 = 整筆全退。
+    refundTicketCount: integer("refund_ticket_count"),
     // Unguessable token embedded in the "fill in your bank account" email link
     bankInfoToken: text("bank_info_token").unique(),
     bankInfoEmailSentAt: timestamp("bank_info_email_sent_at", { withTimezone: true }),

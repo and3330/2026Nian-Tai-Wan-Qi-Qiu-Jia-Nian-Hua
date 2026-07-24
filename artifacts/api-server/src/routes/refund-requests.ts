@@ -16,6 +16,38 @@ const router: IRouter = Router();
 
 const EVENT_DATES = new Set(["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"]);
 
+// 訂單總人頭數。combo 訂單的多個日期 legs 是同一批人（共用同一個 qrToken），
+// 因此以 qrToken 分組後取每組的最大 ticketCount 相加。
+function orderTotalHeads(regs: Array<{ qrToken: string | null; ticketCount: number }>): number {
+  const byToken = new Map<string, number>();
+  let noToken = 0;
+  for (const r of regs) {
+    if (r.qrToken) {
+      byToken.set(r.qrToken, Math.max(byToken.get(r.qrToken) ?? 0, r.ticketCount));
+    } else {
+      noToken += r.ticketCount;
+    }
+  }
+  let sum = noToken;
+  for (const v of byToken.values()) sum += v;
+  return sum;
+}
+
+// 訂單目前有效（未退款）票券的實付金額。部分退票核准後，承載金額的 leg 會被
+// 扣減，因此退款計算必須以 regs 的餘額為準，不能用 payment_transactions 的
+// 原始金額（那是最初付款的全額，退過一次後就會偏高）。
+function orderRemainingAmount(regs: Array<{ amount: number | null; paymentStatus: string }>): number {
+  return regs
+    .filter((r) => r.paymentStatus !== "refunded")
+    .reduce((s, r) => s + (r.amount ?? 0), 0);
+}
+
+// 按張數比例計算退款金額（無條件捨去到整數元；全退時退全額）。
+function proRataAmount(orderAmount: number, count: number, totalHeads: number): number {
+  if (totalHeads <= 0 || count >= totalHeads) return orderAmount;
+  return Math.floor((orderAmount * count) / totalHeads);
+}
+
 function normalizeContact(raw: string): { isEmail: boolean; emailLc: string; digits: string } {
   const trimmed = raw.trim();
   return {
@@ -69,31 +101,55 @@ router.post("/refund-requests", async (req, res): Promise<void> => {
       return;
     }
 
-    if (regs.some((r) => r.paymentStatus === "refunded")) {
-      res.status(400).json({ error: "此訂單已退款，無法再次申請" });
-      return;
-    }
-    if (regs.some((r) => r.checkedInAt)) {
-      res.status(400).json({ error: "已入場的票券無法退票，請聯絡客服" });
-      return;
-    }
+    const requestedCountRaw = body.ticketCount;
 
-    // Atomic duplicate guard: the existing-request check and the insert run in
-    // one transaction under a per-order advisory lock, so two concurrent
-    // submissions for the same paymentRef cannot both pass the check.
+    // Eligibility checks + duplicate guard + insert all run in one transaction
+    // under a per-order advisory lock, with the registrations re-read FOR
+    // UPDATE inside the lock. This prevents both (a) two concurrent
+    // submissions passing the duplicate check, and (b) a concurrent approval
+    // fully refunding the order between the eligibility check and the insert.
     const outcome = await db.transaction(async (txn) => {
       await txn.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`refund:${ref}`}))`);
+      const lockedRegs = await txn
+        .select()
+        .from(registrationsTable)
+        .where(eq(registrationsTable.paymentRef, ref))
+        .for("update");
+      if (lockedRegs.every((r) => r.paymentStatus === "refunded")) {
+        return { error: { status: 400, message: "此訂單已退款，無法再次申請" } };
+      }
+      if (lockedRegs.some((r) => r.checkedInAt)) {
+        return { error: { status: 400, message: "已入場的票券無法退票，請聯絡客服" } };
+      }
+
+      // 訂單總人頭數：combo 兩天的 legs 是同一批人（共用 qrToken），只算一次。
+      const totalHeads = orderTotalHeads(lockedRegs);
+      // 申請退票張數：預設整筆全退；可指定 1..totalHeads。
+      let refundCount = totalHeads;
+      if (requestedCountRaw !== undefined && requestedCountRaw !== null) {
+        const n = Number(requestedCountRaw);
+        if (!Number.isInteger(n) || n < 1 || n > totalHeads) {
+          return { error: { status: 400, message: `退票張數需為 1 到 ${totalHeads} 之間的整數` } };
+        }
+        refundCount = n;
+      }
+      const refundAmount = proRataAmount(orderRemainingAmount(lockedRegs), refundCount, totalHeads);
+
       const [existing] = await txn
         .select({ id: refundRequestsTable.id })
         .from(refundRequestsTable)
         .where(
           and(
             eq(refundRequestsTable.paymentRef, ref),
-            sql`${refundRequestsTable.status} IN ('pending', 'approved')`,
+            // 只擋「待處理」。已核准的整筆全退訂單會被上面的「此訂單已退款」
+            // 檢查擋下；部分退票核准後，買家仍可再申請退剩餘的票。
+            sql`${refundRequestsTable.status} = 'pending'`,
           ),
         )
         .limit(1);
-      if (existing) return { duplicate: true as const };
+      if (existing) {
+        return { error: { status: 409, message: "此訂單已有處理中的退票申請，請耐心等候或來電查詢" } };
+      }
       const [created] = await txn
         .insert(refundRequestsTable)
         .values({
@@ -102,16 +158,17 @@ router.post("/refund-requests", async (req, res): Promise<void> => {
           buyerContact: contactRaw,
           reason,
           status: "pending",
-          refundAmount: tx.amount,
+          refundAmount,
+          refundTicketCount: refundCount,
         })
         .returning({ id: refundRequestsTable.id });
-      return { duplicate: false as const, created };
+      return { created };
     });
-    if (outcome.duplicate) {
-      res.status(409).json({ error: "此訂單已有處理中的退票申請，請耐心等候或來電查詢" });
+    if ("error" in outcome && outcome.error) {
+      res.status(outcome.error.status).json({ error: outcome.error.message });
       return;
     }
-    const created = outcome.created;
+    const created = (outcome as { created: { id: number } }).created;
 
     logger.info({ refundId: created.id, paymentRef: ref }, "[refund] new request submitted");
 
@@ -406,20 +463,86 @@ async function approveRefundRequest(
     if (request.status !== "pending") {
       return { ok: false as const, status: 400, error: `此申請已處於「${request.status}」狀態，無法重複處理` };
     }
-    await tx
-      .update(registrationsTable)
-      .set({ paymentStatus: "refunded" })
-      .where(
-        and(
-          eq(registrationsTable.paymentRef, request.paymentRef),
-          sql`${registrationsTable.paymentStatus} <> 'refunded'`,
-        ),
-      );
-    // Void the order's payment transaction record as well.
-    await tx
-      .update(paymentTransactionsTable)
-      .set({ status: "refunded" })
-      .where(eq(paymentTransactionsTable.paymentRef, request.paymentRef));
+
+    const regs = await tx
+      .select()
+      .from(registrationsTable)
+      .where(eq(registrationsTable.paymentRef, request.paymentRef))
+      .for("update");
+    const totalHeads = orderTotalHeads(regs);
+    const requestedCount = request.refundTicketCount ?? totalHeads;
+    const isPartial = totalHeads > 0 && requestedCount < totalHeads;
+
+    if (isPartial) {
+      // 部分退票：從各張 QR（票券）依序扣掉退票人數，票券本身保持有效。
+      // 已入場人數是下限，不能退到比已入場還少。
+      const byToken = new Map<string, typeof regs>();
+      for (const r of regs) {
+        const key = r.qrToken ?? `id:${r.id}`;
+        const arr = byToken.get(key) ?? [];
+        arr.push(r);
+        byToken.set(key, arr);
+      }
+      // 先在記憶體算好每張票要扣多少，確認可行才寫入（避免半途發現不夠退）。
+      const planned: Array<{ legs: typeof regs; newCount: number }> = [];
+      let remaining = requestedCount;
+      for (const legs of byToken.values()) {
+        if (remaining <= 0) break;
+        const heads = Math.max(...legs.map((l) => l.ticketCount));
+        const checkedFloor = Math.max(...legs.map((l) => l.checkedInCount ?? 0));
+        const reducible = Math.max(0, heads - checkedFloor);
+        const take = Math.min(remaining, reducible);
+        if (take <= 0) continue;
+        planned.push({ legs, newCount: heads - take });
+        remaining -= take;
+      }
+      if (remaining > 0) {
+        return { ok: false as const, status: 400, error: "退票張數超過可退數量（可能已有票入場），請調整張數" };
+      }
+      for (const { legs, newCount } of planned) {
+        for (const leg of legs) {
+          if (newCount === 0) {
+            await tx
+              .update(registrationsTable)
+              .set({ paymentStatus: "refunded" })
+              .where(eq(registrationsTable.id, leg.id));
+          } else {
+            await tx
+              .update(registrationsTable)
+              .set({
+                ticketCount: newCount,
+                childCount: Math.min(leg.childCount ?? 0, newCount),
+              })
+              .where(eq(registrationsTable.id, leg.id));
+          }
+        }
+      }
+      // 從承載金額的 leg 扣掉退款金額，讓營收統計反映部分退票。
+      const refundAmt = opts.refundAmount ?? request.refundAmount ?? 0;
+      const amountLeg = regs.find((r) => (r.amount ?? 0) > 0);
+      if (amountLeg && refundAmt > 0) {
+        await tx
+          .update(registrationsTable)
+          .set({ amount: Math.max(0, (amountLeg.amount ?? 0) - refundAmt) })
+          .where(eq(registrationsTable.id, amountLeg.id));
+      }
+    } else {
+      await tx
+        .update(registrationsTable)
+        .set({ paymentStatus: "refunded" })
+        .where(
+          and(
+            eq(registrationsTable.paymentRef, request.paymentRef),
+            sql`${registrationsTable.paymentStatus} <> 'refunded'`,
+          ),
+        );
+      // Void the order's payment transaction record as well.
+      await tx
+        .update(paymentTransactionsTable)
+        .set({ status: "refunded" })
+        .where(eq(paymentTransactionsTable.paymentRef, request.paymentRef));
+    }
+
     await tx
       .update(refundRequestsTable)
       .set({
@@ -430,10 +553,24 @@ async function approveRefundRequest(
         processedAt: new Date(),
       })
       .where(eq(refundRequestsTable.id, id));
-    return { ok: true as const, paymentRef: request.paymentRef };
+    return { ok: true as const, paymentRef: request.paymentRef, isPartial };
   });
 
   if (!result.ok) return result;
+
+  // 部分退票不作廢整張發票（金額不符），提示管理員手動處理折讓/重開。
+  if (result.isPartial) {
+    logger.info({ id, userId: opts.userId }, "[refund] partial refund approved");
+    void sendRefundNotifyEmail(id)
+      .then((r) => {
+        if (!r.delivered) logger.warn({ id, message: r.message }, "[refund] auto notify email not delivered");
+      })
+      .catch((err) => logger.error({ err, id }, "[refund] auto notify email error"));
+    return {
+      ok: true,
+      invoiceVoid: { attempted: false, success: false, message: "部分退票：發票未自動作廢，請視情況手動開立折讓或重開發票" },
+    };
+  }
 
   // Best-effort: void the issued e-invoice for this order (external ECPay
   // call — cannot be part of the DB transaction). Failure does not roll back
@@ -483,6 +620,67 @@ async function approveRefundRequest(
 
   return { ok: true, invoiceVoid };
 }
+
+// ── Admin: edit a pending request's refund ticket count / amount ───────────
+router.patch(
+  "/admin/refund-requests/:id",
+  requireRole("editor"),
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+    try {
+      const [request] = await db.select().from(refundRequestsTable).where(eq(refundRequestsTable.id, id));
+      if (!request) { res.status(404).json({ error: "找不到此退票申請" }); return; }
+      if (request.status !== "pending") {
+        res.status(400).json({ error: "只有待處理的申請可以修改" });
+        return;
+      }
+
+      const regs = await db
+        .select()
+        .from(registrationsTable)
+        .where(eq(registrationsTable.paymentRef, request.paymentRef));
+      const totalHeads = orderTotalHeads(regs);
+
+      const updates: { refundTicketCount?: number; refundAmount?: number } = {};
+      if (req.body?.refundTicketCount !== undefined) {
+        const n = Number(req.body.refundTicketCount);
+        if (!Number.isInteger(n) || n < 1 || n > totalHeads) {
+          res.status(400).json({ error: `退票張數需為 1 到 ${totalHeads} 之間的整數` });
+          return;
+        }
+        updates.refundTicketCount = n;
+        // 改張數時自動按比例重算金額（以訂單目前有效票券的餘額為準，可再另外覆蓋金額）。
+        updates.refundAmount = proRataAmount(orderRemainingAmount(regs), n, totalHeads);
+      }
+      if (typeof req.body?.refundAmount === "number" && Number.isFinite(req.body.refundAmount)) {
+        updates.refundAmount = Math.max(0, Math.floor(req.body.refundAmount));
+      }
+      if (Object.keys(updates).length === 0) {
+        res.status(400).json({ error: "沒有可更新的欄位" });
+        return;
+      }
+
+      // Conditional update guards against a concurrent approve/reject between
+      // the status check above and this write (TOCTOU): only a still-pending
+      // request is mutated, and zero rows updated means the state changed.
+      const updated = await db
+        .update(refundRequestsTable)
+        .set(updates)
+        .where(and(eq(refundRequestsTable.id, id), sql`${refundRequestsTable.status} = 'pending'`))
+        .returning({ id: refundRequestsTable.id });
+      if (updated.length === 0) {
+        res.status(409).json({ error: "此申請已被處理，無法修改" });
+        return;
+      }
+      logger.info({ id, updates }, "[refund] request updated by admin");
+      res.json({ ok: true, ...updates, totalHeads });
+    } catch (err) {
+      logger.error({ err, id }, "[refund] admin update error");
+      res.status(500).json({ error: "更新失敗，請稍後再試" });
+    }
+  },
+);
 
 // ── Admin: approve refund (releases inventory, voids order + invoice) ──────
 router.post(
@@ -752,6 +950,7 @@ router.get(
     res.json({
       request: redactBankFields(data.request, req.hasRole("editor")),
       transaction: tx ?? null,
+      totalHeads: orderTotalHeads(data.regs),
       registrations: data.regs.map((r) => ({
         id: r.id,
         parentName: r.parentName,

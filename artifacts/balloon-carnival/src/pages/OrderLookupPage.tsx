@@ -205,10 +205,12 @@ function OrderResultCard({
     loadRefundStatus();
   }, [loadRefundStatus]);
 
-  const activeRefund = refunds.find((r) => r.status === "pending" || r.status === "approved" || r.status === "rescheduled");
+  // 已核准的整筆全退會被 allRefunded 擋下；部分退票核准後仍可再申請退剩餘的票，
+  // 因此這裡只把「待處理 / 已改期」視為進行中的申請。
+  const activeRefund = refunds.find((r) => r.status === "pending" || r.status === "rescheduled");
   const anyCheckedIn = data.registrations.some((r) => !!r.checkedInAt);
-  const anyRefunded = data.registrations.some((r) => r.paymentStatus === "refunded");
-  const canRequestRefund = (isPaid || isAwaitingTransfer) && !anyCheckedIn && !anyRefunded && !activeRefund;
+  const allRefunded = data.registrations.every((r) => r.paymentStatus === "refunded");
+  const canRequestRefund = (isPaid || isAwaitingTransfer) && !anyCheckedIn && !allRefunded && !activeRefund;
 
   return (
     <div className="bg-white border-2 rounded-3xl shadow-xl overflow-hidden" data-testid="lookup-result">
@@ -346,6 +348,10 @@ function OrderResultCard({
         <RefundModal
           paymentRef={data.paymentRef}
           contact={contact}
+          totalHeads={orderTotalHeads(data.registrations)}
+          orderAmount={data.registrations
+            .filter((r) => r.paymentStatus !== "refunded")
+            .reduce((s, r) => s + (r.amount ?? 0), 0)}
           onClose={() => setRefundOpen(false)}
           onSubmitted={() => { setRefundOpen(false); loadRefundStatus(); }}
         />
@@ -354,12 +360,34 @@ function OrderResultCard({
   );
 }
 
+// 訂單總人頭數：combo 兩天的票券共用同一個 qrToken，只算一次。
+function orderTotalHeads(regs: OrderLookupRegistration[]): number {
+  const byToken = new Map<string, number>();
+  let noToken = 0;
+  for (const r of regs) {
+    if (r.qrToken) {
+      byToken.set(r.qrToken, Math.max(byToken.get(r.qrToken) ?? 0, r.ticketCount));
+    } else {
+      noToken += r.ticketCount;
+    }
+  }
+  let sum = noToken;
+  for (const v of byToken.values()) sum += v;
+  return sum;
+}
+
 function RefundModal({
-  paymentRef, contact, onClose, onSubmitted,
-}: { paymentRef: string; contact: string; onClose: () => void; onSubmitted: () => void }) {
+  paymentRef, contact, totalHeads, orderAmount, onClose, onSubmitted,
+}: { paymentRef: string; contact: string; totalHeads: number; orderAmount: number; onClose: () => void; onSubmitted: () => void }) {
   const { toast } = useToast();
   const [reason, setReason] = useState("");
+  const [count, setCount] = useState(totalHeads);
   const [busy, setBusy] = useState(false);
+
+  const estimatedRefund =
+    totalHeads > 0 && count < totalHeads
+      ? Math.floor((orderAmount * count) / totalHeads)
+      : orderAmount;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -372,7 +400,7 @@ function RefundModal({
       const res = await fetch("/api/refund-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentRef, contact, reason: reason.trim() }),
+        body: JSON.stringify({ paymentRef, contact, reason: reason.trim(), ticketCount: count }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "申請失敗");
@@ -401,6 +429,27 @@ function RefundModal({
         <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-900 leading-relaxed">
           送出申請後將由客服人員審核，預計 3 個工作天內回覆。已入場、已退款的票券無法再申請退票。
         </div>
+        {totalHeads > 1 && (
+          <label className="block text-sm">
+            <span className="block mb-1 font-bold">退票張數 *</span>
+            <select
+              value={count}
+              onChange={(e) => setCount(Number(e.target.value))}
+              data-testid="select-refund-count"
+              className="w-full px-3 py-2 border-2 rounded-xl focus:border-primary focus:outline-none bg-white"
+            >
+              {Array.from({ length: totalHeads }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  {n === totalHeads ? `${n} 張（全部退票）` : `${n} 張`}
+                </option>
+              ))}
+            </select>
+            <div className="text-xs text-muted-foreground mt-1">
+              預估退款金額：NT$ {estimatedRefund.toLocaleString()}
+              {count < totalHeads && "（部分退票，其餘票券仍然有效）"}
+            </div>
+          </label>
+        )}
         <label className="block text-sm">
           <span className="block mb-1 font-bold">退票原因 *</span>
           <textarea

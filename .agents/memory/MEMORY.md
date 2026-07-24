@@ -12,6 +12,7 @@
 - [Rebuild libs after codegen](codegen-rebuild-libs.md) — after api-spec codegen, web tsc still errors until `pnpm run typecheck:libs` (tsc --build) regenerates lib dist .d.ts.
 - [api-server testing](api-server-testing.md) — vitest+supertest in test/ (not src/); runs vs shared dev DB with `__torTEST__` marker cleanup; mount router, not app.ts.
 - [Expose a new registration field end-to-end](api-response-schema-codegen.md) — list/lookup responses are zod-parsed (strip unknown keys); new column needs DB push + openapi.yaml + codegen + prod migration.
+- [Partial refund model](partial-refunds.md) — refund math uses remaining reg amounts (never tx.amount); partial keeps tickets/tx valid; dup guard blocks only pending.
 - [Refund bank-info flow](refund-bank-info.md) — tokenized public form collects bank account; redact bank PII server-side for non-editor roles; refunds quoted as 7–14 working days.
 - [Payment method classification](payment-method-classification.md) — sub-method (CVS/ATM/credit) lives in raw_result.Result.PaymentType (nested, not top-level); join paid registrations on payment_ref + SUM(amount) for per-method revenue.
 - [POS cart orders](pos-cart-orders.md) — checkout totals recomputed server-side from DB prices; vendor mutations must go through resolvePosVendor; invoices issue from pos_orders with dup guard.

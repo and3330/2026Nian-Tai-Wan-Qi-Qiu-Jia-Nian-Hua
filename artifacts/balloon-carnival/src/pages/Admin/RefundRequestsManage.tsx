@@ -12,6 +12,7 @@ interface RefundRow {
   reason: string;
   status: "pending" | "approved" | "rejected" | "rescheduled";
   refundAmount: number | null;
+  refundTicketCount: number | null;
   bankInfoEmailSentAt: string | null;
   formPurchaseInfo: string | null;
   formName: string | null;
@@ -42,6 +43,7 @@ interface DetailReg {
 interface DetailResponse {
   request: RefundRow;
   transaction: { paymentRef: string; provider: string; amount: number; status: string; itemName: string | null; paidAt: string | null } | null;
+  totalHeads: number;
   registrations: DetailReg[];
 }
 
@@ -59,6 +61,103 @@ const STATUS_COLOR: Record<string, string> = {
   rejected: "bg-gray-100 text-gray-700",
   rescheduled: "bg-sky-100 text-sky-800",
 };
+
+function RefundEditRow({
+  request, totalHeads, busy, onSaved,
+}: { request: RefundRow; totalHeads: number; busy: boolean; onSaved: () => void }) {
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [count, setCount] = useState(request.refundTicketCount ?? totalHeads);
+  const [amount, setAmount] = useState<string>(String(request.refundAmount ?? 0));
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    const amt = Number(amount);
+    if (!Number.isFinite(amt) || amt < 0) {
+      toast({ variant: "destructive", title: "退款金額格式錯誤" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const changedCount = count !== (request.refundTicketCount ?? totalHeads);
+      const body: Record<string, number> = {};
+      if (changedCount) body.refundTicketCount = count;
+      if (Math.floor(amt) !== (request.refundAmount ?? 0)) body.refundAmount = Math.floor(amt);
+      if (Object.keys(body).length === 0) { setEditing(false); return; }
+      const r = await api<{ refundAmount?: number }>(`/admin/refund-requests/${request.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      toast({ title: "已更新退票內容", description: r.refundAmount != null ? `退款金額：NT$ ${r.refundAmount.toLocaleString()}` : undefined });
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      toast({ variant: "destructive", title: "更新失敗", description: (e as Error).message });
+    } finally { setSaving(false); }
+  };
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => {
+          setCount(request.refundTicketCount ?? totalHeads);
+          setAmount(String(request.refundAmount ?? 0));
+          setEditing(true);
+        }}
+        disabled={busy}
+        data-testid="button-edit-refund"
+        className="px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
+      >
+        修改張數 / 金額
+      </button>
+    );
+  }
+
+  return (
+    <div className="border rounded-lg p-3 space-y-2 bg-white" data-testid="refund-edit-panel">
+      <div className="flex items-center gap-3 flex-wrap">
+        <label className="text-xs flex items-center gap-2">
+          退票張數
+          <select
+            value={count}
+            onChange={(e) => setCount(Number(e.target.value))}
+            className="px-2 py-1 rounded border"
+            data-testid="select-edit-refund-count"
+          >
+            {Array.from({ length: totalHeads }, (_, i) => i + 1).map((n) => (
+              <option key={n} value={n}>{n === totalHeads ? `${n}（全部）` : n}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs flex items-center gap-2">
+          退款金額 NT$
+          <input
+            type="number"
+            min={0}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="px-2 py-1 rounded border w-24"
+            data-testid="input-edit-refund-amount"
+          />
+        </label>
+      </div>
+      <div className="text-xs text-muted-foreground">改張數會自動按比例重算金額；若同時填金額，以填的金額為準。</div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={save}
+          disabled={saving}
+          data-testid="button-save-refund-edit"
+          className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50"
+        >
+          {saving ? "儲存中…" : "儲存"}
+        </button>
+        <button onClick={() => setEditing(false)} disabled={saving} className="px-3 py-1.5 rounded-lg border text-xs hover:bg-muted">
+          取消
+        </button>
+      </div>
+    </div>
+  );
+}
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -143,7 +242,13 @@ export default function AdminRefundRequestsManage() {
 
   const approve = async () => {
     if (!detail) return;
-    if (!window.confirm(`確定核准退票？將釋放 ${detail.registrations.reduce((s, r) => s + r.ticketCount, 0)} 個名額、自動作廢對應的訂單與發票，並自動寄出「退票完成通知」Email 給買家。`)) return;
+    const reqCount = detail.request.refundTicketCount ?? detail.totalHeads;
+    const isPartial = reqCount < detail.totalHeads;
+    if (!window.confirm(
+      isPartial
+        ? `確定核准部分退票（${reqCount} / ${detail.totalHeads} 張）？票券張數將扣減、其餘票券仍有效；發票不會自動作廢（請視情況手動處理），並自動寄出「退票完成通知」Email 給買家。`
+        : `確定核准退票？將釋放 ${detail.totalHeads} 個名額、自動作廢對應的訂單與發票，並自動寄出「退票完成通知」Email 給買家。`,
+    )) return;
     setBusy(true);
     try {
       const r = await api<{ invoiceVoid?: { attempted: boolean; success: boolean; message: string } }>(
@@ -429,6 +534,7 @@ export default function AdminRefundRequestsManage() {
                 <th className="px-4 py-3">訂單編號</th>
                 <th className="px-4 py-3">買家</th>
                 <th className="px-4 py-3">原因</th>
+                <th className="px-4 py-3">張數</th>
                 <th className="px-4 py-3">金額</th>
                 <th className="px-4 py-3">狀態</th>
                 <th className="px-4 py-3">申請時間</th>
@@ -455,6 +561,7 @@ export default function AdminRefundRequestsManage() {
                     <div className="text-xs text-muted-foreground">{r.buyerContact}</div>
                   </td>
                   <td className="px-4 py-3 max-w-xs truncate" title={r.reason}>{r.reason}</td>
+                  <td className="px-4 py-3">{r.refundTicketCount != null ? `${r.refundTicketCount} 張` : "全部"}</td>
                   <td className="px-4 py-3">NT$ {(r.refundAmount ?? 0).toLocaleString()}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLOR[r.status]}`}>
@@ -499,9 +606,20 @@ export default function AdminRefundRequestsManage() {
                   <div><span className="text-muted-foreground">買家：</span><strong>{detail.request.buyerName}</strong></div>
                   <div><span className="text-muted-foreground">聯絡：</span>{detail.request.buyerContact}</div>
                   <div><span className="text-muted-foreground">原因：</span>{detail.request.reason}</div>
+                  <div><span className="text-muted-foreground">退票張數：</span>
+                    <strong>{detail.request.refundTicketCount != null ? `${detail.request.refundTicketCount} 張` : "全部"}</strong>
+                  </div>
                   <div><span className="text-muted-foreground">建議退款金額：</span>
                     <strong className="text-primary">NT$ {(detail.request.refundAmount ?? 0).toLocaleString()}</strong>
                   </div>
+                  {canAct && detail.request.status === "pending" && (
+                    <RefundEditRow
+                      request={detail.request}
+                      totalHeads={detail.totalHeads}
+                      busy={busy}
+                      onSaved={() => { openDetail(detail.request.id); refresh(); }}
+                    />
+                  )}
                   {detail.request.adminNote && (
                     <div><span className="text-muted-foreground">處理備註：</span>{detail.request.adminNote}</div>
                   )}
