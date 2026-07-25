@@ -16,21 +16,17 @@ const router: IRouter = Router();
 
 const EVENT_DATES = new Set(["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"]);
 
-// 訂單總人頭數。combo 訂單的多個日期 legs 是同一批人（共用同一個 qrToken），
-// 因此以 qrToken 分組後取每組的最大 ticketCount 相加。
-function orderTotalHeads(regs: Array<{ qrToken: string | null; ticketCount: number }>): number {
-  const byToken = new Map<string, number>();
-  let noToken = 0;
-  for (const r of regs) {
-    if (r.qrToken) {
-      byToken.set(r.qrToken, Math.max(byToken.get(r.qrToken) ?? 0, r.ticketCount));
-    } else {
-      noToken += r.ticketCount;
-    }
+// 訂單總人頭數。combo 訂單的兩個日期 legs 是同一批人，但各自有獨立的
+// qrToken（每天一張 QR），因此不能用 qrToken 分組。判斷依據：只有「主 leg」
+// 帶 ticketType（combo 的第二天 leg 的 ticketType/amount 為 null），把有
+// ticketType 的 legs 的 ticketCount 相加即為訂單人頭數。
+function orderTotalHeads(regs: Array<{ ticketType: string | null; ticketCount: number }>): number {
+  const typed = regs.filter((r) => r.ticketType != null);
+  if (typed.length > 0) {
+    return typed.reduce((s, r) => s + r.ticketCount, 0);
   }
-  let sum = noToken;
-  for (const v of byToken.values()) sum += v;
-  return sum;
+  // 理論上不會發生（每張訂單至少有一個主 leg），保守 fallback：取最大值。
+  return regs.reduce((m, r) => Math.max(m, r.ticketCount), 0);
 }
 
 // 訂單目前有效（未退款）票券的實付金額。部分退票核准後，承載金額的 leg 會被
@@ -338,6 +334,102 @@ router.get(
   },
 );
 
+// ── Admin: refund analytics ────────────────────────────────────────────────
+// Aggregated refund stats for the dashboard: per-status totals, a 14-day
+// approved-refund trend (grouped by processedAt in Asia/Taipei), and a ticket
+// type breakdown of approved refunds (order type resolved via payment_ref).
+router.get(
+  "/admin/refund-stats",
+  requireRole("editor", "viewer", "checkin"),
+  async (_req, res): Promise<void> => {
+    try {
+      // 張數：refund_ticket_count 為 NULL 代表整筆全退（含舊資料），此時以
+      // 訂單總人頭數回推 — 只加總帶 ticket_type 的主 legs（combo 第二天 leg
+      // 的 ticket_type 為 NULL、與主 leg 是同一批人），與 orderTotalHeads 一致。
+      const ticketsExpr = sql`COALESCE(
+        rr.refund_ticket_count,
+        NULLIF((SELECT COALESCE(SUM(r.ticket_count), 0)::int FROM registrations r
+         WHERE r.payment_ref = rr.payment_ref AND r.ticket_type IS NOT NULL), 0),
+        (SELECT COALESCE(MAX(r.ticket_count), 0)::int FROM registrations r
+         WHERE r.payment_ref = rr.payment_ref),
+        0
+      )`;
+
+      const statusRows = await db.execute(sql`
+        SELECT rr.status,
+               COUNT(*)::int AS count,
+               COALESCE(SUM(rr.refund_amount), 0)::int AS amount,
+               COALESCE(SUM(${ticketsExpr}), 0)::int AS tickets
+        FROM refund_requests rr
+        GROUP BY rr.status
+      `);
+
+      const byStatus: Record<string, { count: number; amount: number; tickets: number }> = {};
+      for (const r of statusRows.rows as Array<{ status: string; count: number; amount: number; tickets: number }>) {
+        byStatus[r.status] = {
+          count: Number(r.count),
+          amount: Number(r.amount),
+          tickets: Number(r.tickets),
+        };
+      }
+
+      // Approved refunds per day (Taipei), keyed by processedAt (fallback createdAt).
+      const trendRows = await db
+        .select({
+          day: sql<string>`to_char((COALESCE(${refundRequestsTable.processedAt}, ${refundRequestsTable.createdAt}) AT TIME ZONE 'Asia/Taipei')::date, 'YYYY-MM-DD')`,
+          count: sql<number>`COUNT(*)`,
+          amount: sql<number>`COALESCE(SUM(${refundRequestsTable.refundAmount}), 0)`,
+        })
+        .from(refundRequestsTable)
+        .where(eq(refundRequestsTable.status, "approved"))
+        .groupBy(sql`(COALESCE(${refundRequestsTable.processedAt}, ${refundRequestsTable.createdAt}) AT TIME ZONE 'Asia/Taipei')::date`);
+
+      const byDay: Record<string, { count: number; amount: number }> = {};
+      for (const r of trendRows) {
+        byDay[r.day] = { count: Number(r.count), amount: Number(r.amount) };
+      }
+      const now = new Date();
+      const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(now);
+      const todayUtcMidnight = new Date(`${todayStr}T00:00:00Z`).getTime();
+      const trend: { date: string; count: number; amount: number }[] = [];
+      for (let i = 13; i >= 0; i--) {
+        const ds = new Date(todayUtcMidnight - i * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0];
+        const entry = byDay[ds] || { count: 0, amount: 0 };
+        trend.push({ date: ds, count: entry.count, amount: entry.amount });
+      }
+
+      // Ticket-type split of approved refunds. The order's type is resolved by
+      // looking up ONE registration row per payment_ref (combo legs share the
+      // same ticket_type, so any row works).
+      const typeRows = await db.execute(sql`
+        SELECT
+          COALESCE(
+            (SELECT r.ticket_type FROM registrations r
+             WHERE r.payment_ref = rr.payment_ref AND r.ticket_type IS NOT NULL
+             ORDER BY r.id LIMIT 1),
+            'unknown'
+          ) AS ticket_type,
+          COUNT(*)::int AS count,
+          COALESCE(SUM(rr.refund_amount), 0)::int AS amount,
+          COALESCE(SUM(${ticketsExpr}), 0)::int AS tickets
+        FROM refund_requests rr
+        WHERE rr.status = 'approved'
+        GROUP BY 1
+      `);
+      const byTicketType = (typeRows.rows as Array<{ ticket_type: string; count: number; amount: number; tickets: number }>).map(
+        (r) => ({ ticketType: r.ticket_type, count: Number(r.count), amount: Number(r.amount), tickets: Number(r.tickets) }),
+      );
+
+      res.json({ byStatus, trend, byTicketType });
+    } catch (err) {
+      logger.error({ err }, "[refund] stats error");
+      res.status(500).json({ error: "Failed to load refund stats" });
+    }
+  },
+);
+
 // ── Admin: CSV export ──────────────────────────────────────────────────────
 // Includes bank-account PII, so this is editor-only (viewer/checkin cannot
 // bypass redaction via export).
@@ -474,9 +566,12 @@ async function approveRefundRequest(
     if (isPartial) {
       // 部分退票：從各張 QR（票券）依序扣掉退票人數，票券本身保持有效。
       // 已入場的訂單也允許退票（後台裁量），已入場人數會同步夾住不超過新張數。
+      // combo 訂單的兩個 legs 是同一批人（各自有獨立 qrToken），必須視為同一
+      // 組一起扣減，否則兩天的張數會不一致。
+      const isComboOrder = regs.some((r) => r.ticketType === "combo");
       const byToken = new Map<string, typeof regs>();
       for (const r of regs) {
-        const key = r.qrToken ?? `id:${r.id}`;
+        const key = isComboOrder ? "combo-order" : (r.qrToken ?? `id:${r.id}`);
         const arr = byToken.get(key) ?? [];
         arr.push(r);
         byToken.set(key, arr);

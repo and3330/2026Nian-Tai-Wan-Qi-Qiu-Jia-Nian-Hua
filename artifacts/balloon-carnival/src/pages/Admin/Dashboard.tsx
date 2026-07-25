@@ -68,11 +68,23 @@ export default function AdminDashboard() {
     totalRevenue: number;
   } | null>(null);
 
+  const [refundStats, setRefundStats] = useState<{
+    byStatus: Record<string, { count: number; amount: number; tickets: number }>;
+    trend: { date: string; count: number; amount: number }[];
+    byTicketType: { ticketType: string; count: number; amount: number; tickets: number }[];
+  } | null>(null);
+
   useEffect(() => {
     fetch("/api/admin/payment-methods", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) setPaymentMethods(data);
+      })
+      .catch(() => {});
+    fetch("/api/admin/refund-stats", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) setRefundStats(data);
       })
       .catch(() => {});
   }, []);
@@ -351,6 +363,165 @@ export default function AdminDashboard() {
               </span>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* 退票分析 */}
+      <div className="bg-white p-6 rounded-3xl border shadow-sm">
+        <h2 className="text-xl font-bold mb-1">退票分析</h2>
+        <p className="text-sm text-muted-foreground mb-5">
+          依退票申請統計：核准退款金額、待處理狀況與近 14 天趨勢
+        </p>
+        {!refundStats ? (
+          <div className="h-24 bg-muted/50 animate-pulse rounded-xl" />
+        ) : (
+          (() => {
+            const approved = refundStats.byStatus["approved"] ?? { count: 0, amount: 0, tickets: 0 };
+            const pending = refundStats.byStatus["pending"] ?? { count: 0, amount: 0, tickets: 0 };
+            const rejected = refundStats.byStatus["rejected"] ?? { count: 0, amount: 0, tickets: 0 };
+            const rescheduled = refundStats.byStatus["rescheduled"] ?? { count: 0, amount: 0, tickets: 0 };
+            const totalRequests =
+              approved.count + pending.count + rejected.count + rescheduled.count;
+            const grossRevenue = (overview?.totalRevenue ?? 0) + approved.amount;
+            const refundRate = grossRevenue
+              ? Math.round((approved.amount / grossRevenue) * 1000) / 10
+              : 0;
+            const TYPE_LABELS: Record<string, string> = {
+              single: "單日票",
+              combo: "兩日套票",
+              tournament: "陀螺賽",
+              "tournament-companion": "陀螺賽陪同",
+              unknown: "其他",
+            };
+            if (totalRequests === 0) {
+              return (
+                <div className="py-8 text-center text-muted-foreground">
+                  目前沒有任何退票申請
+                </div>
+              );
+            }
+            return (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-2xl bg-red-50 border border-red-100">
+                    <p className="text-sm text-muted-foreground">已退款金額</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {formatCurrency(approved.amount)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatNumber(approved.count)} 筆 · {formatNumber(approved.tickets)} 張
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                    <p className="text-sm text-muted-foreground">待處理申請</p>
+                    <p className="text-2xl font-bold text-amber-600">
+                      {formatNumber(pending.count)} 筆
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      預估金額 {formatCurrency(pending.amount)}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-muted/40 border">
+                    <p className="text-sm text-muted-foreground">退款佔總銷售</p>
+                    <p className="text-2xl font-bold">{refundRate}%</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      總銷售（含已退款）{formatCurrency(grossRevenue)}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-muted/40 border">
+                    <p className="text-sm text-muted-foreground">其他處理結果</p>
+                    <p className="text-2xl font-bold">
+                      {formatNumber(rejected.count + rescheduled.count)} 筆
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      拒絕 {formatNumber(rejected.count)} · 改期 {formatNumber(rescheduled.count)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2">
+                    <h3 className="font-bold mb-3 text-sm">
+                      近 14 天核准退款趨勢
+                    </h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={refundStats.trend}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                        <XAxis
+                          dataKey="date"
+                          tickFormatter={formatTrendLabel}
+                          fontSize={12}
+                        />
+                        <YAxis fontSize={12} allowDecimals={false} />
+                        <Tooltip
+                          labelFormatter={(v) => formatTrendLabel(String(v))}
+                          formatter={(value: number, name: string) =>
+                            name === "退款金額"
+                              ? [formatCurrency(value), name]
+                              : [formatNumber(value), name]
+                          }
+                        />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="amount"
+                          name="退款金額"
+                          stroke="#EF4444"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="count"
+                          name="退款筆數"
+                          stroke="#F59E0B"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div>
+                    <h3 className="font-bold mb-3 text-sm">各票種退款分佈</h3>
+                    {refundStats.byTicketType.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-6 text-center">
+                        尚無核准的退票
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {refundStats.byTicketType.map((t, idx) => {
+                          const pct = approved.amount
+                            ? Math.round((t.amount / approved.amount) * 1000) / 10
+                            : 0;
+                          return (
+                            <div key={t.ticketType}>
+                              <div className="flex items-center justify-between mb-1.5 text-sm">
+                                <span className="font-bold">
+                                  {TYPE_LABELS[t.ticketType] ?? t.ticketType}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  {formatCurrency(t.amount)} · {formatNumber(t.tickets)} 張 · {pct}%
+                                </span>
+                              </div>
+                              <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    width: `${pct}%`,
+                                    backgroundColor: PIE_COLORS[idx % PIE_COLORS.length],
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()
         )}
       </div>
 

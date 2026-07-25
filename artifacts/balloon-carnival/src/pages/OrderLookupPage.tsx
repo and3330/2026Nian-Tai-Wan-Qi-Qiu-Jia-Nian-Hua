@@ -359,20 +359,15 @@ function OrderResultCard({
   );
 }
 
-// 訂單總人頭數：combo 兩天的票券共用同一個 qrToken，只算一次。
+// 訂單總人頭數：combo 兩天的 legs 是同一批人（各自有獨立 qrToken），只有
+// 主 leg 帶 ticketType（第二天 leg 為 null），加總帶 ticketType 的 legs 即可。
+// 與後端 orderTotalHeads 邏輯一致。
 function orderTotalHeads(regs: OrderLookupRegistration[]): number {
-  const byToken = new Map<string, number>();
-  let noToken = 0;
-  for (const r of regs) {
-    if (r.qrToken) {
-      byToken.set(r.qrToken, Math.max(byToken.get(r.qrToken) ?? 0, r.ticketCount));
-    } else {
-      noToken += r.ticketCount;
-    }
+  const typed = regs.filter((r) => r.ticketType != null);
+  if (typed.length > 0) {
+    return typed.reduce((s, r) => s + r.ticketCount, 0);
   }
-  let sum = noToken;
-  for (const v of byToken.values()) sum += v;
-  return sum;
+  return regs.reduce((m, r) => Math.max(m, r.ticketCount), 0);
 }
 
 function RefundModal({
