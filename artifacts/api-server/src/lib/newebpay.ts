@@ -162,6 +162,90 @@ export interface NewebPayTradeQueryResult {
   raw: Record<string, unknown> | null;
 }
 
+export interface NewebPayRefundResult {
+  success: boolean;
+  message: string;
+  raw: Record<string, unknown> | null;
+}
+
+// 藍新信用卡退刷（CreditCard/Close，CloseType=2 退款）。僅適用信用卡付款。
+// 若尚未請款（授權未請款狀態），退款 API 會失敗；此時若為全額退款，改呼叫
+// CreditCard/Cancel 取消授權（等同全額退回，買家不會被扣款）。
+export async function refundNewebPayCredit(input: {
+  orderNo: string;
+  amount: number;
+  // 全額退款才允許以「取消授權」作為未請款時的備援（取消授權必為全額）。
+  allowCancelFallback: boolean;
+}): Promise<NewebPayRefundResult> {
+  const cfg = getConfig();
+  let origin = "https://core.newebpay.com";
+  try {
+    origin = new URL(cfg.mpgUrl).origin;
+  } catch {
+    /* keep production default */
+  }
+
+  const callApi = async (
+    path: string,
+    postData: Record<string, string | number>,
+  ): Promise<{ status: string; message: string; raw: Record<string, unknown> | null }> => {
+    const encrypted = aesEncrypt(buildQueryString(postData), cfg.hashKey, cfg.hashIV);
+    const body = buildQueryString({ MerchantID_: cfg.merchantId, PostData_: encrypted });
+    const res = await fetch(`${origin}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    const text = await res.text();
+    try {
+      const json = JSON.parse(text) as { Status?: string; Message?: string };
+      return {
+        status: String(json.Status || ""),
+        message: String(json.Message || ""),
+        raw: json as Record<string, unknown>,
+      };
+    } catch {
+      return { status: "", message: `非預期回應: ${text.slice(0, 120)}`, raw: null };
+    }
+  };
+
+  // 1) 退款（已請款的交易）
+  const close = await callApi("/API/CreditCard/Close", {
+    RespondType: "JSON",
+    Version: "1.1",
+    Amt: input.amount,
+    MerchantOrderNo: input.orderNo,
+    IndexType: 1,
+    TimeStamp: Math.floor(Date.now() / 1000).toString(),
+    CloseType: 2,
+  });
+  if (close.status === "SUCCESS") {
+    return { success: true, message: "退刷成功，款項將退回買家信用卡", raw: close.raw };
+  }
+
+  // 2) 尚未請款時退款會失敗 → 嘗試取消授權（僅全額有效，等同全額退回）
+  if (!input.allowCancelFallback) {
+    return { success: false, message: `退刷失敗：${close.message || close.status}`, raw: close.raw };
+  }
+  const cancel = await callApi("/API/CreditCard/Cancel", {
+    RespondType: "JSON",
+    Version: "1.0",
+    Amt: input.amount,
+    MerchantOrderNo: input.orderNo,
+    IndexType: 1,
+    TimeStamp: Math.floor(Date.now() / 1000).toString(),
+  });
+  if (cancel.status === "SUCCESS") {
+    return { success: true, message: "已取消授權（尚未請款），買家不會被扣款", raw: cancel.raw };
+  }
+
+  return {
+    success: false,
+    message: `退刷失敗：${close.message || close.status}（取消授權亦失敗：${cancel.message || cancel.status}）`,
+    raw: close.raw ?? cancel.raw,
+  };
+}
+
 // Queries NewebPay's official QueryTradeInfo API for the authoritative status of
 // a single order. Used by the admin reconcile job to recover orders that were
 // actually paid but whose notify/return callback never reached us. Read-only.

@@ -11,6 +11,7 @@ import { requireRole } from "../middlewares/authMiddleware";
 import { logger } from "../lib/logger";
 import { sendRefundBankInfoEmail, sendRefundNotifyEmail, sendRefundedNotifyEmail } from "../services/email-service";
 import { voidInvoice } from "../lib/ecpay-invoice";
+import { refundNewebPayCredit } from "../lib/newebpay";
 
 const router: IRouter = Router();
 
@@ -540,7 +541,11 @@ async function approveRefundRequest(
   id: number,
   opts: { adminNote?: string; refundAmount?: number; userId: string | null },
 ): Promise<
-  | { ok: true; invoiceVoid: { attempted: boolean; success: boolean; message: string } }
+  | {
+      ok: true;
+      invoiceVoid: { attempted: boolean; success: boolean; message: string };
+      autoRefund: { attempted: boolean; success: boolean; message: string };
+    }
   | { ok: false; status: number; error: string }
 > {
   const result = await db.transaction(async (tx) => {
@@ -562,6 +567,17 @@ async function approveRefundRequest(
     const totalHeads = orderTotalHeads(regs);
     const requestedCount = request.refundTicketCount ?? totalHeads;
     const isPartial = totalHeads > 0 && requestedCount < totalHeads;
+    // 實際退款金額（藍新退刷與扣帳共用同一來源）：申請金額；未填時全退用訂單
+    // 餘額、部分退按張數比例回推（餘額 × 退票張數 / 總張數，四捨五入）。
+    const remainingAmount = orderRemainingAmount(regs);
+    const effectiveRefundAmount =
+      opts.refundAmount ??
+      request.refundAmount ??
+      (isPartial
+        ? totalHeads > 0
+          ? Math.round((remainingAmount * requestedCount) / totalHeads)
+          : 0
+        : remainingAmount);
 
     if (isPartial) {
       // 部分退票：從各張 QR（票券）依序扣掉退票人數，票券本身保持有效。
@@ -610,7 +626,8 @@ async function approveRefundRequest(
         }
       }
       // 從承載金額的 leg 扣掉退款金額，讓營收統計反映部分退票。
-      const refundAmt = opts.refundAmount ?? request.refundAmount ?? 0;
+      // 與藍新退刷使用同一個金額來源，避免帳務與實際退款不一致。
+      const refundAmt = effectiveRefundAmount;
       const amountLeg = regs.find((r) => (r.amount ?? 0) > 0);
       if (amountLeg && refundAmt > 0) {
         await tx
@@ -645,10 +662,59 @@ async function approveRefundRequest(
         processedAt: new Date(),
       })
       .where(eq(refundRequestsTable.id, id));
-    return { ok: true as const, paymentRef: request.paymentRef, isPartial };
+    return { ok: true as const, paymentRef: request.paymentRef, isPartial, effectiveRefundAmount };
   });
 
   if (!result.ok) return result;
+
+  // ── 藍新信用卡自動退刷（best-effort，外部 API 呼叫不在 DB 交易內）──────
+  // 僅限 provider=newebpay 且付款方式為信用卡（CREDIT）的訂單。失敗不影響
+  // 核准本身，結果記錄在申請上並回報給後台，管理員可改走人工匯款。
+  const autoRefund = { attempted: false, success: false, message: "非藍新信用卡訂單，未自動退刷（請人工匯款）" };
+  try {
+    const [payTx] = await db
+      .select()
+      .from(paymentTransactionsTable)
+      .where(eq(paymentTransactionsTable.paymentRef, result.paymentRef))
+      .limit(1);
+    const rawResult = (payTx?.rawResult ?? {}) as { Result?: { PaymentType?: unknown } };
+    const paymentType = String(rawResult.Result?.PaymentType ?? "");
+    if (payTx && payTx.provider === "newebpay" && paymentType === "CREDIT") {
+      const orderNo = payTx.providerOrderNo || payTx.paymentRef;
+      const amount = result.effectiveRefundAmount;
+      if (amount > 0) {
+        autoRefund.attempted = true;
+        const r = await refundNewebPayCredit({
+          orderNo,
+          amount,
+          allowCancelFallback: !result.isPartial && amount === payTx.amount,
+        });
+        autoRefund.success = r.success;
+        autoRefund.message = r.success ? `${r.message}（NT$ ${amount}）` : r.message;
+        logger.info({ id, orderNo, amount, success: r.success, message: r.message }, "[refund] newebpay auto refund");
+      } else {
+        autoRefund.message = "退款金額為 0，未執行退刷";
+      }
+      await db
+        .update(refundRequestsTable)
+        .set({
+          autoRefundStatus: autoRefund.attempted ? (autoRefund.success ? "success" : "failed") : null,
+          autoRefundMessage: autoRefund.message,
+          autoRefundAt: new Date(),
+        })
+        .where(eq(refundRequestsTable.id, id));
+    }
+  } catch (err) {
+    autoRefund.attempted = true;
+    autoRefund.success = false;
+    autoRefund.message = "退刷發生錯誤，請至藍新後台確認或改人工匯款";
+    logger.error({ err, id }, "[refund] newebpay auto refund error");
+    await db
+      .update(refundRequestsTable)
+      .set({ autoRefundStatus: "failed", autoRefundMessage: autoRefund.message, autoRefundAt: new Date() })
+      .where(eq(refundRequestsTable.id, id))
+      .catch(() => {});
+  }
 
   // 部分退票不作廢整張發票（金額不符），提示管理員手動處理折讓/重開。
   if (result.isPartial) {
@@ -661,6 +727,7 @@ async function approveRefundRequest(
     return {
       ok: true,
       invoiceVoid: { attempted: false, success: false, message: "部分退票：發票未自動作廢，請視情況手動開立折讓或重開發票" },
+      autoRefund,
     };
   }
 
@@ -710,7 +777,7 @@ async function approveRefundRequest(
     })
     .catch((err) => logger.error({ err, id }, "[refund] auto notify email error"));
 
-  return { ok: true, invoiceVoid };
+  return { ok: true, invoiceVoid, autoRefund };
 }
 
 // ── Admin: create a refund request on behalf of the buyer ──────────────────
@@ -891,7 +958,7 @@ router.post(
         res.status(result.status).json({ error: result.error });
         return;
       }
-      res.json({ ok: true, status: "approved", invoiceVoid: result.invoiceVoid });
+      res.json({ ok: true, status: "approved", invoiceVoid: result.invoiceVoid, autoRefund: result.autoRefund });
     } catch (err) {
       logger.error({ err }, "[refund] approve error");
       res.status(500).json({ error: "處理失敗，請稍後再試" });

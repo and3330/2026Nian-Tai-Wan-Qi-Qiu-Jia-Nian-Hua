@@ -24,6 +24,9 @@ interface RefundRow {
   bankInfoSubmittedAt: string | null;
   notifyEmailSentAt: string | null;
   refundedNotifySentAt: string | null;
+  autoRefundStatus: "success" | "failed" | null;
+  autoRefundMessage: string | null;
+  autoRefundAt: string | null;
   adminNote: string | null;
   processedBy: string | null;
   processedAt: string | null;
@@ -246,12 +249,15 @@ export default function AdminRefundRequestsManage() {
     const isPartial = reqCount < detail.totalHeads;
     if (!window.confirm(
       isPartial
-        ? `確定核准部分退票（${reqCount} / ${detail.totalHeads} 張）？票券張數將扣減、其餘票券仍有效；發票不會自動作廢（請視情況手動處理），並自動寄出「退票完成通知」Email 給買家。`
-        : `確定核准退票？將釋放 ${detail.totalHeads} 個名額、自動作廢對應的訂單與發票，並自動寄出「退票完成通知」Email 給買家。`,
+        ? `確定核准部分退票（${reqCount} / ${detail.totalHeads} 張）？票券張數將扣減、其餘票券仍有效；發票不會自動作廢（請視情況手動處理），並自動寄出「退票完成通知」Email 給買家。信用卡訂單將自動向藍新退刷。`
+        : `確定核准退票？將釋放 ${detail.totalHeads} 個名額、自動作廢對應的訂單與發票，並自動寄出「退票完成通知」Email 給買家。信用卡訂單將自動向藍新退刷。`,
     )) return;
     setBusy(true);
     try {
-      const r = await api<{ invoiceVoid?: { attempted: boolean; success: boolean; message: string } }>(
+      const r = await api<{
+        invoiceVoid?: { attempted: boolean; success: boolean; message: string };
+        autoRefund?: { attempted: boolean; success: boolean; message: string };
+      }>(
         `/admin/refund-requests/${detail.request.id}/approve`,
         {
           method: "POST",
@@ -259,12 +265,15 @@ export default function AdminRefundRequestsManage() {
         },
       );
       const iv = r.invoiceVoid;
+      const ar = r.autoRefund;
+      const parts = [
+        iv?.attempted ? `票券已標記為退款。${iv.message}` : "票券已標記為退款，名額已釋放（此訂單無已開立發票）。",
+      ];
+      if (ar?.attempted) parts.push(ar.success ? `藍新退刷：${ar.message}` : `藍新退刷失敗：${ar.message}`);
       toast({
         title: "已核准退票",
-        description: iv?.attempted
-          ? `票券已標記為退款。${iv.message}`
-          : "票券已標記為退款，名額已釋放（此訂單無已開立發票）。",
-        variant: iv?.attempted && !iv.success ? "destructive" : undefined,
+        description: parts.join(" "),
+        variant: (iv?.attempted && !iv.success) || (ar?.attempted && !ar.success) ? "destructive" : undefined,
       });
       setOpenId(null);
       refresh();
@@ -674,6 +683,17 @@ export default function AdminRefundRequestsManage() {
                       <> ・已退款通知已於 {new Date(detail.request.refundedNotifySentAt).toLocaleString("zh-TW")} 寄出</>
                     )}
                   </div>
+                  {detail.request.autoRefundAt && (
+                    <div
+                      className={`text-xs rounded-lg px-3 py-2 ${detail.request.autoRefundStatus === "success" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}
+                      data-testid="auto-refund-result"
+                    >
+                      藍新信用卡退刷{detail.request.autoRefundStatus === "success" ? "成功" : "失敗"}：
+                      {detail.request.autoRefundMessage}
+                      （{new Date(detail.request.autoRefundAt).toLocaleString("zh-TW")}）
+                      {detail.request.autoRefundStatus !== "success" && "，請改人工匯款或至藍新後台處理。"}
+                    </div>
+                  )}
                   {detail.request.bankInfoSubmittedAt ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 pt-1">
                       <div><span className="text-muted-foreground">購買時間：</span>{detail.request.formPurchaseInfo}</div>

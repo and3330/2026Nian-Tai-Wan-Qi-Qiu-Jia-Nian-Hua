@@ -29,6 +29,10 @@ export const refundRequestsTable = pgTable(
     notifyEmailSentAt: timestamp("notify_email_sent_at", { withTimezone: true }),
     // 已退款通知信（款項實際匯出後寄出）
     refundedNotifySentAt: timestamp("refunded_notify_sent_at", { withTimezone: true }),
+    // 藍新信用卡自動退刷結果（核准時嘗試）：success | failed；null = 未嘗試（非信用卡訂單）
+    autoRefundStatus: text("auto_refund_status"),
+    autoRefundMessage: text("auto_refund_message"),
+    autoRefundAt: timestamp("auto_refund_at", { withTimezone: true }),
     adminNote: text("admin_note"),
     processedBy: text("processed_by"),
     processedAt: timestamp("processed_at", { withTimezone: true }),
