@@ -395,99 +395,10 @@ router.post("/admin/registrations/set-email", async (req, res): Promise<void> =>
   res.json({ updated, email: rawEmail });
 });
 
-// Directly refund a paid order from the back office (manual / offline refund).
-// Marks every leg sharing the order's paymentRef as "refunded", which releases
-// its seats back to capacity (all capacity queries exclude 'refunded'). This
-// does NOT call the payment gateway — the actual money is refunded offline by
-// staff via NewebPay / Stripe, matching the existing refund-request approval
-// flow. Refuses orders that are already refunded, not yet paid, or have any
-// checked-in leg. Applied to the whole order. Editor+ only.
-router.post("/admin/registrations/refund", async (req, res): Promise<void> => {
-  if (!requireAuth(req, res, "editor")) return;
-
-  const ids = Array.isArray(req.body?.ids) ? req.body.ids : null;
-  const cleanIds = Array.from(
-    new Set(
-      (ids ?? [])
-        .map((v: unknown) => Number(v))
-        .filter((n: number) => Number.isInteger(n) && n > 0),
-    ),
-  ) as number[];
-
-  if (cleanIds.length === 0) {
-    res.status(400).json({ error: "請提供要退票的訂單" });
-    return;
-  }
-
-  // Resolve which orders these registrations belong to, then expand to every
-  // leg of those orders so a combo refunds both days together.
-  const seeds = await db
-    .select({ id: registrationsTable.id, paymentRef: registrationsTable.paymentRef })
-    .from(registrationsTable)
-    .where(inArray(registrationsTable.id, cleanIds));
-
-  if (seeds.length === 0) {
-    res.status(404).json({ error: "找不到訂單" });
-    return;
-  }
-
-  const refs = Array.from(
-    new Set(seeds.map((r) => r.paymentRef).filter((r): r is string => Boolean(r))),
-  );
-  const standaloneIds = seeds.filter((r) => !r.paymentRef).map((r) => r.id);
-
-  const orderCond =
-    refs.length > 0 && standaloneIds.length > 0
-      ? or(
-          inArray(registrationsTable.paymentRef, refs),
-          inArray(registrationsTable.id, standaloneIds),
-        )
-      : refs.length > 0
-        ? inArray(registrationsTable.paymentRef, refs)
-        : inArray(registrationsTable.id, standaloneIds);
-
-  // Lock the order's legs, re-validate, and flip status in one transaction so a
-  // concurrent check-in can't slip in between the guard and the update.
-  const result = await db.transaction(async (tx) => {
-    const legs = await tx
-      .select({
-        id: registrationsTable.id,
-        paymentStatus: registrationsTable.paymentStatus,
-        checkedInAt: registrationsTable.checkedInAt,
-      })
-      .from(registrationsTable)
-      .where(orderCond)
-      .for("update");
-
-    if (legs.some((l) => l.checkedInAt)) {
-      return { ok: false as const, status: 400, error: "已入場的票券無法退票" };
-    }
-    if (legs.every((l) => l.paymentStatus === "refunded")) {
-      return { ok: false as const, status: 400, error: "此訂單已退款" };
-    }
-    if (!legs.some((l) => l.paymentStatus === "paid")) {
-      return { ok: false as const, status: 400, error: "僅能對「已付款」訂單退票" };
-    }
-
-    const updatedRows = await tx
-      .update(registrationsTable)
-      .set({ paymentStatus: "refunded" })
-      .where(and(orderCond, sql`${registrationsTable.paymentStatus} <> 'refunded'`))
-      .returning({ id: registrationsTable.id });
-    return { ok: true as const, updated: updatedRows.length };
-  });
-
-  if (!result.ok) {
-    res.status(result.status).json({ error: result.error });
-    return;
-  }
-
-  logger.info(
-    { refs, standaloneIds, updated: result.updated },
-    "[refund] admin direct refund from orders manage",
-  );
-  res.json({ updated: result.updated, ordersRefunded: refs.length + standaloneIds.length });
-});
+// (removed) The legacy direct-refund endpoint /admin/registrations/refund was
+// replaced by POST /admin/refund-requests (refund-requests.ts): the back office
+// now creates a refund request with a reason, emails the buyer, and the actual
+// ticket deduction happens on approval in 退票管理.
 
 // Resend the purchase-confirmation email (with entry QR) for the given
 // registration "legs". Each leg of a two-day combo carries its own QR, so the

@@ -208,9 +208,8 @@ function OrderResultCard({
   // 已核准的整筆全退會被 allRefunded 擋下；部分退票核准後仍可再申請退剩餘的票，
   // 因此這裡只把「待處理 / 已改期」視為進行中的申請。
   const activeRefund = refunds.find((r) => r.status === "pending" || r.status === "rescheduled");
-  const anyCheckedIn = data.registrations.some((r) => !!r.checkedInAt);
   const allRefunded = data.registrations.every((r) => r.paymentStatus === "refunded");
-  const canRequestRefund = (isPaid || isAwaitingTransfer) && !anyCheckedIn && !allRefunded && !activeRefund;
+  const canRequestRefund = (isPaid || isAwaitingTransfer) && !allRefunded && !activeRefund;
 
   return (
     <div className="bg-white border-2 rounded-3xl shadow-xl overflow-hidden" data-testid="lookup-result">
@@ -427,7 +426,7 @@ function RefundModal({
           <button type="button" onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground"><X size={18} /></button>
         </div>
         <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-900 leading-relaxed">
-          送出申請後將由客服人員審核，預計 3 個工作天內回覆。已入場、已退款的票券無法再申請退票。
+          送出申請後將由客服人員審核，預計 3 個工作天內回覆。已退款的票券無法再申請退票。
         </div>
         {totalHeads > 1 && (
           <label className="block text-sm">

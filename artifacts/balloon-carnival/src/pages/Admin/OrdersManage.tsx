@@ -655,32 +655,46 @@ export default function OrdersManage() {
     }
   };
 
-  const handleRefund = async (o: Order) => {
-    if (
-      !window.confirm(
-        `確定要將「${o.buyerName}」這筆訂單退票嗎？\n` +
-          `系統會將訂單狀態改為「已退款」，並釋放 ${o.ticketCount} 個入場名額。\n\n` +
-          `⚠️ 本操作僅更改系統狀態，不會自動退款。實際退款金額請另於金流後台（藍新／Stripe）或線下處理。`,
-      )
-    ) {
+  // 退票：改走退票申請流程 —— 輸入原因後建立退票申請（出現在退票管理），
+  // 並自動寄「退款資料表單」Email 給買家。已簽到的訂單也可退。
+  const [refundOrder, setRefundOrder] = useState<Order | null>(null);
+  const [refundReason, setRefundReason] = useState("");
+  const [refundCount, setRefundCount] = useState(1);
+
+  const openRefundDialog = (o: Order) => {
+    setRefundOrder(o);
+    setRefundReason("");
+    setRefundCount(Math.max(...o.legs.map((l) => l.ticketCount)));
+  };
+
+  const submitRefund = async () => {
+    if (!refundOrder) return;
+    if (refundReason.trim().length < 5) {
+      window.alert("請填寫退票原因（至少 5 字）");
       return;
     }
-    setRefundingRef(o.ref);
+    setRefundingRef(refundOrder.ref);
     try {
-      const ids = o.legs.map((l) => l.id);
-      const res = await fetch("/api/admin/registrations/refund", {
+      const res = await fetch("/api/admin/refund-requests", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({
+          paymentRef: refundOrder.ref,
+          reason: refundReason.trim(),
+          ticketCount: refundCount,
+        }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "退票失敗");
-      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "退票申請建立失敗");
+      window.alert(
+        `已建立退票申請（退 ${data.refundTicketCount} 張、建議退款 NT$ ${(data.refundAmount ?? 0).toLocaleString()}），` +
+          `並寄出退款資料表單 Email 給買家。\n請到「退票管理」審核並核准後才會實際扣票。`,
+      );
+      setRefundOrder(null);
       await refetch();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "退票失敗，請稍後再試");
+      window.alert(err instanceof Error ? err.message : "退票申請建立失敗，請稍後再試");
     } finally {
       setRefundingRef(null);
     }
@@ -1355,11 +1369,12 @@ export default function OrdersManage() {
                               </button>
                             ) : null
                           ) : normalizeStatus(o.paymentStatus) === "paid" ? (
-                            canConfirm && o.checkedInCount === 0 ? (
+                            canConfirm && o.isRealRef ? (
                               <button
-                                onClick={() => handleRefund(o)}
+                                onClick={() => openRefundDialog(o)}
                                 disabled={refundingRef === o.ref}
-                                title="退票：將訂單設為已退款並釋放名額（不會自動退款，金額請於金流後台或線下處理）"
+                                title="退票：輸入原因後建立退票申請並寄退款資料表單 Email 給買家（到退票管理核准後才會實際扣票）"
+                                data-testid={`button-refund-${o.ref}`}
                                 className="px-3 py-1.5 rounded-xl border border-red-400 text-red-600 text-xs font-semibold hover:bg-red-50 disabled:opacity-50 transition-colors whitespace-nowrap inline-flex items-center gap-1"
                               >
                                 <Undo2 size={12} />
@@ -1435,6 +1450,90 @@ export default function OrdersManage() {
           onInvoiceChanged={() => refetchInvoices()}
           onClose={() => setDetailOrder(null)}
         />
+      )}
+
+      {refundOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-background p-6 shadow-xl" data-testid="refund-dialog">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <Undo2 size={18} />
+                退票申請
+              </h3>
+              <button
+                onClick={() => setRefundOrder(null)}
+                className="rounded-lg p-1 hover:bg-muted"
+                title="關閉"
+              >
+                <XCircle size={18} />
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="bg-muted/40 rounded-xl p-3 space-y-1">
+                <div><span className="text-muted-foreground">買家：</span><strong>{refundOrder.buyerName}</strong></div>
+                <div><span className="text-muted-foreground">訂單編號：</span>{refundOrder.ref}</div>
+                <div><span className="text-muted-foreground">訂單金額：</span>NT$ {refundOrder.amount.toLocaleString()}</div>
+                {refundOrder.checkedInCount > 0 && (
+                  <div className="text-amber-700">此訂單已有 {refundOrder.checkedInCount} 人簽到，仍可退票（後台裁量）。</div>
+                )}
+              </div>
+              {Math.max(...refundOrder.legs.map((l) => l.ticketCount)) > 1 && (
+                <label className="block">
+                  <span className="block mb-1 font-bold">退票張數</span>
+                  <select
+                    value={refundCount}
+                    onChange={(e) => setRefundCount(Number(e.target.value))}
+                    className="w-full px-3 py-2 border-2 rounded-xl bg-white"
+                    data-testid="select-admin-refund-count"
+                  >
+                    {Array.from(
+                      { length: Math.max(...refundOrder.legs.map((l) => l.ticketCount)) },
+                      (_, i) => i + 1,
+                    ).map((n) => {
+                      const total = Math.max(...refundOrder.legs.map((l) => l.ticketCount));
+                      return (
+                        <option key={n} value={n}>
+                          {n === total ? `${n} 張（全部退票）` : `${n} 張`}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              )}
+              <label className="block">
+                <span className="block mb-1 font-bold">退票原因 *</span>
+                <textarea
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  placeholder="請輸入退票原因（至少 5 字），會記錄在退票申請中"
+                  className="w-full px-3 py-2 border-2 rounded-xl focus:border-primary focus:outline-none"
+                  data-testid="input-admin-refund-reason"
+                />
+              </label>
+              <div className="text-xs text-muted-foreground leading-relaxed">
+                送出後會建立退票申請並自動寄「退款資料表單」Email 給買家；請再到「退票管理」核准，核准後才會實際扣票與計算退款。
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  onClick={() => setRefundOrder(null)}
+                  className="px-4 py-2 rounded-xl border text-sm hover:bg-muted"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={submitRefund}
+                  disabled={refundingRef === refundOrder.ref}
+                  data-testid="button-admin-refund-submit"
+                  className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+                >
+                  {refundingRef === refundOrder.ref ? "送出中..." : "建立退票申請"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {editEmailOrder && (

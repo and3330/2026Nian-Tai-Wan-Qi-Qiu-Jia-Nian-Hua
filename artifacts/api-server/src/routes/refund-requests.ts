@@ -118,9 +118,7 @@ router.post("/refund-requests", async (req, res): Promise<void> => {
       if (lockedRegs.every((r) => r.paymentStatus === "refunded")) {
         return { error: { status: 400, message: "此訂單已退款，無法再次申請" } };
       }
-      if (lockedRegs.some((r) => r.checkedInAt)) {
-        return { error: { status: 400, message: "已入場的票券無法退票，請聯絡客服" } };
-      }
+      // 已入場的訂單也允許申請退票（由後台審核裁量）。
 
       // 訂單總人頭數：combo 兩天的 legs 是同一批人（共用 qrToken），只算一次。
       const totalHeads = orderTotalHeads(lockedRegs);
@@ -475,7 +473,7 @@ async function approveRefundRequest(
 
     if (isPartial) {
       // 部分退票：從各張 QR（票券）依序扣掉退票人數，票券本身保持有效。
-      // 已入場人數是下限，不能退到比已入場還少。
+      // 已入場的訂單也允許退票（後台裁量），已入場人數會同步夾住不超過新張數。
       const byToken = new Map<string, typeof regs>();
       for (const r of regs) {
         const key = r.qrToken ?? `id:${r.id}`;
@@ -489,15 +487,13 @@ async function approveRefundRequest(
       for (const legs of byToken.values()) {
         if (remaining <= 0) break;
         const heads = Math.max(...legs.map((l) => l.ticketCount));
-        const checkedFloor = Math.max(...legs.map((l) => l.checkedInCount ?? 0));
-        const reducible = Math.max(0, heads - checkedFloor);
-        const take = Math.min(remaining, reducible);
+        const take = Math.min(remaining, heads);
         if (take <= 0) continue;
         planned.push({ legs, newCount: heads - take });
         remaining -= take;
       }
       if (remaining > 0) {
-        return { ok: false as const, status: 400, error: "退票張數超過可退數量（可能已有票入場），請調整張數" };
+        return { ok: false as const, status: 400, error: "退票張數超過可退數量，請調整張數" };
       }
       for (const { legs, newCount } of planned) {
         for (const leg of legs) {
@@ -512,6 +508,7 @@ async function approveRefundRequest(
               .set({
                 ticketCount: newCount,
                 childCount: Math.min(leg.childCount ?? 0, newCount),
+                checkedInCount: Math.min(leg.checkedInCount ?? 0, newCount),
               })
               .where(eq(registrationsTable.id, leg.id));
           }
@@ -620,6 +617,106 @@ async function approveRefundRequest(
 
   return { ok: true, invoiceVoid };
 }
+
+// ── Admin: create a refund request on behalf of the buyer ──────────────────
+// 訂單管理「退票」按鈕：後台輸入原因直接建立退票申請，並寄出退款資料表單
+// Email 給買家（與買家自行申請走同一流程與同一封信）。
+router.post(
+  "/admin/refund-requests",
+  requireRole("editor"),
+  async (req, res): Promise<void> => {
+    try {
+      const body = req.body && typeof req.body === "object" ? req.body : {};
+      const ref = typeof body.paymentRef === "string" ? body.paymentRef.trim() : "";
+      const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+      if (!ref) { res.status(400).json({ error: "缺少訂單編號" }); return; }
+      if (reason.length < 5 || reason.length > 500) {
+        res.status(400).json({ error: "請填寫退票原因（5~500 字）" });
+        return;
+      }
+      const requestedCountRaw = body.ticketCount;
+
+      const outcome = await db.transaction(async (txn) => {
+        await txn.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`refund:${ref}`}))`);
+        const lockedRegs = await txn
+          .select()
+          .from(registrationsTable)
+          .where(eq(registrationsTable.paymentRef, ref))
+          .for("update");
+        if (lockedRegs.length === 0) {
+          return { error: { status: 404, message: "查無此訂單" } };
+        }
+        if (lockedRegs.every((r) => r.paymentStatus === "refunded")) {
+          return { error: { status: 400, message: "此訂單已退款，無法再次申請" } };
+        }
+        const totalHeads = orderTotalHeads(lockedRegs);
+        let refundCount = totalHeads;
+        if (requestedCountRaw !== undefined && requestedCountRaw !== null) {
+          const n = Number(requestedCountRaw);
+          if (!Number.isInteger(n) || n < 1 || n > totalHeads) {
+            return { error: { status: 400, message: `退票張數需為 1 到 ${totalHeads} 之間的整數` } };
+          }
+          refundCount = n;
+        }
+        const refundAmount = proRataAmount(orderRemainingAmount(lockedRegs), refundCount, totalHeads);
+
+        const [existing] = await txn
+          .select({ id: refundRequestsTable.id })
+          .from(refundRequestsTable)
+          .where(
+            and(
+              eq(refundRequestsTable.paymentRef, ref),
+              sql`${refundRequestsTable.status} = 'pending'`,
+            ),
+          )
+          .limit(1);
+        if (existing) {
+          return { error: { status: 409, message: "此訂單已有處理中的退票申請" } };
+        }
+        const head = lockedRegs[0];
+        const [created] = await txn
+          .insert(refundRequestsTable)
+          .values({
+            paymentRef: ref,
+            buyerName: head.parentName,
+            buyerContact: head.email || head.phone || "",
+            reason,
+            status: "pending",
+            refundAmount,
+            refundTicketCount: refundCount,
+          })
+          .returning({ id: refundRequestsTable.id });
+        return { created, refundAmount, refundCount, totalHeads };
+      });
+      if ("error" in outcome && outcome.error) {
+        res.status(outcome.error.status).json({ error: outcome.error.message });
+        return;
+      }
+      const ok = outcome as { created: { id: number }; refundAmount: number; refundCount: number; totalHeads: number };
+      logger.info({ refundId: ok.created.id, paymentRef: ref }, "[refund] admin-created request");
+
+      void sendRefundBankInfoEmail(ok.created.id)
+        .then((r) => {
+          if (!r.delivered) {
+            logger.warn({ refundId: ok.created.id, message: r.message }, "[refund] bank-info email not delivered");
+          }
+        })
+        .catch((err) => logger.error({ err, refundId: ok.created.id }, "[refund] bank-info email error"));
+
+      res.status(201).json({
+        id: ok.created.id,
+        status: "pending",
+        refundAmount: ok.refundAmount,
+        refundTicketCount: ok.refundCount,
+        totalHeads: ok.totalHeads,
+        message: "已建立退票申請，並寄出退款資料表單 Email 給買家",
+      });
+    } catch (err) {
+      logger.error({ err }, "[refund] admin create error");
+      res.status(500).json({ error: "建立失敗，請稍後再試" });
+    }
+  },
+);
 
 // ── Admin: edit a pending request's refund ticket count / amount ───────────
 router.patch(
