@@ -53,3 +53,17 @@ mtime_ms = 1791705988134
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:9ae51cab-ce5e-493a-9c99-0b37e6dc3948/c41b9ae5-8d27-4dc0-a264-91df451fc08d/97a99658-c5b9-428c-b57e-783f76ca753c"
 storage_version_token = "1791706020067518"
 content_type = "text/html"
+
+[[outputs]]
+id = "vjGO_yujqF0jsgghd32vP"
+uri = "file://generated-artifacts/performance/performance-baseline.html"
+type = "html"
+title = "正式網站 Core Web Vitals 基準報告"
+description = "首頁、購票及訂單查詢頁的手機／桌面六組 Lighthouse 結果、改善優先順序與測試限制；INP 尚未取得真實使用者資料。"
+logical_id = "d25e2db0-6646-42dd-b609-dd9e806bd8ed"
+content_hash = "sha256:ac43ce8e078b93b95bae747ab3973e8f07f551687261d9bcdbd0c9fad4740545"
+size = 8907
+mtime_ms = 1791710092904
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:9ae51cab-ce5e-493a-9c99-0b37e6dc3948/d25e2db0-6646-42dd-b609-dd9e806bd8ed/12e5e308-2ca8-49ef-8f45-e24931b4b59a"
+storage_version_token = "1791710110795523"
+content_type = "text/html"
