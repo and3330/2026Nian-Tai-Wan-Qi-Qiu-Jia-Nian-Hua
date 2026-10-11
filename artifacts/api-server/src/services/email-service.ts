@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import QRCode from "qrcode";
 import crypto from "node:crypto";
 import { logger } from "../lib/logger";
+import { bilingualBody, englishBuyerBody, englishSubjects, englishTextHtml } from "./email-english";
 
 export type EmailMode = "resend" | "console";
 
@@ -93,6 +94,18 @@ export function renderTemplate(template: string, vars: Record<string, string | n
     const value = vars[key];
     return value === undefined || value === null ? "" : String(value);
   });
+}
+
+/** Keep admin-authored Chinese templates intact while supplying an English counterpart. */
+export function renderBuyerEmail(
+  key: EmailTemplateKey,
+  template: { subject: string; body: string },
+  vars: RegistrationEmailVars,
+): { subject: string; body: string } {
+  return {
+    subject: `${renderTemplate(template.subject, vars)} / ${englishSubjects[key]}`,
+    body: bilingualBody(renderTemplate(template.body, vars), englishBuyerBody(key, vars)),
+  };
 }
 
 export async function ensureDefaultTemplates(): Promise<void> {
@@ -274,7 +287,8 @@ function buildHtmlBody(body: string, qrImageUrl?: string): string {
     .replace(/>/g, "&gt;");
   let html = escaped.replace(/\n/g, "<br/>");
   if (qrImageUrl) {
-    const qrTag = `<br/><img src="${qrImageUrl}" alt="報到 QR Code" style="width:240px;height:240px;border:1px solid #eee;padding:8px;background:#fff;"/><br/><a href="${qrImageUrl}" style="color:#EF5739;font-weight:700;">若 QR Code 沒有顯示，請點此開啟</a><br/>`;
+    const safeQrUrl = escapeHtml(qrImageUrl);
+    const qrTag = `<br/><img src="${safeQrUrl}" alt="報到 QR Code / Admission QR code" style="width:240px;height:240px;border:1px solid #eee;padding:8px;background:#fff;"/><br/><a href="${safeQrUrl}" style="color:#9a3412;font-weight:700;">若 QR Code 沒有顯示，請點此開啟 / Open your admission QR code</a><br/>`;
     html = html.replace(qrImageUrl, qrTag);
   }
   return `<div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.7;color:#333;max-width:640px;margin:auto;padding:24px;">${html}</div>`;
@@ -522,6 +536,7 @@ export function buildConfirmationEmailHtml(vars: {
   </tr>
 
   <!-- Footer -->
+  <tr><td>${englishTextHtml(englishBuyerBody("confirmation", vars))}</td></tr>
   <tr>
     <td style="padding:22px 32px 32px;border-top:1px solid #f0f0f0;margin-top:12px;">
       <div style="color:${muted};font-size:13px;line-height:1.7;text-align:center;">
@@ -595,15 +610,16 @@ export async function sendConfirmationEmail(
   if (!opts?.force && reg.confirmationEmailSentAt) return null;
   const tpl = await getTemplate("confirmation");
   const vars = buildRegistrationVars(reg);
+  const bilingual = renderBuyerEmail("confirmation", tpl, vars);
   const isTournament = TOURNAMENT_TICKET_TYPES.includes(reg.ticketType ?? "");
   const subject = isTournament
-    ? `【${EVENT_INFO.name}】戰鬥陀螺賽報名成功・收款確認 - ${reg.parentName}`
-    : renderTemplate(tpl.subject, vars);
+    ? `【${EVENT_INFO.name}】戰鬥陀螺賽報名成功・收款確認 - ${reg.parentName} / Tournament booking confirmed`
+    : bilingual.subject;
   const qrAttachment = reg.qrToken ? await buildQrAttachment(reg.qrToken) : null;
   const result = await sendEmail({
     to: reg.email,
     subject,
-    body: renderTemplate(tpl.body, vars),
+    body: bilingual.body,
     qrImageUrl: vars.qrUrl,
     htmlOverride: buildConfirmationEmailHtml(vars),
     attachments: qrAttachment ? [qrAttachment] : undefined,
@@ -682,8 +698,18 @@ ${EVENT_INFO.name} 主辦團隊
 
   const result = await sendEmail({
     to,
-    subject: `【${EVENT_INFO.name}】退票申請已收到，請填寫退款資料 - ${request.paymentRef}`,
-    body,
+    subject: `【${EVENT_INFO.name}】退票申請已收到，請填寫退款資料 / Refund details required - ${request.paymentRef}`,
+    body: bilingualBody(body, `Dear ${request.buyerName},
+
+We have received your refund request for order ${request.paymentRef}.
+Please complete the refund information form:
+${formUrl}
+
+Provide your purchase date and time, name, phone number, and refund bank details (bank, branch, account holder and account number).
+After you submit your information, we will arrange the refund. Processing takes 7–14 business days.
+For assistance, call ${EVENT_INFO.servicePhone}.
+
+Taiwan Balloon Carnival 2026 Organizing Team`),
   });
   if (result.delivered) {
     await db
@@ -762,8 +788,17 @@ ${EVENT_INFO.name} 主辦團隊
 
   const result = await sendEmail({
     to,
-    subject: `【${EVENT_INFO.name}】退票完成通知 - ${request.paymentRef}`,
-    body,
+    subject: `【${EVENT_INFO.name}】退票完成通知 / Ticket cancellation approved - ${request.paymentRef}`,
+    body: bilingualBody(body, `Dear ${request.buyerName},
+
+Your refund request for order ${request.paymentRef} has been approved and the requested tickets have been cancelled.
+${request.refundAmount != null ? `Refund amount: NT$${request.refundAmount.toLocaleString("en-US")}` : ""}
+${formSection ? `We have not received your bank details. Please complete this form:\n${formSection.match(/https?:\/\/\S+/)?.[0] ?? ""}` : ""}
+We will process the refund using the bank details you supplied. Please allow 7–14 business days.
+Cancelled tickets cannot be used for admission. Invoice handling is subject to the applicable full or partial refund process.
+For assistance, call ${EVENT_INFO.servicePhone}.
+
+Taiwan Balloon Carnival 2026 Organizing Team`),
   });
   if (result.delivered) {
     await db
@@ -820,8 +855,17 @@ ${EVENT_INFO.name} 主辦團隊
 
   const result = await sendEmail({
     to,
-    subject: `【${EVENT_INFO.name}】退款完成通知 - ${request.paymentRef}`,
-    body,
+    subject: `【${EVENT_INFO.name}】退款完成通知 / Refund sent - ${request.paymentRef}`,
+    body: bilingualBody(body, `Dear ${request.buyerName},
+
+The refund for order ${request.paymentRef} has been processed and the funds have been sent.
+${request.refundAmount != null ? `Refund amount: NT$${request.refundAmount.toLocaleString("en-US")}` : ""}
+${request.bankAccountNumber ? `Refund account: ${request.bankName ?? ""}, ending in ${request.bankAccountNumber.slice(-5)}` : ""}
+The time for funds to appear depends on your bank, usually 1–3 business days.
+If you have not received the funds after 3 business days, call ${EVENT_INFO.servicePhone}.
+Thank you for your patience.
+
+Taiwan Balloon Carnival 2026 Organizing Team`),
   });
   if (result.delivered) {
     await db

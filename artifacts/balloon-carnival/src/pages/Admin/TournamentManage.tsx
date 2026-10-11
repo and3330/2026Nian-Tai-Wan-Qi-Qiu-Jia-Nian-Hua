@@ -1,3 +1,4 @@
+import { tx, useI18n, txApi } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import {
   useAdminListRegistrations,
@@ -23,21 +24,22 @@ const PARTICIPANT_TYPE = "tournament";
 const COMPANION_TYPE = "tournament-companion";
 const CAPACITY = 128;
 
-const TYPE_LABELS: Record<string, string> = {
-  [PARTICIPANT_TYPE]: "參賽",
-  [COMPANION_TYPE]: "隨同票",
-};
+const TYPE_LABELS = (): Record<string, string> => ({
+  [PARTICIPANT_TYPE]: tx("參賽"),
+  [COMPANION_TYPE]: tx("隨同票"),
+});
 
-const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  paid: "已付款",
-  pending: "處理中",
-  awaiting_transfer: "待匯款",
-  unpaid: "未付款",
-  failed: "付款失敗",
-  refunded: "已退款",
-};
+const PAYMENT_STATUS_LABELS = (): Record<string, string> => ({
+  paid: tx("已付款"),
+  pending: tx("處理中"),
+  awaiting_transfer: tx("待匯款"),
+  unpaid: tx("未付款"),
+  failed: tx("付款失敗"),
+  refunded: tx("已退款"),
+});
 
 export default function TournamentManage() {
+  useI18n();
   const { hasRole } = useAuth();
   const canCheckin = hasRole("checkin");
   const canEdit = hasRole("editor");
@@ -109,12 +111,12 @@ export default function TournamentManage() {
 
   const handleSendReminders = async () => {
     if (batchCounts.reminderRecipients === 0) {
-      window.alert("目前沒有可發送的對象（沒有未付款且有 Email 的報名）。");
+      window.alert(tx("目前沒有可發送的對象（沒有未付款且有 Email 的報名）。"));
       return;
     }
     if (
       !window.confirm(
-        `將寄送付款提醒信給 ${batchCounts.reminderRecipients} 位未付款報名者（內容：名額保留中、約剩 1 天，逾時將釋出）。確定要發送嗎？`,
+        tx("將寄送付款提醒信給 {0} 位未付款報名者（內容：名額保留中、約剩 1 天，逾時將釋出）。確定要發送嗎？", [batchCounts.reminderRecipients]),
       )
     ) {
       return;
@@ -134,12 +136,12 @@ export default function TournamentManage() {
         failed?: number;
         error?: string;
       };
-      if (!res.ok) throw new Error(data?.error || "發送失敗");
+      if (!res.ok) throw new Error(txApi(data?.error) || tx("發送失敗"));
       window.alert(
-        `已發送 ${data.sent ?? 0} 封付款提醒信${data.failed ? `，失敗 ${data.failed} 封` : ""}。`,
+        tx("已發送 {0} 封付款提醒信{1}。", [data.sent ?? 0, data.failed ? tx("，失敗 {0} 封", [data.failed]) : ""]),
       );
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "發送失敗，請稍後再試");
+      setActionError(err instanceof Error ? txApi(err.message) : tx("發送失敗，請稍後再試"));
     } finally {
       setSendingReminders(false);
     }
@@ -147,12 +149,12 @@ export default function TournamentManage() {
 
   const handleClearDuplicates = async () => {
     if (batchCounts.dupPending === 0) {
-      window.alert("目前沒有「已付款者的重複待付款訂單」可清除。");
+      window.alert(tx("目前沒有「已付款者的重複待付款訂單」可清除。"));
       return;
     }
     if (
       !window.confirm(
-        `將清除 ${batchCounts.dupPending} 筆待付款訂單——這些報名者的「相同姓名＋電話」已有另一筆已付款訂單，故視為重複。已付款訂單不受影響。此動作無法復原，確定要清除嗎？`,
+        tx("將清除 {0} 筆待付款訂單——這些報名者的「相同姓名＋電話」已有另一筆已付款訂單，故視為重複。已付款訂單不受影響。此動作無法復原，確定要清除嗎？", [batchCounts.dupPending]),
       )
     ) {
       return;
@@ -171,16 +173,14 @@ export default function TournamentManage() {
         names?: string[];
         error?: string;
       };
-      if (!res.ok) throw new Error(data?.error || "清除失敗");
+      if (!res.ok) throw new Error(txApi(data?.error) || tx("清除失敗"));
       const names = data.names ?? [];
       window.alert(
-        `已清除 ${data.deletedCount ?? 0} 筆重複待付款訂單${
-          names.length ? `（${names.join("、")}）` : ""
-        }。`,
+        tx("已清除 {0} 筆重複待付款訂單{1}。", [data.deletedCount ?? 0, names.length ? `（${names.join("、")}）` : ""]),
       );
       await refetch();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "清除失敗，請稍後再試");
+      setActionError(err instanceof Error ? txApi(err.message) : tx("清除失敗，請稍後再試"));
     } finally {
       setClearingDup(false);
     }
@@ -211,12 +211,12 @@ export default function TournamentManage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setActionError(body?.error || "報到失敗");
+        setActionError(txApi(body?.error) || tx("報到失敗"));
         return;
       }
       await refetch();
     } catch {
-      setActionError("報到失敗，請稍後再試");
+      setActionError(tx("報到失敗，請稍後再試"));
     } finally {
       setCheckingToken(null);
     }
@@ -229,7 +229,7 @@ export default function TournamentManage() {
     if (!r.email) return;
     if (
       !window.confirm(
-        `確定要重新發送「${r.parentName}」的報名確認信（含報到 QR Code）至 ${r.email}？`,
+        tx("確定要重新發送「{0}」的報名確認信（含報到 QR Code）至 {1}？", [r.parentName, r.email]),
       )
     ) {
       return;
@@ -250,18 +250,18 @@ export default function TournamentManage() {
         error?: string;
       };
       if (!res.ok) {
-        throw new Error(data?.error || "重新發送失敗");
+        throw new Error(txApi(data?.error) || tx("重新發送失敗"));
       }
       if (data.sent) {
-        window.alert("已重新發送報名確認信。");
+        window.alert(tx("已重新發送報名確認信。"));
       } else if (data.skipped) {
-        window.alert("此筆無法發送（缺少報到 QR 或 Email）。");
+        window.alert(tx("此筆無法發送（缺少報到 QR 或 Email）。"));
       } else {
-        window.alert("重新發送失敗，請稍後再試。");
+        window.alert(tx("重新發送失敗，請稍後再試。"));
       }
     } catch (err) {
       setActionError(
-        err instanceof Error ? err.message : "重新發送失敗，請稍後再試",
+        err instanceof Error ? txApi(err.message) : tx("重新發送失敗，請稍後再試"),
       );
     } finally {
       setResendingId(null);
@@ -269,13 +269,13 @@ export default function TournamentManage() {
   };
 
   const exportCsv = () => {
-    const header = ["報名人", "電話", "Email", "票種", "付款狀態", "報到時間", "報名時間"];
+    const header = [tx("報名人"), tx("電話"), "Email", tx("票種"), tx("付款狀態"), tx("報到時間"), tx("報名時間")];
     const rows = filtered.map((r) => [
       r.parentName ?? "",
       r.phone ?? "",
       r.email ?? "",
-      TYPE_LABELS[r.ticketType ?? ""] ?? r.ticketType ?? "",
-      PAYMENT_STATUS_LABELS[r.paymentStatus] ?? r.paymentStatus,
+      TYPE_LABELS()[r.ticketType ?? ""] ?? r.ticketType ?? "",
+      PAYMENT_STATUS_LABELS()[r.paymentStatus] ?? r.paymentStatus,
       r.checkedInAt ? formatDate(r.checkedInAt) : "",
       formatDate(r.createdAt),
     ]);
@@ -296,9 +296,9 @@ export default function TournamentManage() {
       <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
         <div>
           <h1 className="font-display text-2xl md:text-3xl flex items-center gap-2">
-            <Trophy className="text-indigo-600" /> 戰鬥陀螺賽管理
+            <Trophy className="text-indigo-600" /> {tx("戰鬥陀螺賽管理")}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">7/26（日）· 臺北瓶蓋工廠 M 棟 · 限額 {CAPACITY} 位參賽</p>
+          <p className="text-sm text-muted-foreground mt-1">{tx("7/26（日）· 臺北瓶蓋工廠 M 棟 · 限額")} {CAPACITY} {tx("位參賽")}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button
@@ -307,7 +307,7 @@ export default function TournamentManage() {
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted"
             data-testid="button-refresh"
           >
-            <RefreshCw size={15} className={isFetching ? "animate-spin" : ""} /> 重新整理
+            <RefreshCw size={15} className={isFetching ? "animate-spin" : ""} /> {tx("重新整理")}
           </button>
           {canEdit && (
             <>
@@ -318,7 +318,7 @@ export default function TournamentManage() {
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 text-sm font-bold hover:bg-amber-100 disabled:opacity-50"
                 data-testid="button-send-reminders"
               >
-                <Send size={15} /> {sendingReminders ? "發送中…" : `發送付款提醒${batchCounts.reminderRecipients ? `（${batchCounts.reminderRecipients}）` : ""}`}
+                <Send size={15} /> {sendingReminders ? tx("發送中…") : tx("發送付款提醒{0}", [batchCounts.reminderRecipients ? `（${batchCounts.reminderRecipients}）` : ""])}
               </button>
               <button
                 type="button"
@@ -327,7 +327,7 @@ export default function TournamentManage() {
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-rose-300 bg-rose-50 text-rose-700 text-sm font-bold hover:bg-rose-100 disabled:opacity-50"
                 data-testid="button-clear-duplicates"
               >
-                <Trash2 size={15} /> {clearingDup ? "清除中…" : `清除重複待付款${batchCounts.dupPending ? `（${batchCounts.dupPending}）` : ""}`}
+                <Trash2 size={15} /> {clearingDup ? tx("清除中…") : tx("清除重複待付款{0}", [batchCounts.dupPending ? `（${batchCounts.dupPending}）` : ""])}
               </button>
             </>
           )}
@@ -337,7 +337,7 @@ export default function TournamentManage() {
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700"
             data-testid="button-export"
           >
-            <Download size={15} /> 匯出 CSV
+            <Download size={15} /> {tx("匯出 CSV")}
           </button>
         </div>
       </div>
@@ -346,7 +346,7 @@ export default function TournamentManage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="rounded-2xl border bg-white p-5">
           <div className="flex items-center gap-2 text-muted-foreground text-xs font-bold mb-2">
-            <Users size={15} /> 參賽名額（已付款）
+            <Users size={15} /> {tx("參賽名額（已付款）")}
           </div>
           <div className="text-2xl font-display font-bold text-green-600">
             {stats.participantPaid} <span className="text-base text-muted-foreground">/ {CAPACITY}</span>
@@ -360,22 +360,22 @@ export default function TournamentManage() {
         </div>
         <div className="rounded-2xl border bg-white p-5">
           <div className="flex items-center gap-2 text-muted-foreground text-xs font-bold mb-2">
-            <CheckCircle2 size={15} /> 待付款（逾時自動釋出）
+            <CheckCircle2 size={15} /> {tx("待付款（逾時自動釋出）")}
           </div>
           <div className="text-2xl font-display font-bold text-amber-600">{stats.participantPending}</div>
         </div>
         <div className="rounded-2xl border bg-white p-5">
           <div className="flex items-center gap-2 text-muted-foreground text-xs font-bold mb-2">
-            <ScanLine size={15} /> 已報到
+            <ScanLine size={15} /> {tx("已報到")}
           </div>
           <div className="text-2xl font-display font-bold text-indigo-600">{stats.participantCheckedIn}</div>
         </div>
         <div className="rounded-2xl border bg-white p-5">
           <div className="flex items-center gap-2 text-muted-foreground text-xs font-bold mb-2">
-            <Users size={15} /> 隨同票（已付款）
+            <Users size={15} /> {tx("隨同票（已付款）")}
           </div>
           <div className="text-2xl font-display font-bold">
-            {stats.companionTotal} <span className="text-base text-muted-foreground">（{stats.companionPaid}）</span>
+            {stats.companionTotal} <span className="text-base text-muted-foreground">{tx("（")}{stats.companionPaid}{tx("）")}</span>
           </div>
         </div>
       </div>
@@ -386,7 +386,7 @@ export default function TournamentManage() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="搜尋姓名 / 電話 / Email"
+          placeholder={tx("搜尋姓名 / 電話 / Email")}
           className="w-full pl-9 pr-3 py-2.5 rounded-xl border-2 border-border focus:border-primary outline-none text-sm"
           data-testid="input-search"
         />
@@ -394,7 +394,7 @@ export default function TournamentManage() {
 
       {!canCheckin && (
         <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-2.5">
-          您目前無現場報到權限，僅能檢視名單。請至「現場報到」頁面，或由具報到權限的帳號操作報到。
+          {tx("您目前無現場報到權限，僅能檢視名單。請至「現場報到」頁面，或由具報到權限的帳號操作報到。")}
         </div>
       )}
 
@@ -410,23 +410,23 @@ export default function TournamentManage() {
         </div>
       ) : isError ? (
         <div className="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 p-6 text-center">
-          載入名單失敗，請重新整理。
+          {tx("載入名單失敗，請重新整理。")}
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border bg-white p-10 text-center text-muted-foreground">
-          {legs.length === 0 ? "目前尚無戰鬥陀螺賽報名" : "沒有符合搜尋條件的報名"}
+          {legs.length === 0 ? tx("目前尚無戰鬥陀螺賽報名") : tx("沒有符合搜尋條件的報名")}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border bg-white">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
               <tr>
-                <th className="px-4 py-3 font-bold">報名人</th>
-                <th className="px-4 py-3 font-bold">聯絡方式</th>
-                <th className="px-4 py-3 font-bold">票種</th>
-                <th className="px-4 py-3 font-bold">付款</th>
-                <th className="px-4 py-3 font-bold">報到</th>
-                <th className="px-4 py-3 font-bold text-right">操作</th>
+                <th className="px-4 py-3 font-bold">{tx("報名人")}</th>
+                <th className="px-4 py-3 font-bold">{tx("聯絡方式")}</th>
+                <th className="px-4 py-3 font-bold">{tx("票種")}</th>
+                <th className="px-4 py-3 font-bold">{tx("付款")}</th>
+                <th className="px-4 py-3 font-bold">{tx("報到")}</th>
+                <th className="px-4 py-3 font-bold text-right">{tx("操作")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -447,7 +447,7 @@ export default function TournamentManage() {
                           (isParticipant ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-600")
                         }
                       >
-                        {TYPE_LABELS[r.ticketType ?? ""] ?? r.ticketType}
+                        {TYPE_LABELS()[r.ticketType ?? ""] ?? r.ticketType}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -461,7 +461,7 @@ export default function TournamentManage() {
                               : "bg-amber-100 text-amber-700")
                         }
                       >
-                        {PAYMENT_STATUS_LABELS[r.paymentStatus] ?? r.paymentStatus}
+                        {PAYMENT_STATUS_LABELS()[r.paymentStatus] ?? r.paymentStatus}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -471,7 +471,7 @@ export default function TournamentManage() {
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
-                          <Clock size={14} /> 未報到
+                          <Clock size={14} /> {tx("未報到")}
                         </span>
                       )}
                     </td>
@@ -496,7 +496,7 @@ export default function TournamentManage() {
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-bold hover:bg-indigo-50 disabled:opacity-50"
                                 data-testid={`button-resend-${r.id}`}
                               >
-                                <Mail size={14} /> {resendingId === r.id ? "寄送中…" : "重發確認信"}
+                                <Mail size={14} /> {resendingId === r.id ? tx("寄送中…") : tx("重發確認信")}
                               </button>
                             )}
                             {showCheckin && (
@@ -507,7 +507,7 @@ export default function TournamentManage() {
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 disabled:opacity-50"
                                 data-testid={`button-checkin-${r.id}`}
                               >
-                                <ScanLine size={14} /> {checkingToken === r.qrToken ? "處理中…" : "報到"}
+                                <ScanLine size={14} /> {checkingToken === r.qrToken ? tx("處理中…") : tx("報到")}
                               </button>
                             )}
                           </div>

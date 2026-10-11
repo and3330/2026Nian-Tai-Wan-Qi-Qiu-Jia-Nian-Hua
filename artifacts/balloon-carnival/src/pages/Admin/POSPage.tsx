@@ -1,3 +1,4 @@
+import { tx, getLocale, useI18n, getLang, txApi } from "@/lib/i18n";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   ReceiptText, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff,
@@ -80,12 +81,12 @@ type MySales = {
   recent: { id: number; amount: number; status: string; invoiceNumber: string | null; buyerName: string | null; createdAt: string }[];
 };
 
-const PAYMENT_METHODS = [
-  { value: "cash", label: "現金", icon: Banknote },
-  { value: "credit_card", label: "信用卡", icon: CreditCard },
-  { value: "online", label: "線上付款", icon: Globe },
+const PAYMENT_METHODS = () => ([
+  { value: "cash", label: tx("現金"), icon: Banknote },
+  { value: "credit_card", label: tx("信用卡"), icon: CreditCard },
+  { value: "online", label: tx("線上付款"), icon: Globe },
   { value: "apple_pay", label: "Apple Pay", icon: Smartphone },
-] as const;
+] as const);
 
 type PosStats = {
   orderCount: number;
@@ -97,12 +98,12 @@ type PosStats = {
   byDay: { day: string; count: number; total: number }[];
 };
 
-const PAYMENT_LABEL: Record<string, string> = {
-  cash: "現金",
-  credit_card: "信用卡",
-  online: "線上付款",
+const PAYMENT_LABEL = (): Record<string, string> => ({
+  cash: tx("現金"),
+  credit_card: tx("信用卡"),
+  online: tx("線上付款"),
   apple_pay: "Apple Pay",
-};
+});
 
 const SCANNER_ELEMENT_ID = "pos-qr-scanner-container";
 const FILE_SCAN_ELEMENT_ID = "pos-qr-file-scan-container";
@@ -118,30 +119,31 @@ const SCANNER_CONSTRUCTOR_CONFIG = (formats: any) => ({
 
 function describeCameraError(err: unknown): string {
   const name = (err as { name?: string })?.name || "";
-  const msg = (err as { message?: string })?.message || String(err);
+  const msg = txApi((err as { message?: string })?.message || String(err));
   const insecure =
     typeof window !== "undefined" &&
     !window.isSecureContext &&
     window.location.hostname !== "localhost";
   if (insecure) {
-    return "瀏覽器基於安全限制，必須在 https 安全連線下才能開啟相機。請改用「拍照掃描」或確認網址為 https。";
+    return tx("瀏覽器基於安全限制，必須在 https 安全連線下才能開啟相機。請改用「拍照掃描」或確認網址為 https。");
   }
   if (/Failed to fetch dynamically imported module|Importing a module script failed/i.test(msg)) {
-    return "系統剛更新，頁面版本過舊。請重新整理此頁後再開啟相機。";
+    return tx("系統剛更新，頁面版本過舊。請重新整理此頁後再開啟相機。");
   }
   if (name === "NotAllowedError" || /permission|denied/i.test(msg)) {
-    return "相機權限被拒絕。請到瀏覽器設定允許本網站使用相機，或改用下方「拍照掃描」。";
+    return tx("相機權限被拒絕。請到瀏覽器設定允許本網站使用相機，或改用下方「拍照掃描」。");
   }
   if (name === "NotFoundError" || name === "OverconstrainedError") {
-    return "找不到可用的後置相機，請改用下方「拍照掃描」。";
+    return tx("找不到可用的後置相機，請改用下方「拍照掃描」。");
   }
   if (name === "NotReadableError") {
-    return "相機被其他程式佔用，請關閉其他相機 App 後再試，或改用下方「拍照掃描」。";
+    return tx("相機被其他程式佔用，請關閉其他相機 App 後再試，或改用下方「拍照掃描」。");
   }
-  return `${msg || "無法啟動相機"}。若使用 LINE / FB / IG 內建瀏覽器，請改用 Safari 或 Chrome 開啟，或使用下方「拍照掃描」。`;
+  return tx("{0}。若使用 LINE / FB / IG 內建瀏覽器，請改用 Safari 或 Chrome 開啟，或使用下方「拍照掃描」。", [msg || tx("無法啟動相機")]);
 }
 
 export default function POSPage() {
+  useI18n();
   const { role, hasRole } = useAuth();
   const isVendor = role === "vendor";
   const canManageProducts = isVendor || hasRole("editor");
@@ -200,7 +202,7 @@ export default function POSPage() {
   const vendorQuery = isVendor ? "" : selectedVendorId > 0 ? `vendorId=${selectedVendorId}` : "";
   const productsQuery = allVendorMode ? "vendorId=all" : vendorQuery;
   const vendorNameOf = (vid: number | null) =>
-    vid == null ? "主辦方" : vendors.find((v) => v.id === vid)?.name ?? `攤位 #${vid}`;
+    vid == null ? tx("主辦方") : vendors.find((v) => v.id === vid)?.name ?? tx("攤位 #{0}", [vid]);
 
   const refreshMySales = useCallback(async () => {
     if (!isVendor) return;
@@ -208,30 +210,30 @@ export default function POSPage() {
       const res = await fetch(`/api/admin/pos/my-sales`, { credentials: "include" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMySalesError(data.error || `載入收款統計失敗 (${res.status})`);
+        setMySalesError(txApi(data.error) || tx("載入收款統計失敗 ({0})", [res.status]));
         return;
       }
       setMySalesError(null);
       setMySales(data);
     } catch (err) {
-      setMySalesError((err as Error).message);
+      setMySalesError(txApi((err as Error).message));
     }
-  }, [isVendor]);
+  }, [isVendor, getLang()]);
 
   const refreshProducts = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/pos/products${productsQuery ? `?${productsQuery}` : ""}`, { credentials: "include" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setProductsError(data.error || `載入商品失敗 (${res.status})`);
+        setProductsError(txApi(data.error) || tx("載入商品失敗 ({0})", [res.status]));
         return;
       }
       setProductsError(null);
       setProducts(data.products || []);
     } catch (err) {
-      setProductsError((err as Error).message);
+      setProductsError(txApi((err as Error).message));
     }
-  }, [productsQuery]);
+  }, [productsQuery, getLang()]);
 
   const refreshManageProducts = useCallback(async () => {
     if (!canManageProducts) return;
@@ -248,15 +250,15 @@ export default function POSPage() {
       const res = await fetch(`/api/admin/pos/orders${vendorQuery ? `?${vendorQuery}` : ""}`, { credentials: "include" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setOrdersError(data.error || `載入訂單失敗 (${res.status})`);
+        setOrdersError(txApi(data.error) || tx("載入訂單失敗 ({0})", [res.status]));
         return;
       }
       setOrdersError(null);
       setOrders(data.orders || []);
     } catch (err) {
-      setOrdersError((err as Error).message);
+      setOrdersError(txApi((err as Error).message));
     }
-  }, [vendorQuery]);
+  }, [vendorQuery, getLang()]);
 
   useEffect(() => {
     refreshMySales();
@@ -280,15 +282,15 @@ export default function POSPage() {
       const res = await fetch(`/api/admin/pos/stats${vendorQuery ? `?${vendorQuery}` : ""}`, { credentials: "include" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setStatsError(data.error || `載入統計失敗 (${res.status})`);
+        setStatsError(txApi(data.error) || tx("載入統計失敗 ({0})", [res.status]));
         return;
       }
       setStatsError(null);
       setStats(data);
     } catch (err) {
-      setStatsError((err as Error).message);
+      setStatsError(txApi((err as Error).message));
     }
-  }, [vendorQuery]);
+  }, [vendorQuery, getLang()]);
 
   useEffect(() => {
     if (statsOpen) refreshStats();
@@ -309,7 +311,7 @@ export default function POSPage() {
   };
 
   const voidOrderInvoice = async (o: PosOrder) => {
-    if (!window.confirm(`確定作廢此訂單的發票？\n${o.paymentRef}・NT$${o.totalAmount.toLocaleString()}\n（退款情境用；作廢後如需發票須重新開立）`)) return;
+    if (!window.confirm(tx("確定作廢此訂單的發票？\n{0}・NT${1}\n（退款情境用；作廢後如需發票須重新開立）", [o.paymentRef, o.totalAmount.toLocaleString()]))) return;
     setVoidBusyId(o.id);
     try {
       const res = await fetch(`/api/admin/pos/orders/${o.id}/invoice/void`, {
@@ -320,12 +322,12 @@ export default function POSPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        window.alert(data.error || `發票作廢失敗 (${res.status})`);
+        window.alert(txApi(data.error) || tx("發票作廢失敗 ({0})", [res.status]));
         return;
       }
       await refreshOrders();
     } catch (err) {
-      window.alert((err as Error).message);
+      window.alert(txApi((err as Error).message));
     } finally {
       setVoidBusyId(null);
     }
@@ -333,10 +335,10 @@ export default function POSPage() {
 
   const refundOrder = async (o: PosOrder) => {
     if (o.invoice?.status === "issued") {
-      window.alert("此訂單已開立發票，請先按「作廢發票」再退款。");
+      window.alert(tx("此訂單已開立發票，請先按「作廢發票」再退款。"));
       return;
     }
-    if (!window.confirm(`確定將此訂單標記為已退款？\n${o.paymentRef}・NT$${o.totalAmount.toLocaleString()}\n（退款後將不計入銷售統計；請記得實際退還款項給客人）`)) return;
+    if (!window.confirm(tx("確定將此訂單標記為已退款？\n{0}・NT${1}\n（退款後將不計入銷售統計；請記得實際退還款項給客人）", [o.paymentRef, o.totalAmount.toLocaleString()]))) return;
     setRefundBusyId(o.id);
     try {
       const res = await fetch(`/api/admin/pos/orders/${o.id}/refund`, {
@@ -345,12 +347,12 @@ export default function POSPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        window.alert(data.error || `退款失敗 (${res.status})`);
+        window.alert(txApi(data.error) || tx("退款失敗 ({0})", [res.status]));
         return;
       }
       await refreshOrders();
     } catch (err) {
-      window.alert((err as Error).message);
+      window.alert(txApi((err as Error).message));
     } finally {
       setRefundBusyId(null);
     }
@@ -358,10 +360,10 @@ export default function POSPage() {
 
   const deleteOrder = async (o: PosOrder) => {
     if (o.invoice?.status === "issued") {
-      window.alert("此訂單已開立發票，請先按「作廢發票」再刪除。");
+      window.alert(tx("此訂單已開立發票，請先按「作廢發票」再刪除。"));
       return;
     }
-    if (!window.confirm(`確定刪除此訂單？此動作無法復原。\n${o.paymentRef}・NT$${o.totalAmount.toLocaleString()}`)) return;
+    if (!window.confirm(tx("確定刪除此訂單？此動作無法復原。\n{0}・NT${1}", [o.paymentRef, o.totalAmount.toLocaleString()]))) return;
     setDeleteBusyId(o.id);
     try {
       const res = await fetch(`/api/admin/pos/orders/${o.id}`, {
@@ -370,12 +372,12 @@ export default function POSPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        window.alert(data.error || `刪除失敗 (${res.status})`);
+        window.alert(txApi(data.error) || tx("刪除失敗 ({0})", [res.status]));
         return;
       }
       await refreshOrders();
     } catch (err) {
-      window.alert((err as Error).message);
+      window.alert(txApi((err as Error).message));
     } finally {
       setDeleteBusyId(null);
     }
@@ -386,14 +388,14 @@ export default function POSPage() {
       (o) => selectedOrderIds.has(o.id) && o.invoice?.status !== "issued" && o.invoice?.status !== "pending",
     );
     if (targets.length === 0) {
-      window.alert("勾選的訂單中沒有可開立發票的（已開立或開立中的會跳過）。");
+      window.alert(tx("勾選的訂單中沒有可開立發票的（已開立或開立中的會跳過）。"));
       return;
     }
     const noEmail = targets.filter((o) => !o.buyerEmail).length;
     if (!window.confirm(
-      `批量開立發票：共 ${targets.length} 筆（以客人 Email 會員載具開立）。` +
-      (noEmail > 0 ? `\n注意：其中 ${noEmail} 筆客人沒有 Email，將開立失敗，需個別以手機條碼開立。` : "") +
-      `\n確定執行？`,
+      tx("批量開立發票：共 {0} 筆（以客人 Email 會員載具開立）。", [targets.length]) +
+      (noEmail > 0 ? tx("\n注意：其中 {0} 筆客人沒有 Email，將開立失敗，需個別以手機條碼開立。", [noEmail]) : "") +
+      tx("\n確定執行？"),
     )) return;
     setBatchBusy(true);
     let ok = 0;
@@ -408,23 +410,23 @@ export default function POSPage() {
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok) ok += 1;
-        else fails.push(`${o.paymentRef}：${data.error || res.status}`);
+        else fails.push(tx("{0}：{1}", [o.paymentRef, txApi(data.error) || res.status]));
       } catch (err) {
-        fails.push(`${o.paymentRef}：${(err as Error).message}`);
+        fails.push(tx("{0}：{1}", [o.paymentRef, txApi((err as Error).message)]));
       }
     }
     setBatchBusy(false);
     await refreshOrders();
-    window.alert(`批量開立完成：成功 ${ok} 筆、失敗 ${fails.length} 筆${fails.length ? `\n${fails.join("\n")}` : ""}`);
+    window.alert(tx("批量開立完成：成功 {0} 筆、失敗 {1} 筆{2}", [ok, fails.length, fails.length ? `\n${fails.join("\n")}` : ""]));
   };
 
   const batchVoidInvoices = async () => {
     const targets = orders.filter((o) => selectedOrderIds.has(o.id) && o.invoice?.status === "issued");
     if (targets.length === 0) {
-      window.alert("勾選的訂單中沒有已開立的發票可作廢。");
+      window.alert(tx("勾選的訂單中沒有已開立的發票可作廢。"));
       return;
     }
-    if (!window.confirm(`批量作廢發票：共 ${targets.length} 筆（退款情境用，作廢後無法復原）。確定執行？`)) return;
+    if (!window.confirm(tx("批量作廢發票：共 {0} 筆（退款情境用，作廢後無法復原）。確定執行？", [targets.length]))) return;
     setBatchBusy(true);
     let ok = 0;
     const fails: string[] = [];
@@ -438,14 +440,14 @@ export default function POSPage() {
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok) ok += 1;
-        else fails.push(`${o.paymentRef}：${data.error || res.status}`);
+        else fails.push(tx("{0}：{1}", [o.paymentRef, txApi(data.error) || res.status]));
       } catch (err) {
-        fails.push(`${o.paymentRef}：${(err as Error).message}`);
+        fails.push(tx("{0}：{1}", [o.paymentRef, txApi((err as Error).message)]));
       }
     }
     setBatchBusy(false);
     await refreshOrders();
-    window.alert(`批量作廢完成：成功 ${ok} 筆、失敗 ${fails.length} 筆${fails.length ? `\n${fails.join("\n")}` : ""}`);
+    window.alert(tx("批量作廢完成：成功 {0} 筆、失敗 {1} 筆{2}", [ok, fails.length, fails.length ? `\n${fails.join("\n")}` : ""]));
   };
 
   useEffect(() => {
@@ -491,7 +493,7 @@ export default function POSPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setResult({ kind: "error", message: err.error || `查詢失敗 (${res.status})` });
+        setResult({ kind: "error", message: txApi(err.error) || tx("查詢失敗 ({0})", [res.status]) });
         return;
       }
       const data = await res.json();
@@ -502,9 +504,9 @@ export default function POSPage() {
         token,
       });
     } catch (err) {
-      setResult({ kind: "error", message: (err as Error).message });
+      setResult({ kind: "error", message: txApi((err as Error).message) });
     }
-  }, [stopCarrierScanner]);
+  }, [stopCarrierScanner, getLang()]);
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -515,7 +517,7 @@ export default function POSPage() {
     e.preventDefault();
     const digits = phoneInput.replace(/\D/g, "");
     if (digits.length < 8) {
-      setPhoneError("請輸入完整手機號碼（至少 8 碼）");
+      setPhoneError(tx("請輸入完整手機號碼（至少 8 碼）"));
       setPhoneEntries(null);
       return;
     }
@@ -528,12 +530,12 @@ export default function POSPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setPhoneError(data?.error || `查詢失敗 (${res.status})`);
+        setPhoneError(txApi(data?.error) || tx("查詢失敗 ({0})", [res.status]));
         return;
       }
       setPhoneEntries(data.registrations || []);
     } catch (err) {
-      setPhoneError((err as Error).message);
+      setPhoneError(txApi((err as Error).message));
     } finally {
       setPhoneSearching(false);
     }
@@ -559,13 +561,13 @@ export default function POSPage() {
 
   const handleCheckout = async () => {
     if (result.kind !== "found" || cartItems.length === 0) return;
-    const methodLabel = PAYMENT_LABEL[paymentMethod] ?? paymentMethod;
+    const methodLabel = PAYMENT_LABEL()[paymentMethod] ?? paymentMethod;
     const crossVendors = allVendorMode
       ? new Set(cartItems.map((it) => it.product.vendorId ?? null)).size
       : 1;
     if (!window.confirm(
-      `確認結帳？\n合計 NT$${cartTotal.toLocaleString()}（${methodLabel}）${discountAmount > 0 ? `，已含折價 −NT$${discountAmount}` : ""}\n${cartItems.map((it) => `${it.product.name} x${it.qty}`).join("、")}` +
-      (crossVendors > 1 ? `\n（含 ${crossVendors} 個攤商的商品，將自動拆成 ${crossVendors} 筆訂單，各歸各攤商）` : ""),
+      tx("確認結帳？\n合計 NT${0}（{1}）{2}\n{3}", [cartTotal.toLocaleString(), methodLabel, discountAmount > 0 ? tx("，已含折價 −NT${0}", [discountAmount]) : "", cartItems.map((it) => `${it.product.name} x${it.qty}`).join(tx("、"))]) +
+      (crossVendors > 1 ? tx("\n（含 {0} 個攤商的商品，將自動拆成 {1} 筆訂單，各歸各攤商）", [crossVendors, crossVendors]) : ""),
     )) return;
     setCheckout({ kind: "submitting" });
     try {
@@ -586,13 +588,13 @@ export default function POSPage() {
       const data = await res.json().catch(() => ({}));
       const created: PosOrder[] = Array.isArray(data.orders) ? data.orders : data.order ? [data.order] : [];
       if (!res.ok || created.length === 0) {
-        setCheckout({ kind: "failed", message: data.error || `結帳失敗 (${res.status})` });
+        setCheckout({ kind: "failed", message: txApi(data.error) || tx("結帳失敗 ({0})", [res.status]) });
         return;
       }
       setCheckout({ kind: "created", orders: created });
       refreshMySales();
     } catch (err) {
-      setCheckout({ kind: "failed", message: (err as Error).message });
+      setCheckout({ kind: "failed", message: txApi((err as Error).message) });
     }
   };
 
@@ -600,15 +602,15 @@ export default function POSPage() {
     if (checkout.kind !== "created" || result.kind !== "found") return;
     const barcode = barcodeInput.trim().toUpperCase();
     if (carrierChoice === "phone_barcode" && !/^\/[0-9A-Z.+-]{7}$/.test(barcode)) {
-      setIssueState({ kind: "failed", message: "手機條碼格式錯誤：應為「/」開頭共 8 碼" });
+      setIssueState({ kind: "failed", message: tx("手機條碼格式錯誤：應為「/」開頭共 8 碼") });
       return;
     }
     const totalAll = checkout.orders.reduce((s, o) => s + o.totalAmount, 0);
-    const carrierLabel = carrierChoice === "phone_barcode" ? `手機條碼 ${barcode}` : "綠界會員載具（Email）";
+    const carrierLabel = carrierChoice === "phone_barcode" ? tx("手機條碼 {0}", [barcode]) : tx("綠界會員載具（Email）");
     if (!window.confirm(
-      `確認開立電子發票？合計 NT$${totalAll.toLocaleString()}` +
-      (checkout.orders.length > 1 ? `（共 ${checkout.orders.length} 張，各攤商分別開立）` : "") +
-      `\n載具：${carrierLabel}`,
+      tx("確認開立電子發票？合計 NT${0}", [totalAll.toLocaleString()]) +
+      (checkout.orders.length > 1 ? tx("（共 {0} 張，各攤商分別開立）", [checkout.orders.length]) : "") +
+      tx("\n載具：{0}", [carrierLabel]),
     )) {
       return;
     }
@@ -628,18 +630,18 @@ export default function POSPage() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) {
-          fails.push(`${vendorNameOf(order.vendorId)}：${data.error || res.status}`);
+          fails.push(tx("{0}：{1}", [vendorNameOf(order.vendorId), txApi(data.error) || res.status]));
         } else if (data.invoice?.invoiceNumber) {
           numbers.push(data.invoice.invoiceNumber);
         }
       } catch (err) {
-        fails.push(`${vendorNameOf(order.vendorId)}：${(err as Error).message}`);
+        fails.push(tx("{0}：{1}", [vendorNameOf(order.vendorId), txApi((err as Error).message)]));
       }
     }
     if (fails.length > 0) {
       setIssueState({
         kind: "failed",
-        message: `${numbers.length > 0 ? `已開立 ${numbers.length} 張成功；` : ""}失敗：${fails.join("；")}（失敗的可稍後從訂單補開）`,
+        message: tx("{0}失敗：{1}（失敗的可稍後從訂單補開）", [numbers.length > 0 ? tx("已開立 {0} 張成功；", [numbers.length]) : "", fails.join("；")]),
       });
     } else {
       setIssueState({ kind: "issued", invoiceNumbers: numbers, amount: totalAll });
@@ -659,7 +661,7 @@ export default function POSPage() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      window.alert(data.error || "新增失敗");
+      window.alert(txApi(data.error) || tx("新增失敗"));
       return;
     }
     setNewName("");
@@ -677,7 +679,7 @@ export default function POSPage() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      window.alert(data.error || "修改失敗");
+      window.alert(txApi(data.error) || tx("修改失敗"));
       return;
     }
     refreshManageProducts();
@@ -685,14 +687,14 @@ export default function POSPage() {
   };
 
   const deleteProduct = async (p: Product) => {
-    if (!window.confirm(`確定刪除商品「${p.name}」？（過去的訂單紀錄不受影響）`)) return;
+    if (!window.confirm(tx("確定刪除商品「{0}」？（過去的訂單紀錄不受影響）", [p.name]))) return;
     const res = await fetch(`/api/admin/pos/products/${p.id}`, {
       method: "DELETE",
       credentials: "include",
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      window.alert(data.error || "刪除失敗");
+      window.alert(txApi(data.error) || tx("刪除失敗"));
       return;
     }
     refreshManageProducts();
@@ -841,13 +843,13 @@ export default function POSPage() {
       } catch {
         setResult({
           kind: "error",
-          message: "照片中找不到 QR Code 或條碼，請重新對準拍攝，或改用手動輸入。",
+          message: tx("照片中找不到 QR Code 或條碼，請重新對準拍攝，或改用手動輸入。"),
         });
       } finally {
         setDecodingFile(false);
       }
     },
-    [onDecoded],
+    [onDecoded, getLang()],
   );
 
   useEffect(() => {
@@ -876,35 +878,35 @@ export default function POSPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-display flex items-center gap-3">
-          <ShoppingCart className="text-primary" /> 現場 POS 收銀
+          <ShoppingCart className="text-primary" /> {tx("現場 POS 收銀")}
         </h1>
         <p className="text-muted-foreground mt-1">
-          掃描客人門票 QR Code → 點選商品加入購物車 → 選擇付款方式結帳，之後可立即開立電子發票
+          {tx("掃描客人門票 QR Code → 點選商品加入購物車 → 選擇付款方式結帳，之後可立即開立電子發票")}
         </p>
       </div>
 
       {!isVendor && vendors.length > 0 && (
         <div className="bg-white rounded-3xl border shadow-sm p-4 flex items-center gap-3 flex-wrap" data-testid="pos-vendor-select">
           <Store size={18} className="text-primary shrink-0" />
-          <span className="text-sm font-bold">結帳攤位：</span>
+          <span className="text-sm font-bold">{tx("結帳攤位：")}</span>
           <select
             value={selectedVendorId}
             onChange={(e) => setSelectedVendorId(Number(e.target.value))}
             className="px-3 py-2 border-2 rounded-xl text-sm focus:outline-none focus:border-primary"
             data-testid="select-pos-vendor"
           >
-            <option value={-1}>全部攤商（自動拆單）</option>
-            <option value={0}>主辦方</option>
+            <option value={-1}>{tx("全部攤商（自動拆單）")}</option>
+            <option value={0}>{tx("主辦方")}</option>
             {vendors.map((v) => (
               <option key={v.id} value={v.id}>
-                {v.name}{v.boothNumber ? `（攤位 ${v.boothNumber}）` : ""}
+                {v.name}{v.boothNumber ? tx("（攤位 {0}）", [v.boothNumber]) : ""}
               </option>
             ))}
           </select>
           <span className="text-xs text-muted-foreground">
             {allVendorMode
-              ? "可同時選多個攤商的商品，結帳後金額會自動拆單歸到各攤商"
-              : "商品清單、訂單與發票都會歸到所選攤位"}
+              ? tx("可同時選多個攤商的商品，結帳後金額會自動拆單歸到各攤商")
+              : tx("商品清單、訂單與發票都會歸到所選攤位")}
           </span>
         </div>
       )}
@@ -914,38 +916,38 @@ export default function POSPage() {
           <h2 className="font-bold text-lg flex items-center gap-2 mb-4">
             <Store size={20} className="text-primary" />
             {mySales?.vendor
-              ? <>我的收款統計 — {mySales.vendor.name}{mySales.vendor.boothNumber ? `（攤位 ${mySales.vendor.boothNumber}）` : ""}</>
-              : "我的收款統計"}
+              ? <>{tx("我的收款統計 —")} {mySales.vendor.name}{mySales.vendor.boothNumber ? tx("（攤位 {0}）", [mySales.vendor.boothNumber]) : ""}</>
+              : tx("我的收款統計")}
           </h2>
           {mySalesError ? (
             <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {mySalesError}</p>
           ) : !mySales ? (
-            <p className="text-sm text-muted-foreground">載入中…</p>
+            <p className="text-sm text-muted-foreground">{tx("載入中…")}</p>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-2xl bg-primary/5 p-4">
-                  <div className="text-xs text-muted-foreground mb-1">今日收款（已開立）</div>
+                  <div className="text-xs text-muted-foreground mb-1">{tx("今日收款（已開立）")}</div>
                   <div className="text-2xl font-bold text-primary" data-testid="text-today-total">NT${mySales.today.total.toLocaleString()}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{mySales.today.count} 筆</div>
+                  <div className="text-xs text-muted-foreground mt-1">{mySales.today.count} {tx("筆")}</div>
                 </div>
                 <div className="rounded-2xl bg-muted/40 p-4">
-                  <div className="text-xs text-muted-foreground mb-1">累計收款（已開立）</div>
+                  <div className="text-xs text-muted-foreground mb-1">{tx("累計收款（已開立）")}</div>
                   <div className="text-2xl font-bold" data-testid="text-all-total">NT${mySales.totals.total.toLocaleString()}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{mySales.totals.count} 筆</div>
+                  <div className="text-xs text-muted-foreground mt-1">{mySales.totals.count} {tx("筆")}</div>
                 </div>
               </div>
               {mySales.recent.length > 0 && (
                 <div className="mt-4">
-                  <div className="text-xs font-bold text-muted-foreground uppercase mb-2">最近收款</div>
+                  <div className="text-xs font-bold text-muted-foreground uppercase mb-2">{tx("最近收款")}</div>
                   <ul className="space-y-1 text-sm">
                     {mySales.recent.slice(0, 10).map((r) => (
                       <li key={r.id} className="flex justify-between gap-3 border-b last:border-0 py-1.5">
-                        <span className="text-muted-foreground whitespace-nowrap">{new Date(r.createdAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className="text-muted-foreground whitespace-nowrap">{new Date(r.createdAt).toLocaleString(getLocale(), { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                         <span className="font-mono text-xs self-center">{r.invoiceNumber || "—"}</span>
                         <span className="font-bold">NT${r.amount.toLocaleString()}</span>
                         <span className={cn("text-xs self-center", r.status === "issued" ? "text-green-600" : r.status === "failed" ? "text-red-500" : "text-muted-foreground")}>
-                          {r.status === "issued" ? "已開立" : r.status === "failed" ? "失敗" : r.status === "voided" ? "已作廢" : r.status}
+                          {r.status === "issued" ? tx("已開立") : r.status === "failed" ? tx("失敗") : r.status === "voided" ? tx("已作廢") : r.status}
                         </span>
                       </li>
                     ))}
@@ -964,7 +966,7 @@ export default function POSPage() {
         <div className="bg-white rounded-3xl border shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-lg flex items-center gap-2">
-              <Camera size={20} /> 掃描客人 QR Code
+              <Camera size={20} /> {tx("掃描客人 QR Code")}
             </h2>
             <button
               onClick={() => {
@@ -980,7 +982,7 @@ export default function POSPage() {
               )}
               data-testid="button-pos-toggle-scanner"
             >
-              {scanning ? <><CameraOff size={16} /> 停止</> : <><Camera size={16} /> 開始掃描</>}
+              {scanning ? <><CameraOff size={16} /> {tx("停止")}</> : <><Camera size={16} /> {tx("開始掃描")}</>}
             </button>
           </div>
           <div
@@ -993,12 +995,12 @@ export default function POSPage() {
             <div id={SCANNER_ELEMENT_ID} className={cn("w-full", scanning ? "" : "hidden")} />
             {!scanning && !cameraError && (
               <div className="min-h-[160px] flex items-center justify-center text-muted-foreground text-sm">
-                點擊「開始掃描」以啟動相機
+                {tx("點擊「開始掃描」以啟動相機")}
               </div>
             )}
             {cameraError && (
               <div className="min-h-[160px] flex flex-col items-center justify-center text-red-500 text-sm p-4 text-center">
-                <AlertTriangle className="mx-auto mb-2" /> 相機錯誤：{cameraError}
+                <AlertTriangle className="mx-auto mb-2" /> {tx("相機錯誤：")}{cameraError}
               </div>
             )}
           </div>
@@ -1021,7 +1023,7 @@ export default function POSPage() {
               data-testid="button-pos-file-scan"
             >
               <Camera size={16} />
-              {decodingFile ? "辨識中..." : "無法開啟相機？改用「拍照掃描」"}
+              {decodingFile ? tx("辨識中...") : tx("無法開啟相機？改用「拍照掃描」")}
             </button>
           </div>
           <div id={FILE_SCAN_ELEMENT_ID} className="hidden" />
@@ -1030,14 +1032,14 @@ export default function POSPage() {
         {/* Manual entry */}
         <div className="bg-white rounded-3xl border shadow-sm p-6">
           <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-            <Search size={20} /> 手動輸入 QR Token
+            <Search size={20} /> {tx("手動輸入 QR Token")}
           </h2>
           <form onSubmit={handleManualSubmit} className="space-y-3">
             <input
               type="text"
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value)}
-              placeholder="貼上或輸入 QR token"
+              placeholder={tx("貼上或輸入 QR token")}
               className="w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-primary text-sm font-mono"
               data-testid="input-pos-token"
             />
@@ -1047,7 +1049,7 @@ export default function POSPage() {
               className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all disabled:opacity-50"
               data-testid="button-pos-lookup"
             >
-              {result.kind === "loading" ? "查詢中..." : "查詢票券"}
+              {result.kind === "loading" ? tx("查詢中...") : tx("查詢票券")}
             </button>
           </form>
         </div>
@@ -1055,10 +1057,10 @@ export default function POSPage() {
         {/* Phone lookup */}
         <div className="bg-white rounded-3xl border shadow-sm p-6 lg:col-span-2">
           <h2 className="font-bold text-lg mb-1 flex items-center gap-2">
-            <Smartphone size={20} /> 手機號碼查詢
+            <Smartphone size={20} /> {tx("手機號碼查詢")}
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            客人不方便出示 QR Code 時，輸入購票時填寫的手機號碼即可查到票券。
+            {tx("客人不方便出示 QR Code 時，輸入購票時填寫的手機號碼即可查到票券。")}
           </p>
           <form onSubmit={handlePhoneSearch} className="flex flex-col sm:flex-row gap-3">
             <input
@@ -1066,7 +1068,7 @@ export default function POSPage() {
               inputMode="numeric"
               value={phoneInput}
               onChange={(e) => setPhoneInput(e.target.value)}
-              placeholder="例如 0912345678"
+              placeholder={tx("例如 0912345678")}
               className="flex-1 px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-primary text-sm"
               data-testid="input-pos-phone"
             />
@@ -1076,7 +1078,7 @@ export default function POSPage() {
               className="px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all disabled:opacity-50"
               data-testid="button-pos-phone-search"
             >
-              {phoneSearching ? "查詢中..." : "查詢客人"}
+              {phoneSearching ? tx("查詢中...") : tx("查詢客人")}
             </button>
           </form>
           {phoneError && (
@@ -1097,8 +1099,8 @@ export default function POSPage() {
                       <span className="ml-2 text-muted-foreground font-normal">{entry.phone}</span>
                     </div>
                     <div className="text-muted-foreground mt-0.5">
-                      {entry.eventDate}・{entry.ticketCount} 位
-                      {entry.checkedInAt ? "・已報到" : ""}
+                      {entry.eventDate}・{entry.ticketCount} {tx("位")}
+                      {entry.checkedInAt ? tx("・已報到") : ""}
                     </div>
                   </div>
                   {entry.qrToken ? (
@@ -1107,10 +1109,10 @@ export default function POSPage() {
                       className="px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-all whitespace-nowrap"
                       data-testid={`button-pos-phone-select-${entry.id}`}
                     >
-                      選擇此客人
+                      {tx("選擇此客人")}
                     </button>
                   ) : (
-                    <span className="text-xs text-muted-foreground">此票券沒有 QR token</span>
+                    <span className="text-xs text-muted-foreground">{tx("此票券沒有 QR token")}</span>
                   )}
                 </div>
               ))}
@@ -1136,8 +1138,8 @@ export default function POSPage() {
             <div className="text-red-700 flex items-start gap-4">
               <XCircle size={32} className="shrink-0 mt-1" />
               <div>
-                <h3 className="font-bold text-lg mb-1">無法找到票券</h3>
-                <p className="text-sm">{result.message}</p>
+                <h3 className="font-bold text-lg mb-1">{tx("無法找到票券")}</h3>
+                <p className="text-sm">{txApi(result.message)}</p>
               </div>
             </div>
           )}
@@ -1152,43 +1154,43 @@ export default function POSPage() {
                 )}
                 <div className="flex-1">
                   <h3 className="font-bold text-xl mb-1">
-                    {checkout.kind === "created" ? "結帳完成 ✓" : "客人資料"}
+                    {checkout.kind === "created" ? tx("結帳完成 ✓") : tx("客人資料")}
                   </h3>
                   {checkout.kind === "created" && (
                     <p className="text-sm text-green-700">
-                      {checkout.orders.length > 1 && <>已拆成 {checkout.orders.length} 筆訂單・</>}
-                      合計 NT${checkout.orders.reduce((s, o) => s + o.totalAmount, 0).toLocaleString()}
-                      ・{PAYMENT_LABEL[checkout.orders[0].paymentMethod] ?? checkout.orders[0].paymentMethod}
+                      {checkout.orders.length > 1 && <>{tx("已拆成")} {checkout.orders.length} {tx("筆訂單・")}</>}
+                      {tx("合計 NT$")}{checkout.orders.reduce((s, o) => s + o.totalAmount, 0).toLocaleString()}
+                      ・{PAYMENT_LABEL()[checkout.orders[0].paymentMethod] ?? checkout.orders[0].paymentMethod}
                     </p>
                   )}
                 </div>
               </div>
 
               <div className="bg-white/60 rounded-2xl p-4 grid grid-cols-2 gap-3 text-sm">
-                <div className="text-muted-foreground">姓名：</div>
+                <div className="text-muted-foreground">{tx("姓名：")}</div>
                 <div className="font-bold">{result.reg.parentName}</div>
-                <div className="text-muted-foreground">電話：</div>
+                <div className="text-muted-foreground">{tx("電話：")}</div>
                 <div className="font-bold">{result.reg.phone}</div>
                 {result.reg.email && (<>
-                  <div className="text-muted-foreground">Email：</div>
+                  <div className="text-muted-foreground">{tx("Email：")}</div>
                   <div className="font-bold break-all">{result.reg.email}</div>
                 </>)}
-                <div className="text-muted-foreground">入場日期：</div>
+                <div className="text-muted-foreground">{tx("入場日期：")}</div>
                 <div className="font-bold text-primary">{result.reg.eventDate}</div>
               </div>
 
               {checkout.kind !== "created" && result.recentInvoices.length > 0 && (
                 <div className="mt-4 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm">
                   <p className="font-bold text-amber-800 mb-2 flex items-center gap-2">
-                    <AlertTriangle size={16} /> 此票券近期已開立的現場發票
+                    <AlertTriangle size={16} /> {tx("此票券近期已開立的現場發票")}
                   </p>
                   <ul className="space-y-1 text-amber-800">
                     {result.recentInvoices.map((inv) => (
                       <li key={inv.id} className="flex justify-between gap-3">
-                        <span>{new Date(inv.createdAt).toLocaleString("zh-TW")}</span>
+                        <span>{new Date(inv.createdAt).toLocaleString(getLocale())}</span>
                         <span className="font-mono">{inv.invoiceNumber || "—"}</span>
                         <span className="font-bold">NT${inv.amount.toLocaleString()}</span>
-                        <span>{inv.status === "issued" ? "已開立" : inv.status === "failed" ? "失敗" : inv.status}</span>
+                        <span>{inv.status === "issued" ? tx("已開立") : inv.status === "failed" ? tx("失敗") : inv.status}</span>
                       </li>
                     ))}
                   </ul>
@@ -1200,12 +1202,12 @@ export default function POSPage() {
                 <div className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
                   {/* 左：商品格點 */}
                   <div className="lg:col-span-3">
-                    <label className="block font-bold text-sm mb-2">選擇商品</label>
+                    <label className="block font-bold text-sm mb-2">{tx("選擇商品")}</label>
                     {productsError ? (
                       <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {productsError}</p>
                     ) : products.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
-                        目前沒有商品。{canManageProducts ? "請先在下方「商品管理」新增商品。" : "請聯絡主辦方建立商品清單。"}
+                        {tx("目前沒有商品。")}{canManageProducts ? tx("請先在下方「商品管理」新增商品。") : tx("請聯絡主辦方建立商品清單。")}
                       </p>
                     ) : allVendorMode ? (
                       <div className="space-y-4">
@@ -1299,16 +1301,16 @@ export default function POSPage() {
                   {/* 右：購物車結帳欄（桌機固定在側邊） */}
                   <div className="lg:col-span-2 lg:sticky lg:top-4 rounded-2xl border-2 border-primary/20 bg-white shadow-sm overflow-hidden" data-testid="pos-cart">
                     <div className="px-4 py-3 border-b bg-primary/5 font-bold text-sm flex items-center gap-2">
-                      <ShoppingCart size={16} /> 購物車
+                      <ShoppingCart size={16} /> {tx("購物車")}
                       {cartItems.length > 0 && (
                         <span className="text-xs font-normal text-muted-foreground">
-                          （{cartItems.reduce((s, it) => s + it.qty, 0)} 件）
+                          {tx("（")}{cartItems.reduce((s, it) => s + it.qty, 0)} {tx("件）")}
                         </span>
                       )}
                     </div>
                     <div className="p-4 space-y-2">
                       {cartItems.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-6">點左邊的商品加入購物車</p>
+                        <p className="text-sm text-muted-foreground text-center py-6">{tx("點左邊的商品加入購物車")}</p>
                       ) : (
                         cartItems.map(({ product: p, qty }) => (
                           <div key={p.id} className="flex items-center gap-2 text-sm">
@@ -1329,7 +1331,7 @@ export default function POSPage() {
                       )}
                       <div className="border-t pt-3 mt-2 space-y-1.5">
                         <div className="flex justify-between items-center text-sm">
-                          <span className="text-muted-foreground">小計</span>
+                          <span className="text-muted-foreground">{tx("小計")}</span>
                           <span className="font-bold">NT${cartSubtotal.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
@@ -1348,22 +1350,22 @@ export default function POSPage() {
                                 )}
                                 data-testid={`button-discount-${amt}`}
                               >
-                                {discountAmount === amt ? `✓ 已折價 −$${amt}` : `折價 −$${amt}`}
+                                {discountAmount === amt ? tx("✓ 已折價 −${0}", [amt]) : tx("折價 −${0}", [amt])}
                               </button>
                             ))}
                           </div>
                           {discountAmount > 0 && <span className="font-bold text-red-600">−NT${discountAmount}</span>}
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="font-bold">合計</span>
+                          <span className="font-bold">{tx("合計")}</span>
                           <span className="text-2xl font-bold text-primary" data-testid="text-cart-total">NT${cartTotal.toLocaleString()}</span>
                         </div>
                       </div>
 
                       <div className="pt-1">
-                        <label className="block font-bold text-xs text-muted-foreground mb-1.5">付款方式（僅記錄，實際收款在系統外完成）</label>
+                        <label className="block font-bold text-xs text-muted-foreground mb-1.5">{tx("付款方式（僅記錄，實際收款在系統外完成）")}</label>
                         <div className="grid grid-cols-2 gap-2">
-                          {PAYMENT_METHODS.map((m) => (
+                          {PAYMENT_METHODS().map((m) => (
                             <button
                               key={m.value}
                               type="button"
@@ -1384,7 +1386,7 @@ export default function POSPage() {
 
                       {checkout.kind === "failed" && (
                         <p className="text-sm text-red-600 flex items-center gap-2">
-                          <XCircle size={16} /> {checkout.message}
+                          <XCircle size={16} /> {txApi(checkout.message)}
                         </p>
                       )}
                       <button
@@ -1395,10 +1397,10 @@ export default function POSPage() {
                       >
                         <CheckCircle2 size={20} />
                         {checkout.kind === "submitting"
-                          ? "結帳中..."
+                          ? tx("結帳中...")
                           : cartItems.length === 0
-                            ? "請先選擇商品"
-                            : `結帳 NT$${cartTotal.toLocaleString()}`}
+                            ? tx("請先選擇商品")
+                            : tx("結帳 NT${0}", [cartTotal.toLocaleString()])}
                       </button>
                     </div>
                   </div>
@@ -1424,13 +1426,13 @@ export default function POSPage() {
                       ))}
                       {order.discount > 0 && (
                         <div className="flex justify-between text-red-600">
-                          <span>折價</span>
+                          <span>{tx("折價")}</span>
                           <span className="font-bold">−NT${order.discount.toLocaleString()}</span>
                         </div>
                       )}
                       {checkout.orders.length > 1 && (
                         <div className="flex justify-between font-bold pt-1 border-t mt-1">
-                          <span>小計</span>
+                          <span>{tx("小計")}</span>
                           <span>NT${order.totalAmount.toLocaleString()}</span>
                         </div>
                       )}
@@ -1439,18 +1441,18 @@ export default function POSPage() {
 
                   {issueState.kind === "issued" ? (
                     <div className="rounded-2xl bg-green-100 border border-green-300 p-4 text-sm text-green-800">
-                      <p className="font-bold flex items-center gap-2"><ReceiptText size={16} /> 發票開立成功 ✓</p>
+                      <p className="font-bold flex items-center gap-2"><ReceiptText size={16} /> {tx("發票開立成功 ✓")}</p>
                       <p className="mt-1">
-                        金額 NT${issueState.amount.toLocaleString()}
-                        {issueState.invoiceNumbers.length > 0 && <>・發票號碼 <span className="font-mono font-bold">{issueState.invoiceNumbers.join("、")}</span></>}
+                        {tx("金額 NT$")}{issueState.amount.toLocaleString()}
+                        {issueState.invoiceNumbers.length > 0 && <>{tx("・發票號碼")} <span className="font-mono font-bold">{issueState.invoiceNumbers.join(tx("、"))}</span></>}
                         {carrierChoice === "phone_barcode"
-                          ? "，發票已歸戶至客人的手機條碼載具。"
-                          : "，發票已存入綠界電子發票平台並寄送 Email 通知客人。"}
+                          ? tx("，發票已歸戶至客人的手機條碼載具。")
+                          : tx("，發票已存入綠界電子發票平台並寄送 Email 通知客人。")}
                       </p>
                     </div>
                   ) : (
                     <>
-                      <label className="block font-bold text-sm">開立電子發票（可跳過，之後也能從訂單補開）</label>
+                      <label className="block font-bold text-sm">{tx("開立電子發票（可跳過，之後也能從訂單補開）")}</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button
                           type="button"
@@ -1466,9 +1468,9 @@ export default function POSPage() {
                           )}
                           data-testid="button-carrier-ecpay"
                         >
-                          綠界電子發票（Email 通知）
+                          {tx("綠界電子發票（Email 通知）")}
                           <span className="block text-xs font-normal mt-0.5">
-                            {result.reg.email ? `寄到 ${result.reg.email}` : "此票券沒有 Email，請改用手機條碼"}
+                            {result.reg.email ? tx("寄到 {0}", [result.reg.email]) : tx("此票券沒有 Email，請改用手機條碼")}
                           </span>
                         </button>
                         <button
@@ -1482,8 +1484,8 @@ export default function POSPage() {
                           )}
                           data-testid="button-carrier-phone"
                         >
-                          手機條碼載具
-                          <span className="block text-xs font-normal mt-0.5">掃描客人的「/」開頭條碼</span>
+                          {tx("手機條碼載具")}
+                          <span className="block text-xs font-normal mt-0.5">{tx("掃描客人的「/」開頭條碼")}</span>
                         </button>
                       </div>
 
@@ -1516,7 +1518,7 @@ export default function POSPage() {
                               )}
                               data-testid="button-scan-barcode"
                             >
-                              {carrierScanning ? <><CameraOff size={16} /> 停止</> : <><Camera size={16} /> 掃描條碼</>}
+                              {carrierScanning ? <><CameraOff size={16} /> {tx("停止")}</> : <><Camera size={16} /> {tx("掃描條碼")}</>}
                             </button>
                           </div>
                           {/* Dedicated inline carrier camera. Target div kept FREE
@@ -1531,7 +1533,7 @@ export default function POSPage() {
                           </div>
                           {carrierScanning && (
                             <p className="text-xs text-primary text-center">
-                              請對準客人手機上的「/」開頭條碼，掃到後會自動填入
+                              {tx("請對準客人手機上的「/」開頭條碼，掃到後會自動填入")}
                             </p>
                           )}
                           {carrierCameraError && (
@@ -1544,7 +1546,7 @@ export default function POSPage() {
 
                       {issueState.kind === "failed" && (
                         <p className="text-sm text-red-600 flex items-center gap-2">
-                          <XCircle size={16} /> {issueState.message}
+                          <XCircle size={16} /> {txApi(issueState.message)}
                         </p>
                       )}
                       <button
@@ -1554,10 +1556,10 @@ export default function POSPage() {
                         data-testid="button-pos-issue"
                       >
                         <ReceiptText size={20} />
-                        {issueState.kind === "submitting" ? "開立中，請稍候..." : "開立電子發票"}
+                        {issueState.kind === "submitting" ? tx("開立中，請稍候...") : tx("開立電子發票")}
                       </button>
                       <p className="text-xs text-muted-foreground text-center">
-                        發票品名將帶入實際購買的商品明細
+                        {tx("發票品名將帶入實際購買的商品明細")}
                       </p>
                     </>
                   )}
@@ -1569,7 +1571,7 @@ export default function POSPage() {
                 className="mt-4 w-full py-2 text-sm text-muted-foreground hover:text-foreground"
                 data-testid="button-pos-clear"
               >
-                清除並服務下一位客人
+                {tx("清除並服務下一位客人")}
               </button>
             </>
           )}
@@ -1586,14 +1588,14 @@ export default function POSPage() {
             data-testid="button-toggle-products-manage"
           >
             <h2 className="font-bold text-lg flex items-center gap-2">
-              <Package size={20} className="text-primary" /> 商品管理
+              <Package size={20} className="text-primary" /> {tx("商品管理")}
               {!isVendor && (
                 <span className="text-xs font-normal text-muted-foreground">
-                  （{allVendorMode ? "主辦方 — 管理攤商商品請切換至該攤位" : selectedVendorId > 0 ? vendors.find((v) => v.id === selectedVendorId)?.name ?? "攤位" : "主辦方"}）
+                  {tx("（")}{allVendorMode ? tx("主辦方 — 管理攤商商品請切換至該攤位") : selectedVendorId > 0 ? vendors.find((v) => v.id === selectedVendorId)?.name ?? tx("攤位") : tx("主辦方")}{tx("）")}
                 </span>
               )}
             </h2>
-            <span className="text-sm text-muted-foreground">{manageOpen ? "收合 ▲" : "展開 ▼"}</span>
+            <span className="text-sm text-muted-foreground">{manageOpen ? tx("收合 ▲") : tx("展開 ▼")}</span>
           </button>
           {manageOpen && (
             <div className="mt-4 space-y-4">
@@ -1602,7 +1604,7 @@ export default function POSPage() {
                   type="text"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="商品名稱"
+                  placeholder={tx("商品名稱")}
                   className="flex-1 min-w-[160px] px-4 py-2.5 border-2 rounded-xl text-sm focus:outline-none focus:border-primary"
                   data-testid="input-new-product-name"
                 />
@@ -1612,7 +1614,7 @@ export default function POSPage() {
                   min={1}
                   value={newPrice}
                   onChange={(e) => setNewPrice(e.target.value)}
-                  placeholder="價格"
+                  placeholder={tx("價格")}
                   className="w-28 px-4 py-2.5 border-2 rounded-xl text-sm focus:outline-none focus:border-primary"
                   data-testid="input-new-product-price"
                 />
@@ -1623,11 +1625,11 @@ export default function POSPage() {
                   className="px-4 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5"
                   data-testid="button-add-product"
                 >
-                  <Plus size={16} /> 新增
+                  <Plus size={16} /> {tx("新增")}
                 </button>
               </div>
               {manageProducts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">尚未建立商品。</p>
+                <p className="text-sm text-muted-foreground">{tx("尚未建立商品。")}</p>
               ) : (
                 <ul className="divide-y">
                   {manageProducts.map((p) => (
@@ -1637,14 +1639,14 @@ export default function POSPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const name = window.prompt("商品名稱：", p.name);
+                          const name = window.prompt(tx("商品名稱："), p.name);
                           if (name === null) return;
-                          const priceStr = window.prompt("價格（NT$）：", String(p.price));
+                          const priceStr = window.prompt(tx("價格（NT$）："), String(p.price));
                           if (priceStr === null) return;
                           updateProduct(p.id, { name: name.trim(), price: Number(priceStr) });
                         }}
                         className="p-2 rounded-lg border hover:bg-muted"
-                        title="編輯"
+                        title={tx("編輯")}
                         data-testid={`button-edit-product-${p.id}`}
                       >
                         <Pencil size={14} />
@@ -1658,13 +1660,13 @@ export default function POSPage() {
                         )}
                         data-testid={`button-toggle-product-${p.id}`}
                       >
-                        {p.active ? "下架" : "上架"}
+                        {p.active ? tx("下架") : tx("上架")}
                       </button>
                       <button
                         type="button"
                         onClick={() => deleteProduct(p)}
                         className="p-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50"
-                        title="刪除"
+                        title={tx("刪除")}
                         data-testid={`button-delete-product-${p.id}`}
                       >
                         <Trash2 size={14} />
@@ -1687,50 +1689,50 @@ export default function POSPage() {
           data-testid="button-toggle-stats"
         >
           <h2 className="font-bold text-lg flex items-center gap-2">
-            <BarChart3 size={20} className="text-primary" /> 銷售統計
+            <BarChart3 size={20} className="text-primary" /> {tx("銷售統計")}
           </h2>
-          <span className="text-sm text-muted-foreground">{statsOpen ? "收合 ▲" : "展開 ▼"}</span>
+          <span className="text-sm text-muted-foreground">{statsOpen ? tx("收合 ▲") : tx("展開 ▼")}</span>
         </button>
         {statsOpen && (
           <div className="mt-4 space-y-5">
             {statsError ? (
               <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {statsError}</p>
             ) : !stats ? (
-              <p className="text-sm text-muted-foreground">載入中...</p>
+              <p className="text-sm text-muted-foreground">{tx("載入中...")}</p>
             ) : stats.orderCount === 0 ? (
-              <p className="text-sm text-muted-foreground">尚無銷售紀錄。</p>
+              <p className="text-sm text-muted-foreground">{tx("尚無銷售紀錄。")}</p>
             ) : (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="bg-muted/40 rounded-2xl p-4">
-                    <div className="text-xs text-muted-foreground">今日營收</div>
+                    <div className="text-xs text-muted-foreground">{tx("今日營收")}</div>
                     <div className="text-xl font-bold text-primary" data-testid="text-stats-today-total">NT${stats.today.total.toLocaleString()}</div>
-                    <div className="text-xs text-muted-foreground">{stats.today.count} 筆</div>
+                    <div className="text-xs text-muted-foreground">{stats.today.count} {tx("筆")}</div>
                   </div>
                   <div className="bg-muted/40 rounded-2xl p-4">
-                    <div className="text-xs text-muted-foreground">累計營收</div>
+                    <div className="text-xs text-muted-foreground">{tx("累計營收")}</div>
                     <div className="text-xl font-bold" data-testid="text-stats-total">NT${stats.totalRevenue.toLocaleString()}</div>
-                    <div className="text-xs text-muted-foreground">{stats.orderCount} 筆</div>
+                    <div className="text-xs text-muted-foreground">{stats.orderCount} {tx("筆")}</div>
                   </div>
                   <div className="bg-muted/40 rounded-2xl p-4">
-                    <div className="text-xs text-muted-foreground">平均客單價</div>
+                    <div className="text-xs text-muted-foreground">{tx("平均客單價")}</div>
                     <div className="text-xl font-bold">
                       NT${stats.orderCount > 0 ? Math.round(stats.totalRevenue / stats.orderCount).toLocaleString() : 0}
                     </div>
                   </div>
                   <div className="bg-muted/40 rounded-2xl p-4">
-                    <div className="text-xs text-muted-foreground">累計折價</div>
+                    <div className="text-xs text-muted-foreground">{tx("累計折價")}</div>
                     <div className="text-xl font-bold text-red-600">−NT${stats.totalDiscount.toLocaleString()}</div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <h3 className="font-bold text-sm mb-2">熱賣商品</h3>
+                    <h3 className="font-bold text-sm mb-2">{tx("熱賣商品")}</h3>
                     <ul className="divide-y text-sm">
                       {stats.byProduct.map((p) => (
                         <li key={p.name} className="py-2 flex items-center justify-between gap-3">
-                          <span>{p.name}<span className="text-muted-foreground text-xs">・{p.qty} 件</span></span>
+                          <span>{p.name}<span className="text-muted-foreground text-xs">・{p.qty} {tx("件")}</span></span>
                           <span className="font-bold">NT${p.total.toLocaleString()}</span>
                         </li>
                       ))}
@@ -1738,22 +1740,22 @@ export default function POSPage() {
                   </div>
                   <div className="space-y-5">
                     <div>
-                      <h3 className="font-bold text-sm mb-2">付款方式</h3>
+                      <h3 className="font-bold text-sm mb-2">{tx("付款方式")}</h3>
                       <ul className="divide-y text-sm">
                         {stats.byMethod.map((m) => (
                           <li key={m.method} className="py-2 flex items-center justify-between gap-3">
-                            <span>{PAYMENT_LABEL[m.method] ?? m.method}<span className="text-muted-foreground text-xs">・{m.count} 筆</span></span>
+                            <span>{PAYMENT_LABEL()[m.method] ?? m.method}<span className="text-muted-foreground text-xs">・{m.count} {tx("筆")}</span></span>
                             <span className="font-bold">NT${m.total.toLocaleString()}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm mb-2">每日營收</h3>
+                      <h3 className="font-bold text-sm mb-2">{tx("每日營收")}</h3>
                       <ul className="divide-y text-sm">
                         {stats.byDay.map((d) => (
                           <li key={d.day} className="py-2 flex items-center justify-between gap-3">
-                            <span>{d.day}<span className="text-muted-foreground text-xs">・{d.count} 筆</span></span>
+                            <span>{d.day}<span className="text-muted-foreground text-xs">・{d.count} {tx("筆")}</span></span>
                             <span className="font-bold">NT${d.total.toLocaleString()}</span>
                           </li>
                         ))}
@@ -1761,7 +1763,7 @@ export default function POSPage() {
                     </div>
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">＊統計以 POS 結帳訂單為準（含未開發票訂單）；商品金額為折價前售價。</p>
+                <p className="text-xs text-muted-foreground">{tx("＊統計以 POS 結帳訂單為準（含未開發票訂單）；商品金額為折價前售價。")}</p>
               </>
             )}
           </div>
@@ -1777,16 +1779,16 @@ export default function POSPage() {
           data-testid="button-toggle-orders"
         >
           <h2 className="font-bold text-lg flex items-center gap-2">
-            <ListOrdered size={20} className="text-primary" /> 最近訂單
+            <ListOrdered size={20} className="text-primary" /> {tx("最近訂單")}
           </h2>
-          <span className="text-sm text-muted-foreground">{ordersOpen ? "收合 ▲" : "展開 ▼"}</span>
+          <span className="text-sm text-muted-foreground">{ordersOpen ? tx("收合 ▲") : tx("展開 ▼")}</span>
         </button>
         {ordersOpen && (
           <div className="mt-4">
             {ordersError ? (
               <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {ordersError}</p>
             ) : orders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">尚無訂單。</p>
+              <p className="text-sm text-muted-foreground">{tx("尚無訂單。")}</p>
             ) : (
               <>
                 {/* 批量工具列 */}
@@ -1800,7 +1802,7 @@ export default function POSPage() {
                       }
                       data-testid="checkbox-select-all-orders"
                     />
-                    全選（已勾 {selectedOrderIds.size} 筆）
+                    {tx("全選（已勾")} {selectedOrderIds.size} {tx("筆）")}
                   </label>
                   <div className="flex gap-2">
                     <button
@@ -1810,7 +1812,7 @@ export default function POSPage() {
                       className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 disabled:opacity-40"
                       data-testid="button-batch-issue"
                     >
-                      {batchBusy ? "處理中..." : "批量開立發票"}
+                      {batchBusy ? tx("處理中...") : tx("批量開立發票")}
                     </button>
                     <button
                       type="button"
@@ -1819,7 +1821,7 @@ export default function POSPage() {
                       className="px-3 py-1.5 rounded-lg border-2 border-red-300 text-red-600 text-xs font-bold hover:bg-red-50 disabled:opacity-40"
                       data-testid="button-batch-void"
                     >
-                      {batchBusy ? "處理中..." : "批量作廢發票"}
+                      {batchBusy ? tx("處理中...") : tx("批量作廢發票")}
                     </button>
                   </div>
                 </div>
@@ -1837,31 +1839,31 @@ export default function POSPage() {
                           <span className="font-mono text-xs text-muted-foreground">{o.paymentRef}</span>
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {new Date(o.createdAt).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {new Date(o.createdAt).toLocaleString(getLocale(), { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <span>
-                          {o.buyerName || "—"}・{o.items.map((it) => `${it.name}×${it.qty}`).join("、")}
-                          {o.discount > 0 && <span className="text-red-600">・折價−${o.discount}</span>}
+                          {o.buyerName || "—"}・{o.items.map((it) => `${it.name}×${it.qty}`).join(tx("、"))}
+                          {o.discount > 0 && <span className="text-red-600">{tx("・折價−$")}{o.discount}</span>}
                         </span>
                         <span className="flex items-center gap-2">
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{PAYMENT_LABEL[o.paymentMethod] ?? o.paymentMethod}</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{PAYMENT_LABEL()[o.paymentMethod] ?? o.paymentMethod}</span>
                           <span className="font-bold">NT${o.totalAmount.toLocaleString()}</span>
                           <span className={cn(
                             "text-xs",
                             o.invoice?.status === "issued" ? "text-green-600" : o.invoice?.status === "failed" ? "text-red-500" : "text-muted-foreground",
                           )}>
                             {o.invoice?.status === "issued"
-                              ? `發票 ${o.invoice.invoiceNumber ?? "已開立"}`
+                              ? tx("發票 {0}", [o.invoice.invoiceNumber ?? tx("已開立")])
                               : o.invoice?.status === "failed"
-                                ? "發票失敗"
+                                ? tx("發票失敗")
                                 : o.invoice?.status === "voided"
-                                  ? "發票已作廢"
-                                  : "未開發票"}
+                                  ? tx("發票已作廢")
+                                  : tx("未開發票")}
                           </span>
                           {o.refundedAt && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold">已退款</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold">{tx("已退款")}</span>
                           )}
                           {o.invoice?.status === "issued" && (
                             <button
@@ -1871,7 +1873,7 @@ export default function POSPage() {
                               className="text-xs px-2 py-1 rounded-lg border border-red-300 text-red-600 font-bold hover:bg-red-50 disabled:opacity-40"
                               data-testid={`button-void-${o.id}`}
                             >
-                              {voidBusyId === o.id ? "作廢中..." : "作廢發票"}
+                              {voidBusyId === o.id ? tx("作廢中...") : tx("作廢發票")}
                             </button>
                           )}
                           {!o.refundedAt && o.invoice?.status !== "issued" && (
@@ -1882,7 +1884,7 @@ export default function POSPage() {
                               className="text-xs px-2 py-1 rounded-lg border border-orange-300 text-orange-600 font-bold hover:bg-orange-50 disabled:opacity-40"
                               data-testid={`button-refund-${o.id}`}
                             >
-                              {refundBusyId === o.id ? "退款中..." : "退款"}
+                              {refundBusyId === o.id ? tx("退款中...") : tx("退款")}
                             </button>
                           )}
                           {o.invoice?.status !== "issued" && (
@@ -1893,7 +1895,7 @@ export default function POSPage() {
                               className="text-xs px-2 py-1 rounded-lg border border-red-300 text-red-600 font-bold hover:bg-red-50 disabled:opacity-40"
                               data-testid={`button-delete-${o.id}`}
                             >
-                              {deleteBusyId === o.id ? "刪除中..." : "刪除"}
+                              {deleteBusyId === o.id ? tx("刪除中...") : tx("刪除")}
                             </button>
                           )}
                         </span>

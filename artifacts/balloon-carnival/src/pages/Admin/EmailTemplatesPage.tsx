@@ -1,3 +1,4 @@
+import { tx, getLocale, useI18n, txApi } from "@/lib/i18n";
 import { useState, useEffect, useCallback } from "react";
 import { Mail, Save, Send, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,24 +11,25 @@ type EmailTemplate = {
   updatedAt: string;
 };
 
-const TEMPLATE_LABELS: Record<string, { label: string; description: string }> = {
+const TEMPLATE_LABELS = (): Record<string, { label: string; description: string }> => ({
   confirmation: {
-    label: "購票確認信",
-    description: "購票成功後立即寄送，包含活動資訊與報到 QR Code。",
+    label: tx("購票確認信"),
+    description: tx("購票成功後立即寄送，包含活動資訊與報到 QR Code。"),
   },
   week_reminder: {
-    label: "活動前一週提醒信",
-    description: "活動日前 7 天自動寄送，提醒使用者即將到來的活動。",
+    label: tx("活動前一週提醒信"),
+    description: tx("活動日前 7 天自動寄送，提醒使用者即將到來的活動。"),
   },
   day_reminder: {
-    label: "活動前一日提醒信",
-    description: "活動日前 1 天自動寄送，提醒入場注意事項。",
+    label: tx("活動前一日提醒信"),
+    description: tx("活動日前 1 天自動寄送，提醒入場注意事項。"),
   },
-};
+});
 
 const SUPPORTED_VARS = ["{{parentName}}", "{{phone}}", "{{eventDate}}", "{{ticketCount}}", "{{qrUrl}}"];
 
 export default function EmailTemplatesPage() {
+  useI18n();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -89,7 +91,7 @@ export default function EmailTemplatesPage() {
         });
       } else {
         const err = await res.json().catch(() => ({}));
-        alert(err.error || "儲存失敗");
+        alert(txApi(err.error) || tx("儲存失敗"));
       }
     } finally {
       setSaving(null);
@@ -98,7 +100,7 @@ export default function EmailTemplatesPage() {
 
   const sendTest = async (tpl: EmailTemplate) => {
     if (!testEmail || !testEmail.includes("@")) {
-      alert("請先在上方輸入測試收件人 email");
+      alert(tx("請先在上方輸入測試收件人 email"));
       return;
     }
     setTestStatus((prev) => ({ ...prev, [tpl.key]: "sending" }));
@@ -111,39 +113,42 @@ export default function EmailTemplatesPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const modeLabel = data.mode === "resend" ? "已透過 Resend 寄出" : "已記錄到伺服器 console (未設定 RESEND_API_KEY)";
+        const modeLabel = data.mode === "resend" ? tx("已透過 Resend 寄出") : tx("已記錄到伺服器 console (未設定 RESEND_API_KEY)");
         setTestStatus((prev) => ({ ...prev, [tpl.key]: `✓ ${modeLabel}` }));
       } else {
-        setTestStatus((prev) => ({ ...prev, [tpl.key]: `✗ ${data.error || "失敗"}` }));
+        setTestStatus((prev) => ({ ...prev, [tpl.key]: `✗ ${txApi(data.error) || tx("失敗")}` }));
       }
     } catch (err) {
-      setTestStatus((prev) => ({ ...prev, [tpl.key]: `✗ ${(err as Error).message}` }));
+      setTestStatus((prev) => ({ ...prev, [tpl.key]: `✗ ${txApi((err as Error).message)}` }));
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20 text-muted-foreground">載入中...</div>;
+  if (loading) return <div className="flex items-center justify-center py-20 text-muted-foreground">{tx("載入中...")}</div>;
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-display flex items-center gap-3">
-          <Mail className="text-primary" /> Email 模板管理
+          <Mail className="text-primary" /> {tx("Email 模板管理")}
         </h1>
-        <p className="text-muted-foreground mt-1">編輯購票確認信與活動提醒信的內容</p>
+        <p className="text-muted-foreground mt-1">{tx("編輯購票確認信與活動提醒信的內容")}</p>
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-sm text-blue-800">
         <div className="flex items-start gap-3">
           <Info size={18} className="shrink-0 mt-0.5" />
           <div className="space-y-2 flex-1">
-            <p className="font-bold">可用變數：</p>
+            <p className="font-bold">{tx("可用變數：")}</p>
             <div className="flex flex-wrap gap-2">
               {SUPPORTED_VARS.map((v) => (
                 <code key={v} className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">{v}</code>
               ))}
             </div>
             <p className="text-xs text-blue-700 mt-2">
-              寄信模式：若已設定 <code className="bg-white px-1 rounded">RESEND_API_KEY</code> 環境變數，將透過 Resend 寄送；否則僅記錄至伺服器 console (適合開發測試)。
+              {tx("寄信模式：若已設定")} <code className="bg-white px-1 rounded">RESEND_API_KEY</code> {tx("環境變數，將透過 Resend 寄送；否則僅記錄至伺服器 console (適合開發測試)。")}
+            </p>
+            <p className="text-xs text-blue-700" data-testid="text-bilingual-email-note">
+              {tx("雙語寄送：所有寄給買家的信件皆為中英雙語。此處只能編輯中文主旨與內文；英文版本由系統程式維護，並自動附加在中文內容之後，無法在此編輯。")}
             </p>
           </div>
         </div>
@@ -151,13 +156,13 @@ export default function EmailTemplatesPage() {
 
       <div className="bg-white rounded-2xl border p-5 flex items-center gap-3 flex-wrap">
         <label className="text-sm font-bold flex items-center gap-2 shrink-0">
-          <Send size={16} /> 測試收件人 Email：
+          <Send size={16} /> {tx("測試收件人 Email：")}
         </label>
         <input
           type="email"
           value={testEmail}
           onChange={(e) => setTestEmail(e.target.value)}
-          placeholder="輸入 email 後可使用各模板下方的「寄送測試」按鈕"
+          placeholder={tx("輸入 email 後可使用各模板下方的「寄送測試」按鈕")}
           className="flex-1 min-w-[260px] px-4 py-2 border rounded-xl text-sm focus:outline-none focus:border-primary"
           data-testid="input-test-email"
         />
@@ -165,7 +170,7 @@ export default function EmailTemplatesPage() {
 
       <div className="space-y-6">
         {templates.map((tpl) => {
-          const meta = TEMPLATE_LABELS[tpl.key] || { label: tpl.key, description: "" };
+          const meta = TEMPLATE_LABELS()[tpl.key] || { label: tpl.key, description: "" };
           const draft = getCurrent(tpl);
           const dirty = hasChanges(tpl);
           const status = testStatus[tpl.key];
@@ -178,7 +183,7 @@ export default function EmailTemplatesPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold mb-1">主旨</label>
+                  <label className="block text-sm font-bold mb-1">{tx("主旨")}</label>
                   <input
                     type="text"
                     value={draft.subject}
@@ -188,7 +193,7 @@ export default function EmailTemplatesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold mb-1">內文</label>
+                  <label className="block text-sm font-bold mb-1">{tx("內文")}</label>
                   <textarea
                     value={draft.body}
                     onChange={(e) => updateDraft(tpl.key, "body", e.target.value, tpl)}
@@ -201,7 +206,7 @@ export default function EmailTemplatesPage() {
 
               <div className="mt-4 pt-4 border-t flex items-center justify-between gap-4 flex-wrap">
                 <div className="text-xs text-muted-foreground">
-                  最後更新：{new Date(tpl.updatedAt).toLocaleString("zh-TW")}
+                  {tx("最後更新：")}{new Date(tpl.updatedAt).toLocaleString(getLocale())}
                   {status && <span className="ml-3">{status}</span>}
                 </div>
                 <div className="flex gap-2">
@@ -211,7 +216,7 @@ export default function EmailTemplatesPage() {
                     className="px-4 py-2 rounded-xl border text-sm font-bold flex items-center gap-2 hover:bg-muted/50 disabled:opacity-50"
                     data-testid={`button-test-${tpl.key}`}
                   >
-                    <Send size={14} /> 寄送測試
+                    <Send size={14} /> {tx("寄送測試")}
                   </button>
                   <button
                     onClick={() => save(tpl)}
@@ -223,7 +228,7 @@ export default function EmailTemplatesPage() {
                     )}
                     data-testid={`button-save-${tpl.key}`}
                   >
-                    <Save size={14} /> {saving === tpl.key ? "儲存中..." : "儲存"}
+                    <Save size={14} /> {saving === tpl.key ? tx("儲存中...") : tx("儲存")}
                   </button>
                 </div>
               </div>

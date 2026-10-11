@@ -1,3 +1,4 @@
+import { tx, getLocale, useI18n, txApi } from "@/lib/i18n";
 import { useEffect, useMemo, useState } from "react";
 import {
   useAdminListInvoices,
@@ -17,7 +18,7 @@ import {
 } from "lucide-react";
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("zh-TW", {
+  return new Intl.NumberFormat(getLocale(), {
     style: "currency",
     currency: "TWD",
     maximumFractionDigits: 0,
@@ -26,34 +27,34 @@ function formatCurrency(value: number) {
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
-  return new Date(value).toLocaleString("zh-TW");
+  return new Date(value).toLocaleString(getLocale());
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "待開立",
-  issued: "已開立",
-  failed: "開立失敗",
-  voided: "已作廢",
-};
+const STATUS_LABELS = (): Record<string, string> => ({
+  pending: tx("待開立"),
+  issued: tx("已開立"),
+  failed: tx("開立失敗"),
+  voided: tx("已作廢"),
+});
 
-const TYPE_LABELS: Record<string, string> = {
-  personal: "個人",
-  company: "公司（統編）",
-  donation: "捐贈",
-};
+const TYPE_LABELS = (): Record<string, string> => ({
+  personal: tx("個人"),
+  company: tx("公司（統編）"),
+  donation: tx("捐贈"),
+});
 
 type FilterKey = "all" | "issued" | "pending" | "failed" | "voided";
 
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: "all", label: "全部" },
-  { key: "issued", label: "已開立" },
-  { key: "pending", label: "待開立" },
-  { key: "failed", label: "開立失敗" },
-  { key: "voided", label: "已作廢" },
-];
+const FILTERS = (): { key: FilterKey; label: string }[] => ([
+  { key: "all", label: tx("全部") },
+  { key: "issued", label: tx("已開立") },
+  { key: "pending", label: tx("待開立") },
+  { key: "failed", label: tx("開立失敗") },
+  { key: "voided", label: tx("已作廢") },
+]);
 
 function statusBadge(status: string) {
-  const label = STATUS_LABELS[status] ?? status;
+  const label = STATUS_LABELS()[status] ?? status;
   const tone =
     status === "issued"
       ? "bg-green-100 text-green-700"
@@ -72,6 +73,7 @@ function statusBadge(status: string) {
 }
 
 export default function InvoicesManage() {
+  useI18n();
   const { hasRole } = useAuth();
   const canManage = hasRole("editor");
   const { data, isLoading, refetch, isRefetching } = useAdminListInvoices();
@@ -212,7 +214,7 @@ export default function InvoicesManage() {
     if (targets.length === 0) return;
     if (
       !window.confirm(
-        `要批量開立 ${targets.length} 張電子發票嗎？\n系統會逐筆向綠界送出開立要求。`,
+        tx("要批量開立 {0} 張電子發票嗎？\n系統會逐筆向綠界送出開立要求。", [targets.length]),
       )
     ) {
       return;
@@ -235,12 +237,12 @@ export default function InvoicesManage() {
           ok += 1;
         } else {
           errors.push(
-            `${inv.paymentRef}：${result.errorMessage || result.error || "未成功"}`,
+            tx("{0}：{1}", [inv.paymentRef, txApi(result.errorMessage) || txApi(result.error) || tx("未成功")]),
           );
         }
       } catch (err) {
         errors.push(
-          `${inv.paymentRef}：${err instanceof Error ? err.message : "連線錯誤"}`,
+          tx("{0}：{1}", [inv.paymentRef, err instanceof Error ? txApi(err.message) : tx("連線錯誤")]),
         );
       }
     }
@@ -248,9 +250,9 @@ export default function InvoicesManage() {
     setSelectedIds(new Set());
     await refetch();
     window.alert(
-      `批量開立完成：成功 ${ok} 張，失敗 ${errors.length} 張。` +
+      tx("批量開立完成：成功 {0} 張，失敗 {1} 張。", [ok, errors.length]) +
         (errors.length
-          ? `\n\n失敗明細：\n${errors.slice(0, 10).join("\n")}${errors.length > 10 ? "\n…" : ""}`
+          ? tx("\n\n失敗明細：\n{0}{1}", [errors.slice(0, 10).join("\n"), errors.length > 10 ? "\n…" : ""])
           : ""),
     );
   };
@@ -258,7 +260,7 @@ export default function InvoicesManage() {
   const handleRetry = async (inv: AdminInvoice) => {
     if (
       !window.confirm(
-        `要為訂單「${inv.paymentRef}」${inv.status === "failed" ? "重新" : ""}開立電子發票嗎？\n系統會向綠界送出開立要求並回填發票號碼。`,
+        tx("要為訂單「{0}」{1}開立電子發票嗎？\n系統會向綠界送出開立要求並回填發票號碼。", [inv.paymentRef, inv.status === "failed" ? tx("重新") : ""]),
       )
     ) {
       return;
@@ -275,17 +277,17 @@ export default function InvoicesManage() {
         errorMessage?: string | null;
         error?: string;
       };
-      if (!res.ok) throw new Error(result?.error || "開立失敗");
+      if (!res.ok) throw new Error(txApi(result?.error) || tx("開立失敗"));
       await refetch();
       if (result.status === "issued") {
-        window.alert(`開立成功，發票號碼：${result.invoiceNumber ?? "—"}`);
+        window.alert(tx("開立成功，發票號碼：{0}", [result.invoiceNumber ?? "—"]));
       } else {
         window.alert(
-          `尚未開立成功（狀態：${result.status ? (STATUS_LABELS[result.status] ?? result.status) : "未知"}）。\n${result.errorMessage ?? "請確認此訂單已付款且已填寫發票資訊。"}`,
+          tx("尚未開立成功（狀態：{0}）。\n{1}", [result.status ? (STATUS_LABELS()[result.status] ?? result.status) : tx("未知"), txApi(result.errorMessage) ?? tx("請確認此訂單已付款且已填寫發票資訊。")]),
         );
       }
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "開立失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("開立失敗，請稍後再試"));
     } finally {
       setBusyRef(null);
     }
@@ -293,8 +295,8 @@ export default function InvoicesManage() {
 
   const handleVoid = async (inv: AdminInvoice) => {
     const reason = window.prompt(
-      `要作廢發票「${inv.invoiceNumber}」嗎？請輸入作廢原因：`,
-      "訂單取消",
+      tx("要作廢發票「{0}」嗎？請輸入作廢原因：", [inv.invoiceNumber]),
+      tx("訂單取消"),
     );
     if (reason === null) return;
     setBusyRef(inv.paymentRef);
@@ -313,15 +315,15 @@ export default function InvoicesManage() {
         message?: string;
         error?: string;
       };
-      if (!res.ok) throw new Error(result?.error || "作廢失敗");
+      if (!res.ok) throw new Error(txApi(result?.error) || tx("作廢失敗"));
       await refetch();
       if (result.success) {
-        window.alert("發票已作廢。");
+        window.alert(tx("發票已作廢。"));
       } else {
-        window.alert(`作廢未成功：${result.message ?? "請稍後再試"}`);
+        window.alert(tx("作廢未成功：{0}", [txApi(result.message) ?? tx("請稍後再試")]));
       }
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "作廢失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("作廢失敗，請稍後再試"));
     } finally {
       setBusyRef(null);
     }
@@ -337,16 +339,16 @@ export default function InvoicesManage() {
       error?: string;
     };
     if (!res.ok || !result.success) {
-      throw new Error(result.error || "重設失敗");
+      throw new Error(txApi(result.error) || tx("重設失敗"));
     }
   };
 
   const handleReset = async (inv: AdminInvoice) => {
     if (
       !window.confirm(
-        `要將發票「${inv.invoiceNumber}」重設為「待開立」嗎？\n\n` +
-          `⚠️ 此功能僅用於清除「測試發票」紀錄，重設後即可重新開立正式發票。\n` +
-          `若這是已開立的「正式發票」，請改用「作廢」，不要用重設。`,
+        tx("要將發票「{0}」重設為「待開立」嗎？\n\n", [inv.invoiceNumber]) +
+          tx("⚠️ 此功能僅用於清除「測試發票」紀錄，重設後即可重新開立正式發票。\n") +
+          tx("若這是已開立的「正式發票」，請改用「作廢」，不要用重設。"),
       )
     ) {
       return;
@@ -355,9 +357,9 @@ export default function InvoicesManage() {
     try {
       await resetOne(inv.paymentRef);
       await refetch();
-      window.alert("已重設為待開立。");
+      window.alert(tx("已重設為待開立。"));
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "重設失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("重設失敗，請稍後再試"));
     } finally {
       setBusyRef(null);
     }
@@ -368,9 +370,9 @@ export default function InvoicesManage() {
     if (targets.length === 0) return;
     if (
       !window.confirm(
-        `要將 ${targets.length} 張「已開立」發票重設為「待開立」嗎？\n\n` +
-          `⚠️ 此功能僅用於清除「測試發票」紀錄。重設後可重新開立正式發票。\n` +
-          `若清單中包含已開立的「正式發票」，請勿使用此功能（正式發票應改用「作廢」）。`,
+        tx("要將 {0} 張「已開立」發票重設為「待開立」嗎？\n\n", [targets.length]) +
+          tx("⚠️ 此功能僅用於清除「測試發票」紀錄。重設後可重新開立正式發票。\n") +
+          tx("若清單中包含已開立的「正式發票」，請勿使用此功能（正式發票應改用「作廢」）。"),
       )
     ) {
       return;
@@ -384,16 +386,16 @@ export default function InvoicesManage() {
         ok += 1;
       } catch (err) {
         errors.push(
-          `${inv.paymentRef}：${err instanceof Error ? err.message : "連線錯誤"}`,
+          tx("{0}：{1}", [inv.paymentRef, err instanceof Error ? txApi(err.message) : tx("連線錯誤")]),
         );
       }
     }
     setBatchBusy(false);
     await refetch();
     window.alert(
-      `重設完成：成功 ${ok} 張，失敗 ${errors.length} 張。` +
+      tx("重設完成：成功 {0} 張，失敗 {1} 張。", [ok, errors.length]) +
         (errors.length
-          ? `\n\n失敗明細：\n${errors.slice(0, 10).join("\n")}${errors.length > 10 ? "\n…" : ""}`
+          ? tx("\n\n失敗明細：\n{0}{1}", [errors.slice(0, 10).join("\n"), errors.length > 10 ? "\n…" : ""])
           : ""),
     );
   };
@@ -402,9 +404,9 @@ export default function InvoicesManage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-display">發票管理</h1>
+          <h1 className="text-3xl font-display">{tx("發票管理")}</h1>
           <p className="text-muted-foreground mt-1">
-            檢視所有電子發票開立紀錄與發票號碼，並可手動開立、重試或作廢
+            {tx("檢視所有電子發票開立紀錄與發票號碼，並可手動開立、重試或作廢")}
           </p>
         </div>
         <div className="flex items-center gap-3 self-start md:self-auto">
@@ -412,11 +414,11 @@ export default function InvoicesManage() {
             <button
               onClick={handleBulkReset}
               disabled={batchBusy || selectedResetCount === 0}
-              title="將勾選的已開立測試發票改回待開立，以便重新開立正式發票"
+              title={tx("將勾選的已開立測試發票改回待開立，以便重新開立正式發票")}
               className="border border-amber-400 text-amber-700 px-4 py-2.5 rounded-full font-semibold flex items-center gap-2 hover:bg-amber-50 transition-all disabled:opacity-50"
             >
               <RotateCcw size={16} className={batchBusy ? "animate-spin" : ""} />
-              {`重設為待開立${selectedResetCount > 0 ? `（${selectedResetCount}）` : ""}`}
+              {tx("重設為待開立{0}", [selectedResetCount > 0 ? `（${selectedResetCount}）` : ""])}
             </button>
           )}
           {canManage && (
@@ -426,7 +428,7 @@ export default function InvoicesManage() {
               className="bg-primary text-white px-4 py-2.5 rounded-full font-semibold flex items-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-50"
             >
               <ReceiptText size={16} className={batchBusy ? "animate-pulse" : ""} />
-              {batchBusy ? "開立中..." : `批量開立${selectedCount > 0 ? `（${selectedCount}）` : ""}`}
+              {batchBusy ? tx("開立中...") : tx("批量開立{0}", [selectedCount > 0 ? `（${selectedCount}）` : ""])}
             </button>
           )}
           <button
@@ -435,7 +437,7 @@ export default function InvoicesManage() {
             className="border px-4 py-2.5 rounded-full font-semibold flex items-center gap-2 hover:bg-muted transition-all disabled:opacity-50"
           >
             <RefreshCw size={16} className={isRefetching ? "animate-spin" : ""} />
-            重新整理
+            {tx("重新整理")}
           </button>
         </div>
       </div>
@@ -445,33 +447,33 @@ export default function InvoicesManage() {
         <SummaryCard
           icon={<CheckCircle2 size={22} />}
           tone="green"
-          label="已開立"
-          value={`${counts.issued} 張`}
+          label={tx("已開立")}
+          value={tx("{0} 張", [counts.issued])}
         />
         <SummaryCard
           icon={<Clock size={22} />}
           tone="amber"
-          label="待開立"
-          value={`${counts.pending} 張`}
+          label={tx("待開立")}
+          value={tx("{0} 張", [counts.pending])}
         />
         <SummaryCard
           icon={<FileWarning size={22} />}
           tone="red"
-          label="開立失敗"
-          value={`${counts.failed} 張`}
+          label={tx("開立失敗")}
+          value={tx("{0} 張", [counts.failed])}
         />
         <SummaryCard
           icon={<Ban size={22} />}
           tone="slate"
-          label="已作廢"
-          value={`${counts.voided} 張`}
+          label={tx("已作廢")}
+          value={tx("{0} 張", [counts.voided])}
         />
       </div>
 
       {/* Filters + search */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => (
+          {FILTERS().map((f) => (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
@@ -481,7 +483,7 @@ export default function InvoicesManage() {
                   : "bg-muted text-muted-foreground hover:bg-muted/70"
               }`}
             >
-              {f.label}（{counts[f.key]}）
+              {f.label}{tx("（")}{counts[f.key]}{tx("）")}
             </button>
           ))}
         </div>
@@ -493,7 +495,7 @@ export default function InvoicesManage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="搜尋發票號碼／訂單編號／買受人／統編"
+            placeholder={tx("搜尋發票號碼／訂單編號／買受人／統編")}
             className="pl-9 pr-4 py-2 rounded-full border w-full lg:w-80 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
@@ -501,11 +503,11 @@ export default function InvoicesManage() {
 
       {/* Table */}
       {isLoading ? (
-        <div className="py-20 text-center text-muted-foreground">載入中...</div>
+        <div className="py-20 text-center text-muted-foreground">{tx("載入中...")}</div>
       ) : filtered.length === 0 ? (
         <div className="py-20 text-center text-muted-foreground">
           <ReceiptText size={40} className="mx-auto mb-3 opacity-40" />
-          目前沒有符合條件的發票紀錄。
+          {tx("目前沒有符合條件的發票紀錄。")}
         </div>
       ) : (
         <div className="bg-white rounded-3xl border shadow-sm overflow-x-auto">
@@ -516,7 +518,7 @@ export default function InvoicesManage() {
                   <th className="px-4 py-3 font-semibold w-10">
                     <input
                       type="checkbox"
-                      aria-label="全選可開立／可重設發票"
+                      aria-label={tx("全選可開立／可重設發票")}
                       checked={allSelectableSelected}
                       disabled={selectableRows.length === 0 || batchBusy}
                       onChange={toggleAll}
@@ -524,15 +526,15 @@ export default function InvoicesManage() {
                     />
                   </th>
                 )}
-                <th className="px-4 py-3 font-semibold">發票號碼</th>
-                <th className="px-4 py-3 font-semibold">訂單編號</th>
-                <th className="px-4 py-3 font-semibold">買受人</th>
-                <th className="px-4 py-3 font-semibold text-right">金額</th>
-                <th className="px-4 py-3 font-semibold">類型</th>
-                <th className="px-4 py-3 font-semibold">狀態</th>
-                <th className="px-4 py-3 font-semibold">開立時間</th>
+                <th className="px-4 py-3 font-semibold">{tx("發票號碼")}</th>
+                <th className="px-4 py-3 font-semibold">{tx("訂單編號")}</th>
+                <th className="px-4 py-3 font-semibold">{tx("買受人")}</th>
+                <th className="px-4 py-3 font-semibold text-right">{tx("金額")}</th>
+                <th className="px-4 py-3 font-semibold">{tx("類型")}</th>
+                <th className="px-4 py-3 font-semibold">{tx("狀態")}</th>
+                <th className="px-4 py-3 font-semibold">{tx("開立時間")}</th>
                 {canManage && (
-                  <th className="px-4 py-3 font-semibold text-right">操作</th>
+                  <th className="px-4 py-3 font-semibold text-right">{tx("操作")}</th>
                 )}
               </tr>
             </thead>
@@ -554,7 +556,7 @@ export default function InvoicesManage() {
                         {canSelect ? (
                           <input
                             type="checkbox"
-                            aria-label={`選擇訂單 ${inv.paymentRef}`}
+                            aria-label={tx("選擇訂單 {0}", [inv.paymentRef])}
                             checked={selectedIds.has(inv.id)}
                             disabled={batchBusy}
                             onChange={() => toggleOne(inv.id)}
@@ -568,12 +570,12 @@ export default function InvoicesManage() {
                     <td className="px-4 py-3 font-mono font-semibold whitespace-nowrap">
                       {inv.invoiceNumber ?? (
                         <span className="text-muted-foreground font-sans font-normal">
-                          尚未取號
+                          {tx("尚未取號")}
                         </span>
                       )}
                       {inv.randomNumber && (
                         <span className="block text-[11px] text-muted-foreground font-sans">
-                          隨機碼 {inv.randomNumber}
+                          {tx("隨機碼")} {inv.randomNumber}
                         </span>
                       )}
                     </td>
@@ -589,7 +591,7 @@ export default function InvoicesManage() {
                       )}
                       {inv.taxId && (
                         <div className="text-xs text-muted-foreground">
-                          統編 {inv.taxId}
+                          {tx("統編")} {inv.taxId}
                           {inv.companyTitle ? `・${inv.companyTitle}` : ""}
                         </div>
                       )}
@@ -598,7 +600,7 @@ export default function InvoicesManage() {
                       {formatCurrency(inv.amount)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {TYPE_LABELS[inv.invoiceType] ?? inv.invoiceType}
+                      {TYPE_LABELS()[inv.invoiceType] ?? inv.invoiceType}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {statusBadge(inv.status)}
@@ -623,7 +625,7 @@ export default function InvoicesManage() {
                               className="inline-flex items-center gap-1 border border-primary text-primary px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-primary/10 disabled:opacity-50 whitespace-nowrap"
                             >
                               <ReceiptText size={13} />
-                              {inv.status === "failed" ? "重試開立" : "開立發票"}
+                              {inv.status === "failed" ? tx("重試開立") : tx("開立發票")}
                             </button>
                           )}
                           {isLatest && inv.status === "issued" && (
@@ -631,11 +633,11 @@ export default function InvoicesManage() {
                               <button
                                 onClick={() => handleReset(inv)}
                                 disabled={busy || batchBusy}
-                                title="清除測試發票：改回待開立"
+                                title={tx("清除測試發票：改回待開立")}
                                 className="inline-flex items-center gap-1 border border-amber-400 text-amber-700 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-amber-50 disabled:opacity-50 whitespace-nowrap"
                               >
                                 <RotateCcw size={13} />
-                                重設
+                                {tx("重設")}
                               </button>
                               <button
                                 onClick={() => handleVoid(inv)}
@@ -643,19 +645,19 @@ export default function InvoicesManage() {
                                 className="inline-flex items-center gap-1 border border-red-400 text-red-600 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
                               >
                                 <XCircle size={13} />
-                                作廢
+                                {tx("作廢")}
                               </button>
                             </>
                           )}
                           {!isLatest ? (
                             <span className="text-xs text-muted-foreground">
-                              歷史紀錄
+                              {tx("歷史紀錄")}
                             </span>
                           ) : (
                             !canIssue &&
                             inv.status !== "issued" && (
                               <span className="text-xs text-muted-foreground">
-                                {inv.paymentStatus === "paid" ? "—" : "訂單未付款"}
+                                {inv.paymentStatus === "paid" ? "—" : tx("訂單未付款")}
                               </span>
                             )
                           )}
@@ -684,6 +686,7 @@ function SummaryCard({
   label: string;
   value: string;
 }) {
+  useI18n();
   const toneClasses: Record<string, string> = {
     green: "bg-green-100 text-green-600",
     amber: "bg-amber-100 text-amber-600",

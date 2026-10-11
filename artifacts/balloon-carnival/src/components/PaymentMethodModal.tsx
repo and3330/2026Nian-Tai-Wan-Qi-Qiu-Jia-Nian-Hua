@@ -1,3 +1,4 @@
+import { tx, useI18n, txApi } from "@/lib/i18n";
 import { useState } from "react";
 import { CreditCard, Building2, X, Loader2, FileText, User, Heart, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,27 +23,27 @@ interface PaymentMethodModalProps {
   onCompleted: () => void;
 }
 
-const methodOptions: Array<{
+const methodOptions = (): Array<{
   key: Method;
   title: string;
   description: string;
   icon: typeof CreditCard;
   accent: string;
-}> = [
+}> => ([
   {
     key: "newebpay",
-    title: "藍新金流",
-    description: "信用卡 / ATM 虛擬帳號 / 超商代碼繳費（離開網站至藍新付款頁）",
+    title: tx("藍新金流"),
+    description: tx("信用卡 / ATM 虛擬帳號 / 超商代碼繳費（離開網站至藍新付款頁）"),
     icon: CreditCard,
     accent: "from-blue-500 to-indigo-500",
   },
-];
+]);
 
-const invoiceTypeOptions: Array<{ key: InvoiceType; title: string; desc: string; icon: typeof User }> = [
-  { key: "personal", title: "個人發票", desc: "可使用手機條碼或自然人憑證載具", icon: User },
-  { key: "company", title: "公司發票", desc: "需填寫 8 碼統一編號與公司抬頭", icon: Building2 },
-  { key: "donation", title: "捐贈發票", desc: "捐贈給社福團體，需填寫愛心碼", icon: Heart },
-];
+const invoiceTypeOptions = (): Array<{ key: InvoiceType; title: string; desc: string; icon: typeof User }> => ([
+  { key: "personal", title: tx("個人發票"), desc: tx("可使用手機條碼或自然人憑證載具"), icon: User },
+  { key: "company", title: tx("公司發票"), desc: tx("需填寫 8 碼統一編號與公司抬頭"), icon: Building2 },
+  { key: "donation", title: tx("捐贈發票"), desc: tx("捐贈給社福團體，需填寫愛心碼"), icon: Heart },
+]);
 
 function submitFormRedirect(apiUrl: string, params: Record<string, string>) {
   const form = document.createElement("form");
@@ -70,6 +71,7 @@ export function PaymentMethodModal({
   onClose,
   onCompleted,
 }: PaymentMethodModalProps) {
+  useI18n();
   const [selected, setSelected] = useState<Method | null>("newebpay");
   const [email, setEmail] = useState(defaultEmail || "");
   const [error, setError] = useState<string | null>(null);
@@ -91,11 +93,11 @@ export function PaymentMethodModal({
   const handleConfirm = async () => {
     setError(null);
     if (!selected) {
-      setError("請選擇一種付款方式");
+      setError(tx("請選擇一種付款方式"));
       return;
     }
     if (!email.trim() && !payerPhone.trim()) {
-      setError("電子發票需要 Email 或手機其中一項，請填寫 Email");
+      setError(tx("電子發票需要 Email 或手機其中一項，請填寫 Email"));
       return;
     }
 
@@ -104,25 +106,25 @@ export function PaymentMethodModal({
       invoicePayload.carrierType = carrierType || "";
       if (carrierType === "phone_barcode" || carrierType === "citizen_certificate") {
         if (!carrierNum.trim()) {
-          setError(carrierType === "phone_barcode" ? "請輸入手機條碼" : "請輸入自然人憑證");
+          setError(carrierType === "phone_barcode" ? tx("請輸入手機條碼") : tx("請輸入自然人憑證"));
           return;
         }
         invoicePayload.carrierNum = carrierNum.trim().toUpperCase();
       }
     } else if (invoiceType === "company") {
       if (!/^\d{8}$/.test(taxId.trim())) {
-        setError("請輸入 8 碼統一編號");
+        setError(tx("請輸入 8 碼統一編號"));
         return;
       }
       if (!companyTitle.trim()) {
-        setError("請輸入公司抬頭");
+        setError(tx("請輸入公司抬頭"));
         return;
       }
       invoicePayload.taxId = taxId.trim();
       invoicePayload.companyTitle = companyTitle.trim();
     } else {
       if (!loveCode.trim()) {
-        setError("請輸入捐贈愛心碼");
+        setError(tx("請輸入捐贈愛心碼"));
         return;
       }
       invoicePayload.loveCode = loveCode.trim();
@@ -146,9 +148,9 @@ export function PaymentMethodModal({
         window.location.assign(result.url);
         return;
       }
-      setError("未收到有效的付款資訊，請稍後再試。");
+      setError(tx("未收到有效的付款資訊，請稍後再試。"));
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "付款初始化失敗，請稍後再試";
+      const message = err instanceof Error ? txApi(err.message) : tx("付款初始化失敗，請稍後再試");
       setError(message);
     }
   };
@@ -158,14 +160,14 @@ export function PaymentMethodModal({
       <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full my-8 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div>
-            <h3 className="text-xl font-bold">付款方式</h3>
+            <h3 className="text-xl font-bold">{tx("付款方式")}</h3>
             <p className="text-sm text-muted-foreground mt-0.5">{itemLabel}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-full p-2 text-muted-foreground hover:bg-muted"
-            aria-label="關閉"
+            aria-label={tx("關閉")}
             data-testid="payment-modal-close"
           >
             <X size={20} />
@@ -175,7 +177,7 @@ export function PaymentMethodModal({
         <div className="px-6 py-5">
           <div className="bg-muted/40 rounded-2xl p-4 mb-5 flex items-center justify-between">
             <div>
-              <div className="text-xs text-muted-foreground">應付金額</div>
+              <div className="text-xs text-muted-foreground">{tx("應付金額")}</div>
               <div className="text-3xl font-bold text-primary" data-testid="payment-amount">NT$ {amount.toLocaleString()}</div>
             </div>
             <div className="text-right text-sm text-muted-foreground">
@@ -185,7 +187,7 @@ export function PaymentMethodModal({
           </div>
 
           <div className="space-y-3 mb-5">
-                {methodOptions.map((opt) => {
+                {methodOptions().map((opt) => {
                   const Icon = opt.icon;
                   const active = selected === opt.key;
                   return (
@@ -225,7 +227,7 @@ export function PaymentMethodModal({
               </div>
 
               <div className="mb-4">
-                <label className="text-xs font-bold text-muted-foreground mb-1 block">電子郵件（用於付款收據與發票寄送）</label>
+                <label className="text-xs font-bold text-muted-foreground mb-1 block">{tx("電子郵件（用於付款收據與發票寄送）")}</label>
                 <input
                   type="email"
                   value={email}
@@ -239,10 +241,10 @@ export function PaymentMethodModal({
               {/* ECPay invoice section */}
               <div className="border-2 border-dashed border-border rounded-2xl p-4 mb-4 bg-muted/20">
                 <div className="flex items-center gap-2 mb-3 text-sm font-bold">
-                  <FileText size={16} className="text-primary" /> 電子發票（綠界）
+                  <FileText size={16} className="text-primary" /> {tx("電子發票（綠界）")}
                 </div>
                 <div className="grid grid-cols-3 gap-2 mb-3">
-                  {invoiceTypeOptions.map((opt) => {
+                  {invoiceTypeOptions().map((opt) => {
                     const Icon = opt.icon;
                     const active = invoiceType === opt.key;
                     return (
@@ -265,7 +267,7 @@ export function PaymentMethodModal({
                   })}
                 </div>
                 <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                  {invoiceTypeOptions.find((o) => o.key === invoiceType)?.desc}
+                  {invoiceTypeOptions().find((o) => o.key === invoiceType)?.desc}
                 </p>
 
                 {invoiceType === "personal" && (
@@ -279,10 +281,10 @@ export function PaymentMethodModal({
                       className="w-full px-3 py-2 rounded-lg bg-white border-2 border-border focus:outline-none focus:border-primary text-sm"
                       data-testid="invoice-carrier-type"
                     >
-                      <option value="phone_barcode">手機條碼載具</option>
-                      <option value="citizen_certificate">自然人憑證</option>
-                      <option value="ecpay_carrier">綠界會員載具</option>
-                      <option value="">紙本發票</option>
+                      <option value="phone_barcode">{tx("手機條碼載具")}</option>
+                      <option value="citizen_certificate">{tx("自然人憑證")}</option>
+                      <option value="ecpay_carrier">{tx("綠界會員載具")}</option>
+                      <option value="">{tx("紙本發票")}</option>
                     </select>
                     {(carrierType === "phone_barcode" || carrierType === "citizen_certificate") && (
                       <div className="relative">
@@ -292,8 +294,8 @@ export function PaymentMethodModal({
                           onChange={(e) => setCarrierNum(e.target.value)}
                           placeholder={
                             carrierType === "phone_barcode"
-                              ? "/ABC+123（共 8 碼）"
-                              : "AB12345678901234（共 16 碼）"
+                              ? tx("/ABC+123（共 8 碼）")
+                              : tx("AB12345678901234（共 16 碼）")
                           }
                           className="w-full pl-9 pr-3 py-2 rounded-lg bg-white border-2 border-border focus:outline-none focus:border-primary text-sm font-mono uppercase"
                           data-testid="invoice-carrier-num"
@@ -308,14 +310,14 @@ export function PaymentMethodModal({
                     <input
                       value={taxId}
                       onChange={(e) => setTaxId(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                      placeholder="統一編號（8 碼）"
+                      placeholder={tx("統一編號（8 碼）")}
                       className="w-full px-3 py-2 rounded-lg bg-white border-2 border-border focus:outline-none focus:border-primary text-sm font-mono"
                       data-testid="invoice-tax-id"
                     />
                     <input
                       value={companyTitle}
                       onChange={(e) => setCompanyTitle(e.target.value)}
-                      placeholder="公司抬頭"
+                      placeholder={tx("公司抬頭")}
                       className="w-full px-3 py-2 rounded-lg bg-white border-2 border-border focus:outline-none focus:border-primary text-sm"
                       data-testid="invoice-company-title"
                     />
@@ -326,7 +328,7 @@ export function PaymentMethodModal({
                   <input
                     value={loveCode}
                     onChange={(e) => setLoveCode(e.target.value.replace(/\D/g, "").slice(0, 7))}
-                    placeholder="愛心碼（3-7 碼數字，例如：168001）"
+                    placeholder={tx("愛心碼（3-7 碼數字，例如：168001）")}
                     className="w-full px-3 py-2 rounded-lg bg-white border-2 border-border focus:outline-none focus:border-primary text-sm font-mono"
                     data-testid="invoice-love-code"
                   />
@@ -348,10 +350,10 @@ export function PaymentMethodModal({
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 size={18} className="animate-spin" /> 處理中…
+                    <Loader2 size={18} className="animate-spin" /> {tx("處理中…")}
                   </>
                 ) : (
-                  "確認付款"
+                  tx("確認付款")
                 )}
               </button>
         </div>

@@ -1,3 +1,4 @@
+import { tx, getLocale, useI18n, txApi } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
@@ -28,16 +29,17 @@ interface RefundStatusRow {
   createdAt: string;
 }
 
-const REFUND_STATUS_LABEL: Record<string, string> = {
-  pending: "處理中",
-  approved: "已退票",
-  rejected: "已拒絕",
-  rescheduled: "已改期",
-};
+const REFUND_STATUS_LABEL = (): Record<string, string> => ({
+  pending: tx("處理中"),
+  approved: tx("已退票"),
+  rejected: tx("已拒絕"),
+  rescheduled: tx("已改期"),
+});
 
 const QR_BASE = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/qr`;
 
 export default function OrderLookupPage() {
+  useI18n();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -58,18 +60,18 @@ export default function OrderLookupPage() {
   const orders = data?.orders ?? [];
   const phoneDigits = phone.replace(/\D/g, "");
   const errorMessage =
-    lookup.error && (lookup.error as { data?: { error?: string } }).data?.error;
+    lookup.error && txApi((lookup.error as { data?: { error?: string } }).data?.error);
 
   return (
     <div className="min-h-[70vh] py-12 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-bold mb-4">
-            <Search size={16} /> 訂單查詢
+            <Search size={16} /> {tx("訂單查詢")}
           </div>
-          <h1 className="text-3xl md:text-4xl font-display font-bold mb-3">查詢我的訂單</h1>
+          <h1 className="text-3xl md:text-4xl font-display font-bold mb-3">{tx("查詢我的訂單")}</h1>
           <p className="text-muted-foreground">
-            輸入購票時填寫的姓名、手機號碼與 Email，即可查看付款狀態、QR Code 與發票資訊
+            {tx("輸入購票時填寫的姓名、手機號碼與 Email，即可查看付款狀態、QR Code 與發票資訊")}
           </p>
         </div>
 
@@ -81,14 +83,14 @@ export default function OrderLookupPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-bold mb-2" htmlFor="lookup-name">
-                姓名
+                {tx("姓名")}
               </label>
               <input
                 id="lookup-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="購票時填寫的姓名"
+                placeholder={tx("購票時填寫的姓名")}
                 className="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none"
                 required
                 data-testid="input-lookup-name"
@@ -97,14 +99,14 @@ export default function OrderLookupPage() {
 
             <div>
               <label className="block text-sm font-bold mb-2" htmlFor="lookup-phone">
-                手機號碼
+                {tx("手機號碼")}
               </label>
               <input
                 id="lookup-phone"
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="例如：0912345678"
+                placeholder={tx("例如：0912345678")}
                 className="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none"
                 required
                 data-testid="input-lookup-phone"
@@ -120,13 +122,13 @@ export default function OrderLookupPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="購票時填寫的 Email"
+                placeholder={tx("購票時填寫的 Email")}
                 className="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none"
                 required
                 data-testid="input-lookup-email"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                為保護您的個資，需要同時提供姓名、手機號碼與 Email 才能查詢。
+                {tx("為保護您的個資，需要同時提供姓名、手機號碼與 Email 才能查詢。")}
               </p>
             </div>
 
@@ -138,11 +140,11 @@ export default function OrderLookupPage() {
             >
               {lookup.isPending ? (
                 <>
-                  <Loader2 size={18} className="animate-spin" /> 查詢中…
+                  <Loader2 size={18} className="animate-spin" /> {tx("查詢中…")}
                 </>
               ) : (
                 <>
-                  <Search size={18} /> 查詢訂單
+                  <Search size={18} /> {tx("查詢訂單")}
                 </>
               )}
             </button>
@@ -152,7 +154,7 @@ export default function OrderLookupPage() {
         {lookup.isError && submitted && (
           <div className="bg-destructive/5 border-2 border-destructive/20 rounded-2xl p-6 text-center" data-testid="lookup-error">
             <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-2" />
-            <p className="text-destructive font-bold">{errorMessage || "查詢失敗，請稍後再試"}</p>
+            <p className="text-destructive font-bold">{errorMessage || tx("查詢失敗，請稍後再試")}</p>
           </div>
         )}
 
@@ -160,7 +162,7 @@ export default function OrderLookupPage() {
           <div className="space-y-6">
             {orders.length > 1 && (
               <p className="text-sm text-muted-foreground text-center" data-testid="lookup-order-count">
-                共找到 {orders.length} 筆訂單
+                {tx("共找到 {0} 筆訂單", [orders.length])}
               </p>
             )}
             {orders.map((order) => (
@@ -174,7 +176,7 @@ export default function OrderLookupPage() {
             href="/"
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary text-sm"
           >
-            <Home size={14} /> 返回首頁
+            <Home size={14} /> {tx("返回首頁")}
           </Link>
         </div>
       </div>
@@ -189,6 +191,7 @@ function OrderResultCard({
   data: OrderLookupResult;
   contact: string;
 }) {
+  useI18n();
   const isPaid = data.status === "paid";
   const isAwaitingTransfer = data.status === "awaiting_transfer";
   const [refundOpen, setRefundOpen] = useState(false);
@@ -233,7 +236,7 @@ function OrderResultCard({
             )}
             <div>
               <h2 className="text-xl font-bold">
-                {isPaid ? "已付款" : isAwaitingTransfer ? "等待匯款" : statusLabel(data.status)}
+                {isPaid ? tx("已付款") : isAwaitingTransfer ? tx("等待匯款") : statusLabel(data.status)}
               </h2>
               <p className="text-sm text-muted-foreground font-mono">{data.paymentRef}</p>
             </div>
@@ -249,23 +252,23 @@ function OrderResultCard({
         {isAwaitingTransfer && data.bankInfo && (
           <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 space-y-2">
             <h3 className="font-bold flex items-center gap-2">
-              <Banknote size={18} /> 匯款資訊
+              <Banknote size={18} /> {tx("匯款資訊")}
             </h3>
             <div className="text-sm space-y-1">
-              <Row label="銀行" value={data.bankInfo.bankName ?? "-"} />
-              <Row label="戶名" value={data.bankInfo.accountName ?? "-"} />
-              <Row label="帳號" value={data.bankInfo.accountNumber ?? "-"} mono />
-              <Row label="金額" value={`NT$ ${data.amount.toLocaleString()}`} />
+              <Row label={tx("銀行")} value={data.bankInfo.bankName ?? "-"} />
+              <Row label={tx("戶名")} value={data.bankInfo.accountName ?? "-"} />
+              <Row label={tx("帳號")} value={data.bankInfo.accountNumber ?? "-"} mono />
+              <Row label={tx("金額")} value={`NT$ ${data.amount.toLocaleString()}`} />
             </div>
             <p className="text-xs text-amber-800 mt-2">
-              匯款後請保留收據，工作人員確認入帳後會自動寄發票券確認信。
+              {tx("匯款後請保留收據，工作人員確認入帳後會自動寄發票券確認信。")}
             </p>
           </div>
         )}
 
         <div>
           <h3 className="font-bold mb-3 flex items-center gap-2">
-            <Ticket size={18} /> 票券（{data.registrations.length} 張票）
+            <Ticket size={18} /> {tx("票券（{0} 張票）", [data.registrations.length])}
           </h3>
           <div className="space-y-3">
             {data.registrations.map((r) => (
@@ -277,18 +280,18 @@ function OrderResultCard({
         {data.invoice && (
           <div>
             <h3 className="font-bold mb-3 flex items-center gap-2">
-              <Receipt size={18} /> 電子發票
+              <Receipt size={18} /> {tx("電子發票")}
             </h3>
             <div className="bg-slate-50 rounded-xl p-4 text-sm space-y-1">
-              <Row label="狀態" value={invoiceStatusLabel(data.invoice.status)} />
+              <Row label={tx("狀態")} value={invoiceStatusLabel(data.invoice.status)} />
               {data.invoice.invoiceNumber && (
-                <Row label="發票號碼" value={data.invoice.invoiceNumber} mono />
+                <Row label={tx("發票號碼")} value={data.invoice.invoiceNumber} mono />
               )}
               {data.invoice.invoiceDate && (
-                <Row label="開立日期" value={data.invoice.invoiceDate.split("+")[0] ?? data.invoice.invoiceDate} />
+                <Row label={tx("開立日期")} value={data.invoice.invoiceDate.split("+")[0] ?? data.invoice.invoiceDate} />
               )}
               {data.invoice.randomNumber && (
-                <Row label="隨機碼" value={data.invoice.randomNumber} mono />
+                <Row label={tx("隨機碼")} value={data.invoice.randomNumber} mono />
               )}
               {data.invoice.status === "failed" && data.invoice.errorMessage && (
                 <p className="text-xs text-destructive mt-2">{data.invoice.errorMessage}</p>
@@ -300,26 +303,26 @@ function OrderResultCard({
         {refunds.length > 0 && (
           <div>
             <h3 className="font-bold mb-3 flex items-center gap-2">
-              <Undo2 size={18} /> 退票紀錄
+              <Undo2 size={18} /> {tx("退票紀錄")}
             </h3>
             <div className="space-y-2">
               {refunds.map((r) => (
                 <div key={r.id} className="border-2 rounded-xl p-3 text-sm" data-testid={`refund-status-${r.id}`}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="font-bold">
-                      申請 #{r.id} ·{" "}
+                      {tx("申請 #")}{r.id} ·{" "}
                       <span className={
                         r.status === "approved" ? "text-emerald-600" :
                         r.status === "rejected" ? "text-gray-500" :
                         r.status === "rescheduled" ? "text-sky-600" : "text-amber-600"
                       }>
-                        {REFUND_STATUS_LABEL[r.status]}
+                        {REFUND_STATUS_LABEL()[r.status]}
                       </span>
                     </div>
-                    <div className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleString("zh-TW")}</div>
+                    <div className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleString(getLocale())}</div>
                   </div>
                   {r.adminNote && (
-                    <div className="text-xs mt-1 bg-slate-50 rounded px-2 py-1">客服回覆：{r.adminNote}</div>
+                    <div className="text-xs mt-1 bg-slate-50 rounded px-2 py-1">{tx("客服回覆：")}{r.adminNote}</div>
                   )}
                 </div>
               ))}
@@ -333,13 +336,13 @@ function OrderResultCard({
             data-testid="button-open-refund"
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-destructive/30 text-destructive font-bold hover:bg-destructive/5"
           >
-            <Undo2 size={16} /> 申請退票
+            <Undo2 size={16} /> {tx("申請退票")}
           </button>
         )}
 
         <div className="text-xs text-muted-foreground bg-slate-50 rounded-xl p-3 leading-relaxed">
-          <strong>個資保護提醒：</strong>
-          為保護您的個人資料，Email 與手機號碼僅顯示部分字元。如需完整資訊或修改訂單，請來電 02-2368-0623 或寄信至 contact@balloon-carnival.tw。
+          <strong>{tx("個資保護提醒：")}</strong>
+          {tx("為保護您的個人資料，Email 與手機號碼僅顯示部分字元。如需完整資訊或修改訂單，請來電 02-2368-0623 或寄信至 contact@balloon-carnival.tw。")}
         </div>
       </div>
 
@@ -373,6 +376,7 @@ function orderTotalHeads(regs: OrderLookupRegistration[]): number {
 function RefundModal({
   paymentRef, contact, totalHeads, orderAmount, onClose, onSubmitted,
 }: { paymentRef: string; contact: string; totalHeads: number; orderAmount: number; onClose: () => void; onSubmitted: () => void }) {
+  useI18n();
   const { toast } = useToast();
   const [reason, setReason] = useState("");
   const [count, setCount] = useState(totalHeads);
@@ -386,7 +390,7 @@ function RefundModal({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (reason.trim().length < 5) {
-      toast({ variant: "destructive", title: "請填寫退票原因（至少 5 字）" });
+      toast({ variant: "destructive", title: tx("請填寫退票原因（至少 5 字）") });
       return;
     }
     setBusy(true);
@@ -397,11 +401,11 @@ function RefundModal({
         body: JSON.stringify({ paymentRef, contact, reason: reason.trim(), ticketCount: count }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "申請失敗");
-      toast({ title: "已送出退票申請", description: data.message ?? "工作人員將於 3 個工作天內處理。" });
+      if (!res.ok) throw new Error(txApi(data?.error) || tx("申請失敗"));
+      toast({ title: tx("已送出退票申請"), description: txApi(data.message) ?? tx("工作人員將於 3 個工作天內處理。") });
       onSubmitted();
     } catch (err) {
-      toast({ variant: "destructive", title: "申請失敗", description: (err as Error).message });
+      toast({ variant: "destructive", title: tx("申請失敗"), description: txApi((err as Error).message) });
     } finally { setBusy(false); }
   };
 
@@ -415,17 +419,17 @@ function RefundModal({
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="font-display text-xl">申請退票</h3>
+            <h3 className="font-display text-xl">{tx("申請退票")}</h3>
             <p className="text-xs text-muted-foreground mt-1 font-mono">{paymentRef}</p>
           </div>
           <button type="button" onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground"><X size={18} /></button>
         </div>
         <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-900 leading-relaxed">
-          送出申請後將由客服人員審核，預計 3 個工作天內回覆。已退款的票券無法再申請退票。
+          {tx("送出申請後將由客服人員審核，預計 3 個工作天內回覆。已退款的票券無法再申請退票。")}
         </div>
         {totalHeads > 1 && (
           <label className="block text-sm">
-            <span className="block mb-1 font-bold">退票張數 *</span>
+            <span className="block mb-1 font-bold">{tx("退票張數 *")}</span>
             <select
               value={count}
               onChange={(e) => setCount(Number(e.target.value))}
@@ -434,18 +438,18 @@ function RefundModal({
             >
               {Array.from({ length: totalHeads }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n}>
-                  {n === totalHeads ? `${n} 張（全部退票）` : `${n} 張`}
+                  {n === totalHeads ? tx("{0} 張（全部退票）", [n]) : tx("{0} 張", [n])}
                 </option>
               ))}
             </select>
             <div className="text-xs text-muted-foreground mt-1">
-              預估退款金額：NT$ {estimatedRefund.toLocaleString()}
-              {count < totalHeads && "（部分退票，其餘票券仍然有效）"}
+              {tx("預估退款金額：NT$")} {estimatedRefund.toLocaleString()}
+              {count < totalHeads && tx("（部分退票，其餘票券仍然有效）")}
             </div>
           </label>
         )}
         <label className="block text-sm">
-          <span className="block mb-1 font-bold">退票原因 *</span>
+          <span className="block mb-1 font-bold">{tx("退票原因 *")}</span>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -454,7 +458,7 @@ function RefundModal({
             required
             data-testid="input-refund-reason"
             className="w-full px-3 py-2 border-2 rounded-xl focus:border-primary focus:outline-none"
-            placeholder="請簡要說明無法出席的原因…"
+            placeholder={tx("請簡要說明無法出席的原因…")}
           />
           <div className="text-xs text-muted-foreground mt-1 text-right">{reason.length}/500</div>
         </label>
@@ -465,7 +469,7 @@ function RefundModal({
             data-testid="button-submit-refund"
             className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-destructive text-white font-bold hover:opacity-90 disabled:opacity-50"
           >
-            {busy ? <Loader2 size={16} className="animate-spin" /> : <Undo2 size={16} />} 送出申請
+            {busy ? <Loader2 size={16} className="animate-spin" /> : <Undo2 size={16} />} {tx("送出申請")}
           </button>
           <button
             type="button"
@@ -473,7 +477,7 @@ function RefundModal({
             disabled={busy}
             className="px-4 py-3 rounded-xl border-2 font-bold hover:bg-muted"
           >
-            取消
+            {tx("取消")}
           </button>
         </div>
       </form>
@@ -482,6 +486,7 @@ function RefundModal({
 }
 
 function RegistrationItem({ reg }: { reg: OrderLookupRegistration }) {
+  useI18n();
   const isPaid = reg.paymentStatus === "paid";
   const checkedIn = !!reg.checkedInAt;
   return (
@@ -517,7 +522,7 @@ function RegistrationItem({ reg }: { reg: OrderLookupRegistration }) {
 
       {checkedIn && (
         <div className="bg-emerald-50 text-emerald-700 text-xs px-3 py-2 rounded-lg flex items-center gap-2 mb-3">
-          <ScanLine size={14} /> 已於 {new Date(reg.checkedInAt!).toLocaleString("zh-TW")} 完成入場
+          <ScanLine size={14} /> {tx("已於 {0} 完成入場", [new Date(reg.checkedInAt!).toLocaleString(getLocale())])}
         </div>
       )}
 
@@ -525,11 +530,11 @@ function RegistrationItem({ reg }: { reg: OrderLookupRegistration }) {
         <div className="flex flex-col items-center bg-slate-50 rounded-xl p-4">
           <img
             src={`${QR_BASE}/${reg.qrToken}`}
-            alt="入場 QR Code"
+            alt={tx("入場 QR Code")}
             className="w-44 h-44 bg-white rounded-lg border"
             data-testid={`qr-${reg.id}`}
           />
-          <p className="text-xs text-muted-foreground mt-2">活動當天請出示此 QR Code 給工作人員掃描</p>
+          <p className="text-xs text-muted-foreground mt-2">{tx("活動當天請出示此 QR Code 給工作人員掃描")}</p>
         </div>
       ) : (
         <div className="text-xs text-muted-foreground bg-slate-50 rounded-lg px-3 py-2 text-center">
@@ -541,6 +546,7 @@ function RegistrationItem({ reg }: { reg: OrderLookupRegistration }) {
 }
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  useI18n();
   return (
     <div className="flex justify-between gap-4">
       <span className="text-muted-foreground">{label}</span>
@@ -550,39 +556,39 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
 }
 
 function providerLabel(p: string) {
-  if (p === "newebpay") return "藍新金流";
-  if (p === "stripe") return "Stripe 信用卡";
-  if (p === "bank") return "銀行轉帳";
-  if (p === "manual") return "現場 / 人工建立";
+  if (p === "newebpay") return tx("藍新金流");
+  if (p === "stripe") return tx("Stripe 信用卡");
+  if (p === "bank") return tx("銀行轉帳");
+  if (p === "manual") return tx("現場 / 人工建立");
   return p;
 }
 
 function statusLabel(s: string) {
-  if (s === "paid") return "已付款";
-  if (s === "pending") return "處理中";
-  if (s === "awaiting_transfer") return "等待匯款";
-  if (s === "failed") return "失敗";
+  if (s === "paid") return tx("已付款");
+  if (s === "pending") return tx("處理中");
+  if (s === "awaiting_transfer") return tx("等待匯款");
+  if (s === "failed") return tx("失敗");
   return s;
 }
 
 function ticketTypeLabel(t: string | null | undefined) {
-  if (t === "single") return "單日票";
-  if (t === "combo") return "兩日套票";
-  if (t === "conference") return "研討會票";
-  return t || "票券";
+  if (t === "single") return tx("單日票");
+  if (t === "combo") return tx("兩日套票");
+  if (t === "conference") return tx("研討會票");
+  return t || tx("票券");
 }
 
 function invoiceStatusLabel(s?: string | null) {
-  if (s === "issued") return "已開立";
-  if (s === "pending") return "等待開立";
-  if (s === "failed") return "開立失敗";
-  if (s === "voided") return "已作廢";
+  if (s === "issued") return tx("已開立");
+  if (s === "pending") return tx("等待開立");
+  if (s === "failed") return tx("開立失敗");
+  if (s === "voided") return tx("已作廢");
   return s || "—";
 }
 
 function paymentStatusMessage(s: string) {
-  if (s === "awaiting_transfer") return "完成匯款後票券會在這裡顯示";
-  if (s === "pending") return "付款處理中，請稍候";
-  if (s === "failed") return "付款失敗，請重新購買或聯絡客服";
-  return "票券將在付款完成後顯示";
+  if (s === "awaiting_transfer") return tx("完成匯款後票券會在這裡顯示");
+  if (s === "pending") return tx("付款處理中，請稍候");
+  if (s === "failed") return tx("付款失敗，請重新購買或聯絡客服");
+  return tx("票券將在付款完成後顯示");
 }

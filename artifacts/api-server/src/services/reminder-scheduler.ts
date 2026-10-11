@@ -4,7 +4,7 @@ import { logger } from "../lib/logger";
 import {
   buildRegistrationVars,
   getTemplate,
-  renderTemplate,
+  renderBuyerEmail,
   sendEmail,
 } from "./email-service";
 
@@ -46,8 +46,7 @@ export async function processReminders(now: Date = new Date()): Promise<{ week: 
         const tpl = await getTemplate("week_reminder");
         const result = await sendEmail({
           to: reg.email!,
-          subject: renderTemplate(tpl.subject, vars),
-          body: renderTemplate(tpl.body, vars),
+          ...renderBuyerEmail("week_reminder", tpl, vars),
           qrImageUrl: vars.qrUrl,
         });
         if (result.delivered) {
@@ -67,8 +66,7 @@ export async function processReminders(now: Date = new Date()): Promise<{ week: 
         const tpl = await getTemplate("day_reminder");
         const result = await sendEmail({
           to: reg.email!,
-          subject: renderTemplate(tpl.subject, vars),
-          body: renderTemplate(tpl.body, vars),
+          ...renderBuyerEmail("day_reminder", tpl, vars),
           qrImageUrl: vars.qrUrl,
         });
         if (result.delivered) {

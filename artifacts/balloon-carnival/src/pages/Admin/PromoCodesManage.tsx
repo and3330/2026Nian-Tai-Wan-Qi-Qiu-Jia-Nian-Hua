@@ -1,3 +1,4 @@
+import { tx, useI18n, getLang, txApi } from "@/lib/i18n";
 import { useState, useEffect, useCallback } from "react";
 import { Redirect } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -19,14 +20,14 @@ interface PromoCodeRow {
   createdAt: string;
 }
 
-const TICKET_TYPES = [
-  { value: "", label: "全部票種" },
-  { value: "single", label: "單日票 (NT$200)" },
-  { value: "combo", label: "兩日套票 (NT$300)" },
-  { value: "four-day-pass", label: "四日通票 (NT$12000)" },
-  { value: "workshop", label: "工作坊 (NT$8000)" },
-  { value: "competition", label: "比賽 (NT$5000)" },
-];
+const TICKET_TYPES = () => ([
+  { value: "", label: tx("全部票種") },
+  { value: "single", label: tx("單日票 (NT$200)") },
+  { value: "combo", label: tx("兩日套票 (NT$300)") },
+  { value: "four-day-pass", label: tx("四日通票 (NT$12000)") },
+  { value: "workshop", label: tx("工作坊 (NT$8000)") },
+  { value: "competition", label: tx("比賽 (NT$5000)") },
+]);
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -35,7 +36,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  if (!res.ok) throw new Error(txApi(data?.error) || `HTTP ${res.status}`);
   return data as T;
 }
 
@@ -92,6 +93,7 @@ function formToBody(f: FormState) {
 }
 
 export default function AdminPromoCodesManage() {
+  useI18n();
   const { hasRole, isLoading } = useAuth();
   const { toast } = useToast();
 
@@ -107,11 +109,11 @@ export default function AdminPromoCodesManage() {
       const data = await api<PromoCodeRow[]>("/admin/promo-codes");
       setRows(data);
     } catch (e) {
-      toast({ variant: "destructive", title: "載入失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("載入失敗"), description: txApi((e as Error).message) });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, getLang()]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -129,28 +131,28 @@ export default function AdminPromoCodesManage() {
       const body = formToBody(form);
       if (editingId === "new") {
         await api("/admin/promo-codes", { method: "POST", body: JSON.stringify(body) });
-        toast({ title: "已建立優惠碼" });
+        toast({ title: tx("已建立優惠碼") });
       } else if (typeof editingId === "number") {
         await api(`/admin/promo-codes/${editingId}`, { method: "PUT", body: JSON.stringify(body) });
-        toast({ title: "已更新優惠碼" });
+        toast({ title: tx("已更新優惠碼") });
       }
       cancel();
       refresh();
     } catch (err) {
-      toast({ variant: "destructive", title: "儲存失敗", description: (err as Error).message });
+      toast({ variant: "destructive", title: tx("儲存失敗"), description: txApi((err as Error).message) });
     } finally {
       setSubmitting(false);
     }
   };
 
   const onDelete = async (r: PromoCodeRow) => {
-    if (!window.confirm(`確定刪除優惠碼「${r.code}」？已使用 ${r.usedCount} 次。`)) return;
+    if (!window.confirm(tx("確定刪除優惠碼「{0}」？已使用 {1} 次。", [r.code, r.usedCount]))) return;
     try {
       await api(`/admin/promo-codes/${r.id}`, { method: "DELETE" });
-      toast({ title: "已刪除" });
+      toast({ title: tx("已刪除") });
       refresh();
     } catch (err) {
-      toast({ variant: "destructive", title: "刪除失敗", description: (err as Error).message });
+      toast({ variant: "destructive", title: tx("刪除失敗"), description: txApi((err as Error).message) });
     }
   };
 
@@ -161,8 +163,8 @@ export default function AdminPromoCodesManage() {
     <div className="space-y-8">
       <header className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl mb-2">優惠碼管理</h1>
-          <p className="text-sm text-muted-foreground">建立折扣碼供購票時使用，可設定百分比或固定金額、適用票種、使用次數上限與有效期間。</p>
+          <h1 className="font-display text-3xl mb-2">{tx("優惠碼管理")}</h1>
+          <p className="text-sm text-muted-foreground">{tx("建立折扣碼供購票時使用，可設定百分比或固定金額、適用票種、使用次數上限與有效期間。")}</p>
         </div>
         {editingId === null && (
           <button
@@ -170,17 +172,17 @@ export default function AdminPromoCodesManage() {
             data-testid="button-new-promo"
             className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90"
           >
-            <Plus size={16} /> 新增優惠碼
+            <Plus size={16} /> {tx("新增優惠碼")}
           </button>
         )}
       </header>
 
       {editingId !== null && (
         <section className="bg-white rounded-2xl p-6 border shadow-sm">
-          <h2 className="font-medium text-lg mb-4">{editingId === "new" ? "新增優惠碼" : `編輯優惠碼 #${editingId}`}</h2>
+          <h2 className="font-medium text-lg mb-4">{editingId === "new" ? tx("新增優惠碼") : tx("編輯優惠碼 #{0}", [editingId])}</h2>
           <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="text-sm">
-              <span className="block mb-1 font-medium">優惠碼 * (英數 2-32 字)</span>
+              <span className="block mb-1 font-medium">{tx("優惠碼 * (英數 2-32 字)")}</span>
               <input
                 required minLength={2} maxLength={32}
                 pattern="[A-Za-z0-9_\-]+"
@@ -189,32 +191,32 @@ export default function AdminPromoCodesManage() {
                 disabled={editingId !== "new"}
                 data-testid="input-promo-code"
                 className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary uppercase disabled:bg-muted"
-                placeholder="例如：EARLYBIRD"
+                placeholder={tx("例如：EARLYBIRD")}
               />
             </label>
             <label className="text-sm">
-              <span className="block mb-1 font-medium">說明（內部備註）</span>
+              <span className="block mb-1 font-medium">{tx("說明（內部備註）")}</span>
               <input
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="例如：早鳥 9 折優惠"
+                placeholder={tx("例如：早鳥 9 折優惠")}
               />
             </label>
             <label className="text-sm">
-              <span className="block mb-1 font-medium">折扣類型 *</span>
+              <span className="block mb-1 font-medium">{tx("折扣類型 *")}</span>
               <select
                 value={form.discountType}
                 onChange={(e) => setForm({ ...form, discountType: e.target.value as "percent" | "fixed" })}
                 className="w-full px-3 py-2 rounded-lg border bg-white focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <option value="percent">百分比 (%)</option>
-                <option value="fixed">固定金額 (NT$)</option>
+                <option value="percent">{tx("百分比 (%)")}</option>
+                <option value="fixed">{tx("固定金額 (NT$)")}</option>
               </select>
             </label>
             <label className="text-sm">
               <span className="block mb-1 font-medium">
-                折扣值 * {form.discountType === "percent" ? "(1-100)" : "(NT$)"}
+                {tx("折扣值 *")} {form.discountType === "percent" ? "(1-100)" : "(NT$)"}
               </span>
               <input
                 required type="number" min={1}
@@ -226,27 +228,27 @@ export default function AdminPromoCodesManage() {
               />
             </label>
             <label className="text-sm">
-              <span className="block mb-1 font-medium">適用票種</span>
+              <span className="block mb-1 font-medium">{tx("適用票種")}</span>
               <select
                 value={form.appliesTo}
                 onChange={(e) => setForm({ ...form, appliesTo: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border bg-white focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {TICKET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                {TICKET_TYPES().map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </label>
             <label className="text-sm">
-              <span className="block mb-1 font-medium">使用次數上限（留空＝無上限）</span>
+              <span className="block mb-1 font-medium">{tx("使用次數上限（留空＝無上限）")}</span>
               <input
                 type="number" min={1}
                 value={form.maxUses}
                 onChange={(e) => setForm({ ...form, maxUses: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="例如：100"
+                placeholder={tx("例如：100")}
               />
             </label>
             <label className="text-sm">
-              <span className="block mb-1 font-medium">生效日</span>
+              <span className="block mb-1 font-medium">{tx("生效日")}</span>
               <input
                 type="date"
                 value={form.validFrom}
@@ -255,7 +257,7 @@ export default function AdminPromoCodesManage() {
               />
             </label>
             <label className="text-sm">
-              <span className="block mb-1 font-medium">截止日</span>
+              <span className="block mb-1 font-medium">{tx("截止日")}</span>
               <input
                 type="date"
                 value={form.validUntil}
@@ -270,7 +272,7 @@ export default function AdminPromoCodesManage() {
                 onChange={(e) => setForm({ ...form, active: e.target.checked })}
                 className="w-4 h-4"
               />
-              <span className="font-medium">啟用</span>
+              <span className="font-medium">{tx("啟用")}</span>
             </label>
             <div className="md:col-span-2 flex items-center gap-3 pt-2">
               <button
@@ -278,13 +280,13 @@ export default function AdminPromoCodesManage() {
                 data-testid="button-save-promo"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50"
               >
-                <Check size={16} /> {submitting ? "儲存中..." : "儲存"}
+                <Check size={16} /> {submitting ? tx("儲存中...") : tx("儲存")}
               </button>
               <button
                 type="button" onClick={cancel}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border font-medium hover:bg-muted"
               >
-                <X size={16} /> 取消
+                <X size={16} /> {tx("取消")}
               </button>
             </div>
           </form>
@@ -292,23 +294,23 @@ export default function AdminPromoCodesManage() {
       )}
 
       <section className="bg-white rounded-2xl p-6 border">
-        <h2 className="font-medium text-lg mb-4">現有優惠碼 ({rows.length})</h2>
+        <h2 className="font-medium text-lg mb-4">{tx("現有優惠碼 (")}{rows.length})</h2>
         {loading ? (
-          <p className="text-muted-foreground text-sm">載入中…</p>
+          <p className="text-muted-foreground text-sm">{tx("載入中…")}</p>
         ) : rows.length === 0 ? (
-          <p className="text-muted-foreground text-sm">尚未建立任何優惠碼。</p>
+          <p className="text-muted-foreground text-sm">{tx("尚未建立任何優惠碼。")}</p>
         ) : (
           <div className="overflow-x-auto -mx-2">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-muted-foreground border-b">
                 <tr>
-                  <th className="px-3 py-2">優惠碼</th>
-                  <th className="px-3 py-2">折扣</th>
-                  <th className="px-3 py-2">適用</th>
-                  <th className="px-3 py-2">使用 / 上限</th>
-                  <th className="px-3 py-2">有效期間</th>
-                  <th className="px-3 py-2">狀態</th>
-                  <th className="px-3 py-2">操作</th>
+                  <th className="px-3 py-2">{tx("優惠碼")}</th>
+                  <th className="px-3 py-2">{tx("折扣")}</th>
+                  <th className="px-3 py-2">{tx("適用")}</th>
+                  <th className="px-3 py-2">{tx("使用 / 上限")}</th>
+                  <th className="px-3 py-2">{tx("有效期間")}</th>
+                  <th className="px-3 py-2">{tx("狀態")}</th>
+                  <th className="px-3 py-2">{tx("操作")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -319,14 +321,14 @@ export default function AdminPromoCodesManage() {
                       {r.description && <div className="text-xs text-muted-foreground">{r.description}</div>}
                     </td>
                     <td className="px-3 py-3 font-medium">{fmtDiscount(r)}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{r.appliesTo || "全部票種"}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{r.appliesTo || tx("全部票種")}</td>
                     <td className="px-3 py-3">{r.usedCount} / {r.maxUses ?? "∞"}</td>
                     <td className="px-3 py-3 text-xs text-muted-foreground">
                       {r.validFrom || "—"} ~ {r.validUntil || "—"}
                     </td>
                     <td className="px-3 py-3">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium ${r.active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
-                        {r.active ? "啟用" : "停用"}
+                        {r.active ? tx("啟用") : tx("停用")}
                       </span>
                     </td>
                     <td className="px-3 py-3">
@@ -335,7 +337,7 @@ export default function AdminPromoCodesManage() {
                           type="button" onClick={() => startEdit(r)}
                           data-testid={`button-edit-${r.code}`}
                           className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                          title="編輯"
+                          title={tx("編輯")}
                         >
                           <Pencil size={16} />
                         </button>
@@ -343,7 +345,7 @@ export default function AdminPromoCodesManage() {
                           type="button" onClick={() => onDelete(r)}
                           data-testid={`button-delete-${r.code}`}
                           className="p-2 rounded hover:bg-destructive/10 text-destructive"
-                          title="刪除"
+                          title={tx("刪除")}
                         >
                           <Trash2 size={16} />
                         </button>

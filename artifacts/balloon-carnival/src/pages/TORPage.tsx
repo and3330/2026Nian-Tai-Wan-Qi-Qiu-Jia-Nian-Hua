@@ -1,3 +1,4 @@
+import { tx, useI18n, txApi } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import {
   Trophy,
@@ -47,38 +48,39 @@ type CreatedRegistration = {
   ticketType: string | null;
 };
 
-const scheduleItems = [
-  { icon: Calendar, label: "比賽日期", value: "7/26（日）" },
-  { icon: Clock, label: "選手報到", value: "11:00 – 12:30" },
-  { icon: MapPin, label: "報到地點", value: "臺北瓶蓋工廠 M 棟" },
-  { icon: Swords, label: "開賽時間", value: "13:00 開賽" },
-];
+const scheduleItems = () => ([
+  { icon: Calendar, label: tx("比賽日期"), value: tx("7/26（日）") },
+  { icon: Clock, label: tx("選手報到"), value: "11:00 – 12:30" },
+  { icon: MapPin, label: tx("報到地點"), value: tx("臺北瓶蓋工廠 M 棟") },
+  { icon: Swords, label: tx("開賽時間"), value: tx("13:00 開賽") },
+]);
 
-const ruleItems = [
-  "使用限制：全面開放台灣有代理之版本，嚴禁使用美版及台灣未販售之陀螺。",
-  "賽事規則：採用官方規則第 12 版。",
-  "判決基準：賽場上若有判決疑慮，一律採用「輔助判決」為準。",
-  "晉級機制：預賽分為四區進行，各區冠軍晉級「四強循環賽」爭奪總冠軍。",
-];
+const ruleItems = () => ([
+  tx("使用限制：全面開放台灣有代理之版本，嚴禁使用美版及台灣未販售之陀螺。"),
+  tx("賽事規則：採用官方規則第 12 版。"),
+  tx("判決基準：賽場上若有判決疑慮，一律採用「輔助判決」為準。"),
+  tx("晉級機制：預賽分為四區進行，各區冠軍晉級「四強循環賽」爭奪總冠軍。"),
+]);
 
-const prizeItems = [
-  "本次賽事重磅加碼，前 8 名皆能獲得專屬獎品！",
-  "🥇 第一名：八岐大蛇",
-  "🥈 第二名：澀谷爆刃（紫）",
-  "🥉 第三名：紅空力天馬",
-  "🏅 第四名：黑勇氣",
-  "🎁 第五～八名（分區亞軍）：神秘獎品",
-  "✨ 報名專屬好禮：完成報名即贈 500 元居家清潔折扣券！",
-];
+const prizeItems = () => ([
+  tx("本次賽事重磅加碼，前 8 名皆能獲得專屬獎品！"),
+  tx("🥇 第一名：八岐大蛇"),
+  tx("🥈 第二名：澀谷爆刃（紫）"),
+  tx("🥉 第三名：紅空力天馬"),
+  tx("🏅 第四名：黑勇氣"),
+  tx("🎁 第五～八名（分區亞軍）：神秘獎品"),
+  tx("✨ 報名專屬好禮：完成報名即贈 500 元居家清潔折扣券！"),
+]);
 
-const timelineItems = [
-  { time: "11:00", label: "選手報到開始" },
-  { time: "12:30", label: "報到截止 · 賽前說明" },
-  { time: "13:00", label: "正式開賽" },
-  { time: "賽後", label: "頒獎典禮 · 敗者加碼挑戰" },
-];
+const timelineItems = () => ([
+  { time: "11:00", label: tx("選手報到開始") },
+  { time: "12:30", label: tx("報到截止 · 賽前說明") },
+  { time: "13:00", label: tx("正式開賽") },
+  { time: tx("賽後"), label: tx("頒獎典禮 · 敗者加碼挑戰") },
+]);
 
 export default function TORPage() {
+  useI18n();
   const [availability, setAvailability] = useState<Availability | null>(null);
   const [loadingAvail, setLoadingAvail] = useState(true);
   const [roster, setRoster] = useState<Roster | null>(null);
@@ -154,9 +156,9 @@ export default function TORPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!form.parentName.trim()) { setError("請填寫姓名"); return; }
-    if (!form.phone.trim()) { setError("請填寫聯絡電話"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError("請填寫正確的 Email"); return; }
+    if (!form.parentName.trim()) { setError(tx("請填寫姓名")); return; }
+    if (!form.phone.trim()) { setError(tx("請填寫聯絡電話")); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError(tx("請填寫正確的 Email")); return; }
 
     const companions = mode === "participant" ? companionCount : spectatorCount;
 
@@ -175,7 +177,7 @@ export default function TORPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error || "報名失敗，請稍後再試");
+        setError(txApi(data?.error) || tx("報名失敗，請稍後再試"));
         loadAvailability();
         return;
       }
@@ -183,17 +185,17 @@ export default function TORPage() {
       setConfirmedTokens(created.map((r) => r.qrToken).filter((t): t is string => !!t));
       const labelParts =
         mode === "participant"
-          ? [`參賽 × 1`, ...(companionCount > 0 ? [`隨同 × ${companionCount}`] : [])]
-          : [`入場票 × ${spectatorCount}`];
+          ? [tx("參賽 × 1"), ...(companionCount > 0 ? [tx("隨同 × {0}", [companionCount])] : [])]
+          : [tx("入場票 × {0}", [spectatorCount])];
       setPendingPayment({
         registrationIds: created.map((r) => r.id),
         amount: total,
-        itemLabel: `戰鬥陀螺賽（${labelParts.join("、")}）`,
+        itemLabel: tx("戰鬥陀螺賽（{0}）", [labelParts.join("、")]),
       });
       setSuccessInfo({ mode, companions: companionCount, spectators: spectatorCount });
       loadAvailability();
     } catch {
-      setError("報名失敗，請稍後再試");
+      setError(tx("報名失敗，請稍後再試"));
     } finally {
       setSubmitting(false);
     }
@@ -270,14 +272,14 @@ export default function TORPage() {
       <section className="relative w-full bg-gradient-to-b from-indigo-50 via-sky-50/40 to-background overflow-hidden">
         <div className="max-w-4xl mx-auto px-4 py-14 md:py-20 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm mb-5">
-            <Trophy size={16} /> 第四屆重擊盃 ✕ 臺灣氣球嘉年華
+            <Trophy size={16} /> {tx("第四屆重擊盃 ✕ 臺灣氣球嘉年華")}
           </div>
-          <h1 className="font-display text-4xl md:text-6xl mb-4 text-indigo-900">戰鬥陀螺挑戰賽</h1>
+          <h1 className="font-display text-4xl md:text-6xl mb-4 text-indigo-900">{tx("戰鬥陀螺挑戰賽")}</h1>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-100 text-rose-700 font-bold text-sm mb-4">
-            🔥 熱烈加賽 — 名額擴大至 {availability?.capacity ?? 128} 位！
+            {tx("🔥 熱烈加賽 — 名額擴大至")} {availability?.capacity ?? 128} {tx("位！")}
           </div>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            這是一場臺北陀螺的終極大賽！7/26（日）於臺北瓶蓋工廠 M 棟登場，線上限額 {availability?.capacity ?? 128} 位參賽者，捉對廝殺、爭奪冠軍寶座！
+            {tx("這是一場臺北陀螺的終極大賽！7/26（日）於臺北瓶蓋工廠 M 棟登場，線上限額")} {availability?.capacity ?? 128} {tx("位參賽者，捉對廝殺、爭奪冠軍寶座！")}
           </p>
         </div>
       </section>
@@ -289,12 +291,12 @@ export default function TORPage() {
             type="button"
             onClick={() => setImageZoomed(true)}
             className="block w-full group cursor-zoom-in"
-            aria-label="放大查看主視覺圖"
+            aria-label={tx("放大查看主視覺圖")}
             data-testid="button-zoom-image"
           >
             <img
               src="https://cmsedu.b-cdn.net/%E7%AC%AC%E5%9B%9B%E5%B1%86%E9%87%8D%E6%93%8A%E7%9B%83%E6%AF%94%E8%B3%BD%E6%B5%B7%E5%A0%B1.jpg"
-              alt="第四屆重擊盃 戰鬥陀螺挑戰賽"
+              alt={tx("第四屆重擊盃 戰鬥陀螺挑戰賽")}
               className="w-full rounded-3xl shadow-sm transition-transform group-hover:scale-[1.01]"
               loading="lazy"
             />
@@ -309,20 +311,20 @@ export default function TORPage() {
           onClick={() => setImageZoomed(false)}
           role="dialog"
           aria-modal="true"
-          aria-label="主視覺圖放大檢視"
+          aria-label={tx("主視覺圖放大檢視")}
           data-testid="image-lightbox"
         >
           <button
             type="button"
             onClick={() => setImageZoomed(false)}
             className="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center"
-            aria-label="關閉"
+            aria-label={tx("關閉")}
           >
             <X size={24} />
           </button>
           <img
             src="https://cmsedu.b-cdn.net/%E7%AC%AC%E5%9B%9B%E5%B1%86%E9%87%8D%E6%93%8A%E7%9B%83%E6%AF%94%E8%B3%BD%E6%B5%B7%E5%A0%B1.jpg"
-            alt="第四屆重擊盃 戰鬥陀螺挑戰賽"
+            alt={tx("第四屆重擊盃 戰鬥陀螺挑戰賽")}
             className="max-w-full max-h-full object-contain rounded-xl"
             onClick={(e) => e.stopPropagation()}
           />
@@ -332,7 +334,7 @@ export default function TORPage() {
       {/* 賽事資訊 */}
       <section className="border-y bg-white">
         <div className="max-w-4xl mx-auto px-4 py-5 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-4">
-          {scheduleItems.map((s) => (
+          {scheduleItems().map((s) => (
             <div key={s.label} className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
                 <s.icon className="text-indigo-600 w-5 h-5" />
@@ -349,10 +351,9 @@ export default function TORPage() {
       {/* 賽事介紹 */}
       <section className="py-14 md:py-16 px-4 max-w-4xl mx-auto w-full">
         <div className="text-center mb-10">
-          <h2 className="font-display text-3xl md:text-4xl mb-3">賽事介紹</h2>
+          <h2 className="font-display text-3xl md:text-4xl mb-3">{tx("賽事介紹")}</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            由「第四屆重擊盃」與「2026 臺灣氣球嘉年華」共同呈獻的戰鬥陀螺挑戰賽，
-            集結各路高手同場較勁，無論你是熱血選手還是熱情觀眾，都能在現場感受最激烈的對戰張力。
+            {tx("由「第四屆重擊盃」與「2026 臺灣氣球嘉年華」共同呈獻的戰鬥陀螺挑戰賽， 集結各路高手同場較勁，無論你是熱血選手還是熱情觀眾，都能在現場感受最激烈的對戰張力。")}
           </p>
         </div>
 
@@ -363,10 +364,10 @@ export default function TORPage() {
               <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
                 <ScrollText className="text-indigo-600 w-5 h-5" />
               </div>
-              <h3 className="font-bold text-lg">賽制規則</h3>
+              <h3 className="font-bold text-lg">{tx("賽制規則")}</h3>
             </div>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
-              {ruleItems.map((r) => (
+              {ruleItems().map((r) => (
                 <li key={r} className="flex gap-2">
                   <span className="text-indigo-500 mt-0.5">•</span>
                   <span>{r}</span>
@@ -381,10 +382,10 @@ export default function TORPage() {
               <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
                 <Medal className="text-amber-600 w-5 h-5" />
               </div>
-              <h3 className="font-bold text-lg">獎項</h3>
+              <h3 className="font-bold text-lg">{tx("獎項")}</h3>
             </div>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
-              {prizeItems.map((p) => (
+              {prizeItems().map((p) => (
                 <li key={p} className="flex gap-2">
                   <span className="text-amber-500 mt-0.5">•</span>
                   <span>{p}</span>
@@ -399,10 +400,10 @@ export default function TORPage() {
               <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center">
                 <Clock className="text-sky-600 w-5 h-5" />
               </div>
-              <h3 className="font-bold text-lg">活動時程</h3>
+              <h3 className="font-bold text-lg">{tx("活動時程")}</h3>
             </div>
             <ul className="space-y-3">
-              {timelineItems.map((t) => (
+              {timelineItems().map((t) => (
                 <li key={t.time} className="flex items-center gap-3 text-sm">
                   <span className="w-16 shrink-0 font-bold text-sky-700">{t.time}</span>
                   <span className="text-muted-foreground">{t.label}</span>
@@ -417,11 +418,10 @@ export default function TORPage() {
               <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center">
                 <Sparkles className="text-indigo-600 w-5 h-5" />
               </div>
-              <h3 className="font-bold text-lg">敗者加碼</h3>
+              <h3 className="font-bold text-lg">{tx("敗者加碼")}</h3>
             </div>
             <p className="text-sm text-indigo-900/80 leading-relaxed">
-              拒絕一輪遊！每位參賽選手只要在賽程中落敗，即可獲得「神秘好禮」抽獎資格。
-              即使無法站上決賽舞台，依然有機會把大獎帶回家！
+              {tx("拒絕一輪遊！每位參賽選手只要在賽程中落敗，即可獲得「神秘好禮」抽獎資格。 即使無法站上決賽舞台，依然有機會把大獎帶回家！")}
             </p>
           </div>
         </div>
@@ -431,20 +431,20 @@ export default function TORPage() {
             <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center">
               <AlertCircle className="text-rose-600 w-5 h-5" />
             </div>
-            <h3 className="font-bold text-lg">報名方式與注意事項</h3>
+            <h3 className="font-bold text-lg">{tx("報名方式與注意事項")}</h3>
           </div>
           <ul className="space-y-2.5 text-sm text-muted-foreground">
             <li className="flex gap-2">
               <span className="text-rose-500 mt-0.5">•</span>
-              <span>報名流程：請於本頁填寫報名表並完成報名費繳納，即確認參賽名額。</span>
+              <span>{tx("報名流程：請於本頁填寫報名表並完成報名費繳納，即確認參賽名額。")}</span>
             </li>
             <li className="flex gap-2">
               <span className="text-rose-500 mt-0.5">•</span>
-              <span>名單公告：正選名單將於 7 月 20 日（一）正式公告。</span>
+              <span>{tx("名單公告：正選名單將於 7 月 20 日（一）正式公告。")}</span>
             </li>
             <li className="flex gap-2">
               <span className="text-rose-500 mt-0.5">•</span>
-              <span>賽事相關規定若有未盡事宜，主辦單位保留最終決策與解釋之權利。</span>
+              <span>{tx("賽事相關規定若有未盡事宜，主辦單位保留最終決策與解釋之權利。")}</span>
             </li>
           </ul>
         </div>
@@ -455,31 +455,31 @@ export default function TORPage() {
         {success ? (
           <div className="bg-green-50 border-2 border-green-200 rounded-3xl p-10 md:p-12 text-center shadow-lg">
             <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-6" />
-            <h2 className="text-3xl font-bold text-green-800 mb-3">報名成功！</h2>
+            <h2 className="text-3xl font-bold text-green-800 mb-3">{tx("報名成功！")}</h2>
             <p className="text-green-700 text-lg mb-8">
               {successInfo?.mode === "participant"
-                ? "感謝您報名戰鬥陀螺賽，7/26 我們瓶蓋工廠 M 棟見！"
-                : "感謝您的購票，7/26 歡迎到場一同觀賽！"}
+                ? tx("感謝您報名戰鬥陀螺賽，7/26 我們瓶蓋工廠 M 棟見！")
+                : tx("感謝您的購票，7/26 歡迎到場一同觀賽！")}
             </p>
             <div className="bg-white rounded-2xl p-6 text-left max-w-sm mx-auto shadow-sm border border-green-100">
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="text-muted-foreground">姓名：</div>
+                <div className="text-muted-foreground">{tx("姓名：")}</div>
                 <div className="font-bold text-right">{form.parentName}</div>
-                <div className="text-muted-foreground">聯絡電話：</div>
+                <div className="text-muted-foreground">{tx("聯絡電話：")}</div>
                 <div className="font-bold text-right">{form.phone}</div>
                 {successInfo?.mode === "participant" ? (
                   <>
-                    <div className="text-muted-foreground">參賽：</div>
-                    <div className="font-bold text-right text-indigo-700">本人 1 位</div>
+                    <div className="text-muted-foreground">{tx("參賽：")}</div>
+                    <div className="font-bold text-right text-indigo-700">{tx("本人 1 位")}</div>
                     {successInfo.companions > 0 && (<>
-                      <div className="text-muted-foreground">隨同票：</div>
-                      <div className="font-bold text-right">{successInfo.companions} 張</div>
+                      <div className="text-muted-foreground">{tx("隨同票：")}</div>
+                      <div className="font-bold text-right">{successInfo.companions} {tx("張")}</div>
                     </>)}
                   </>
                 ) : (
                   <>
-                    <div className="text-muted-foreground">入場票：</div>
-                    <div className="font-bold text-right text-indigo-700">{successInfo?.spectators} 張</div>
+                    <div className="text-muted-foreground">{tx("入場票：")}</div>
+                    <div className="font-bold text-right text-indigo-700">{successInfo?.spectators} {tx("張")}</div>
                   </>
                 )}
               </div>
@@ -488,15 +488,15 @@ export default function TORPage() {
             {confirmedTokens.length > 0 && (
               <div className="mt-8 bg-white rounded-2xl p-6 max-w-md mx-auto shadow-sm border border-green-100">
                 <h3 className="font-bold mb-2 flex items-center justify-center gap-2 text-green-700">
-                  <QrCode size={20} /> 您的入場 / 報到 QR Code
+                  <QrCode size={20} /> {tx("您的入場 / 報到 QR Code")}
                 </h3>
-                <p className="text-xs text-muted-foreground text-center mb-4">報到時請出示此 QR Code，已寄送至您的 Email。隨同入場票一張 QR 即可供多人入場。</p>
+                <p className="text-xs text-muted-foreground text-center mb-4">{tx("報到時請出示此 QR Code，已寄送至您的 Email。隨同入場票一張 QR 即可供多人入場。")}</p>
                 <div className="grid gap-4" style={{ gridTemplateColumns: confirmedTokens.length > 1 ? "1fr 1fr" : "1fr" }}>
                   {confirmedTokens.map((token, idx) => (
                     <img
                       key={token}
                       src={`/api/qr/${encodeURIComponent(token)}`}
-                      alt={`報到 QR ${idx + 1}`}
+                      alt={tx("報到 QR {0}", [idx + 1])}
                       className="w-full max-w-[220px] mx-auto border rounded-lg p-2 bg-white"
                     />
                   ))}
@@ -505,25 +505,25 @@ export default function TORPage() {
             )}
 
             <button onClick={resetForm} className="mt-10 text-green-600 font-bold hover:underline">
-              繼續報名
+              {tx("繼續報名")}
             </button>
           </div>
         ) : closed ? (
           <div className="bg-white border-2 border-border rounded-3xl p-10 md:p-12 text-center shadow-lg">
             <AlertCircle className="w-16 h-16 text-rose-400 mx-auto mb-6" />
-            <h2 className="font-display text-3xl md:text-4xl mb-3">線上報名已截止</h2>
+            <h2 className="font-display text-3xl md:text-4xl mb-3">{tx("線上報名已截止")}</h2>
             <p className="text-muted-foreground text-lg">
-              戰鬥陀螺賽的線上報名與購票已截止，感謝大家的熱情參與。
+              {tx("戰鬥陀螺賽的線上報名與購票已截止，感謝大家的熱情參與。")}
               <br />
-              如有任何問題，歡迎透過官方管道與我們聯繫。
+              {tx("如有任何問題，歡迎透過官方管道與我們聯繫。")}
             </p>
           </div>
         ) : (
           <>
             <div className="text-center mb-10">
-              <h2 className="font-display text-3xl md:text-4xl mb-3">線上報名 / 購票</h2>
+              <h2 className="font-display text-3xl md:text-4xl mb-3">{tx("線上報名 / 購票")}</h2>
               <p className="text-muted-foreground">
-                參賽費 NT${PARTICIPANT_PRICE}／位（含本人 7/26 入場）；隨同／觀眾一般入場票 NT${COMPANION_PRICE}／張
+                {tx("參賽費 NT$")}{PARTICIPANT_PRICE}{tx("／位（含本人 7/26 入場）；隨同／觀眾一般入場票 NT$")}{COMPANION_PRICE}{tx("／張")}
               </p>
             </div>
 
@@ -534,21 +534,21 @@ export default function TORPage() {
                   <Users className="text-indigo-600 w-5 h-5" />
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground font-bold">線上參賽名額</div>
+                  <div className="text-xs text-muted-foreground font-bold">{tx("線上參賽名額")}</div>
                   {loadingAvail ? (
                     <div className="h-5 w-24 bg-muted rounded animate-pulse mt-1" />
                   ) : availability ? (
                     <div className="font-bold">
                       {soldOut ? (
-                        <span className="text-rose-600">線上報名已額滿</span>
+                        <span className="text-rose-600">{tx("線上報名已額滿")}</span>
                       ) : (
                         <span>
-                          剩餘 <span className="text-indigo-700">{availability.remaining}</span> / {availability.capacity} 位
+                          {tx("剩餘")} <span className="text-indigo-700">{availability.remaining}</span> / {availability.capacity} {tx("位")}
                         </span>
                       )}
                     </div>
                   ) : (
-                    <div className="font-bold text-muted-foreground">名額查詢中</div>
+                    <div className="font-bold text-muted-foreground">{tx("名額查詢中")}</div>
                   )}
                 </div>
               </div>
@@ -568,9 +568,9 @@ export default function TORPage() {
                 data-testid="tab-participant"
               >
                 <div className="flex items-center gap-2 font-bold mb-1">
-                  <Swords size={16} className="text-indigo-600" /> 我要報名參賽
+                  <Swords size={16} className="text-indigo-600" /> {tx("我要報名參賽")}
                 </div>
-                <div className="text-xs text-muted-foreground">含本人入場，可加購隨同票</div>
+                <div className="text-xs text-muted-foreground">{tx("含本人入場，可加購隨同票")}</div>
               </button>
               <button
                 type="button"
@@ -582,15 +582,15 @@ export default function TORPage() {
                 data-testid="tab-spectator"
               >
                 <div className="flex items-center gap-2 font-bold mb-1">
-                  <Ticket size={16} className="text-indigo-600" /> 我只購買入場門票
+                  <Ticket size={16} className="text-indigo-600" /> {tx("我只購買入場門票")}
                 </div>
-                <div className="text-xs text-muted-foreground">隨同／觀眾一般入場</div>
+                <div className="text-xs text-muted-foreground">{tx("隨同／觀眾一般入場")}</div>
               </button>
             </div>
 
             {soldOut && mode === "spectator" && (
               <div className="mb-6 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3 flex items-center gap-2">
-                <AlertCircle size={16} /> 線上參賽名額已額滿，請現場候補；仍可於此購買一般入場門票到場觀賽。
+                <AlertCircle size={16} /> {tx("線上參賽名額已額滿，請現場候補；仍可於此購買一般入場門票到場觀賽。")}
               </div>
             )}
 
@@ -598,21 +598,21 @@ export default function TORPage() {
               <div className="grid gap-5">
                 <div>
                   <label className="block text-sm font-bold mb-2 flex items-center gap-1.5">
-                    <User size={15} /> {mode === "participant" ? "選手姓名" : "購票人姓名"} <span className="text-rose-500">*</span>
+                    <User size={15} /> {mode === "participant" ? tx("選手姓名") : tx("購票人姓名")} <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={form.parentName}
                     onChange={(e) => setForm({ ...form, parentName: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border-2 border-border focus:border-primary outline-none"
-                    placeholder="請輸入姓名"
+                    placeholder={tx("請輸入姓名")}
                     data-testid="input-name"
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-bold mb-2 flex items-center gap-1.5">
-                    <Phone size={15} /> 聯絡電話 <span className="text-rose-500">*</span>
+                    <Phone size={15} /> {tx("聯絡電話")} <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="tel"
@@ -626,7 +626,7 @@ export default function TORPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-bold mb-2 flex items-center gap-1.5">
-                    <Mail size={15} /> Email（接收 QR Code 與確認信） <span className="text-rose-500">*</span>
+                    <Mail size={15} /> {tx("Email（接收 QR Code 與確認信）")} <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="email"
@@ -643,20 +643,20 @@ export default function TORPage() {
               {mode === "participant" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50/40 p-5">
-                    <div className="font-bold mb-1">參賽（本人）</div>
-                    <div className="text-xs text-muted-foreground mb-4">NT${PARTICIPANT_PRICE} · 含本人 7/26 入場</div>
-                    <div className="text-2xl font-display font-bold text-indigo-700">1 位</div>
+                    <div className="font-bold mb-1">{tx("參賽（本人）")}</div>
+                    <div className="text-xs text-muted-foreground mb-4">NT${PARTICIPANT_PRICE} {tx("· 含本人 7/26 入場")}</div>
+                    <div className="text-2xl font-display font-bold text-indigo-700">{tx("1 位")}</div>
                   </div>
                   <div className="rounded-2xl border-2 border-border bg-white p-5">
-                    <div className="font-bold mb-1">加購隨同入場票</div>
-                    <div className="text-xs text-muted-foreground mb-4">NT${COMPANION_PRICE}／張 · 7/26 一般入場</div>
+                    <div className="font-bold mb-1">{tx("加購隨同入場票")}</div>
+                    <div className="text-xs text-muted-foreground mb-4">NT${COMPANION_PRICE}{tx("／張 · 7/26 一般入場")}</div>
                     <Stepper value={companionCount} onChange={setCompanionCount} min={0} max={20} testId="companion" />
                   </div>
                 </div>
               ) : (
                 <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50/40 p-5">
-                  <div className="font-bold mb-1">一般入場門票</div>
-                  <div className="text-xs text-muted-foreground mb-4">NT${COMPANION_PRICE}／張 · 7/26 入場 · 一張 QR 可供多人入場</div>
+                  <div className="font-bold mb-1">{tx("一般入場門票")}</div>
+                  <div className="text-xs text-muted-foreground mb-4">NT${COMPANION_PRICE}{tx("／張 · 7/26 入場 · 一張 QR 可供多人入場")}</div>
                   <Stepper value={spectatorCount} onChange={setSpectatorCount} min={1} max={20} testId="spectator" />
                 </div>
               )}
@@ -669,7 +669,7 @@ export default function TORPage() {
 
               <div className="rounded-2xl bg-gradient-to-r from-indigo-600 to-sky-600 text-white p-6 flex items-center justify-between">
                 <div>
-                  <div className="text-sm opacity-80">應付總金額</div>
+                  <div className="text-sm opacity-80">{tx("應付總金額")}</div>
                   <div className="text-3xl font-display font-bold" data-testid="total-amount">NT${total.toLocaleString()}</div>
                 </div>
                 <button
@@ -681,7 +681,7 @@ export default function TORPage() {
                   )}
                   data-testid="button-submit"
                 >
-                  {submitting ? "處理中…" : "前往付款"}
+                  {submitting ? tx("處理中…") : tx("前往付款")}
                 </button>
               </div>
             </form>
@@ -693,16 +693,16 @@ export default function TORPage() {
         <div className="rounded-3xl border-2 border-border bg-white p-6 sm:p-8">
           <div className="flex items-center gap-2 mb-1">
             <ScrollText size={20} className="text-indigo-600" />
-            <h2 className="text-xl md:text-2xl font-display font-bold">目前競賽名單</h2>
+            <h2 className="text-xl md:text-2xl font-display font-bold">{tx("目前競賽名單")}</h2>
           </div>
           <p className="text-sm text-muted-foreground mb-5">
-            已完成付款的參賽選手{roster ? ` · 共 ${roster.count} 位` : ""}（姓名隱碼保護）
+            {tx("已完成付款的參賽選手")}{roster ? tx(" · 共 {0} 位", [roster.count]) : ""}{tx("（姓名隱碼保護）")}
           </p>
           {!roster ? (
-            <div className="text-sm text-muted-foreground">載入中…</div>
+            <div className="text-sm text-muted-foreground">{tx("載入中…")}</div>
           ) : roster.count === 0 ? (
             <div className="rounded-xl bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
-              目前尚無已付款的參賽選手，快來搶下第一個名額！
+              {tx("目前尚無已付款的參賽選手，快來搶下第一個名額！")}
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">

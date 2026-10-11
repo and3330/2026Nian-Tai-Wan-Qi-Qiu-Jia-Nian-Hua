@@ -1,3 +1,4 @@
+import { tx, getLocale, useI18n, txApi } from "@/lib/i18n";
 import {
   useAdminGetSalesOverview,
   useAdminListRegistrations,
@@ -38,7 +39,7 @@ interface PieDatum {
 }
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("zh-TW", {
+  return new Intl.NumberFormat(getLocale(), {
     style: "currency",
     currency: "TWD",
     maximumFractionDigits: 0,
@@ -46,15 +47,16 @@ function formatCurrency(value: number) {
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("zh-TW").format(value);
+  return new Intl.NumberFormat(getLocale()).format(value);
 }
 
 function formatTrendLabel(d: Date | string) {
   const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" });
+  return date.toLocaleDateString(getLocale(), { month: "numeric", day: "numeric" });
 }
 
 export default function AdminDashboard() {
+  useI18n();
   const { data: overview, isLoading: overviewLoading } =
     useAdminGetSalesOverview();
   const { data: registrations, isLoading: regLoading, refetch: refetchRegistrations } =
@@ -92,7 +94,7 @@ export default function AdminDashboard() {
   const handleConfirmBank = async (paymentRef: string) => {
     if (
       !window.confirm(
-        "確認已收到這筆銀行匯款？\n確認後系統會：開立發票、寄送購票確認信（含入場 QR）、發送 Slack 通知。",
+        tx("確認已收到這筆銀行匯款？\n確認後系統會：開立發票、寄送購票確認信（含入場 QR）、發送 Slack 通知。"),
       )
     ) {
       return;
@@ -105,11 +107,11 @@ export default function AdminDashboard() {
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "確認失敗");
+        throw new Error(txApi(data?.error) || tx("確認失敗"));
       }
       await refetchRegistrations();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "確認失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("確認失敗，請稍後再試"));
     } finally {
       setConfirmingRef(null);
     }
@@ -147,7 +149,7 @@ export default function AdminDashboard() {
       link.click();
       document.body.removeChild(link);
     } catch (e) {
-      alert("匯出失敗");
+      alert(tx("匯出失敗"));
     } finally {
       setIsExporting(false);
     }
@@ -186,19 +188,19 @@ export default function AdminDashboard() {
     overview?.sessionAvailability.reduce((sum, s) => sum + s.paid, 0) ?? 0;
 
   const PAYMENT_STATUS_LABELS: Record<string, string> = {
-    paid: "已付款",
-    pending: "處理中",
-    awaiting_transfer: "待匯款",
-    unpaid: "未付款",
-    failed: "付款失敗",
-    refunded: "已退款",
+    paid: tx("已付款"),
+    pending: tx("處理中"),
+    awaiting_transfer: tx("待匯款"),
+    unpaid: tx("未付款"),
+    failed: tx("付款失敗"),
+    refunded: tx("已退款"),
   };
   const TICKET_TYPE_LABELS: Record<string, string> = {
-    single: "單日票",
-    combo: "兩日套票",
-    "four-day-pass": "四日通行證",
-    workshop: "大師工作坊",
-    competition: "交流大賽",
+    single: tx("單日票"),
+    combo: tx("兩日套票"),
+    "four-day-pass": tx("四日通行證"),
+    workshop: tx("大師工作坊"),
+    competition: tx("交流大賽"),
   };
   const paymentStatusBadge = (status: string | null | undefined) => {
     const key = status ?? "unpaid";
@@ -218,7 +220,7 @@ export default function AdminDashboard() {
     );
   };
   const ticketTypeText = (t: string | null | undefined) => {
-    if (!t) return "未指定";
+    if (!t) return tx("未指定");
     return TICKET_TYPE_LABELS[t] ?? t;
   };
 
@@ -226,9 +228,9 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-display">票務營運總覽</h1>
+          <h1 className="text-3xl font-display">{tx("票務營運總覽")}</h1>
           <p className="text-muted-foreground mt-1">
-            售票收入、每日入場人數與票種分布一目了然
+            {tx("售票收入、每日入場人數與票種分布一目了然")}
           </p>
         </div>
         <button
@@ -237,7 +239,7 @@ export default function AdminDashboard() {
           className="bg-primary text-white px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-md disabled:opacity-50 self-start md:self-auto"
         >
           <Download size={18} />
-          {isExporting ? "匯出中..." : "匯出 CSV 報表"}
+          {isExporting ? tx("匯出中...") : tx("匯出 CSV 報表")}
         </button>
       </div>
 
@@ -247,11 +249,11 @@ export default function AdminDashboard() {
           loading={overviewLoading}
           icon={<CalendarCheck size={28} />}
           tone="blue"
-          label="今日售票數"
-          value={overview ? `${formatNumber(overview.todayTicketsSold)} 張` : "—"}
+          label={tx("今日售票數")}
+          value={overview ? tx("{0} 張", [formatNumber(overview.todayTicketsSold)]) : "—"}
           sub={
             overview
-              ? `今日營收 ${formatCurrency(overview.todayRevenue)}`
+              ? tx("今日營收 {0}", [formatCurrency(overview.todayRevenue)])
               : undefined
           }
         />
@@ -259,11 +261,11 @@ export default function AdminDashboard() {
           loading={overviewLoading}
           icon={<DollarSign size={28} />}
           tone="green"
-          label="累計收入"
+          label={tx("累計收入")}
           value={overview ? formatCurrency(overview.totalRevenue) : "—"}
           sub={
             overview
-              ? `${formatNumber(overview.totalTicketsSold)} 張已付款`
+              ? tx("{0} 張已付款", [formatNumber(overview.totalTicketsSold)])
               : undefined
           }
         />
@@ -271,11 +273,11 @@ export default function AdminDashboard() {
           loading={overviewLoading}
           icon={<Ticket size={28} />}
           tone="orange"
-          label="已付款座位"
-          value={overview ? `${formatNumber(totalPaidSeats)} 席` : "—"}
+          label={tx("已付款座位")}
+          value={overview ? tx("{0} 席", [formatNumber(totalPaidSeats)]) : "—"}
           sub={
             overview
-              ? `含未付款預訂共 ${formatNumber(overview.totalCapacity - remainingCapacity)} 席 · 佔用率 ${overview.overallFillPercentage}%`
+              ? tx("含未付款預訂共 {0} 席 · 佔用率 {1}%", [formatNumber(overview.totalCapacity - remainingCapacity), overview.overallFillPercentage])
               : undefined
           }
         />
@@ -283,11 +285,11 @@ export default function AdminDashboard() {
           loading={overviewLoading}
           icon={<Users size={28} />}
           tone="purple"
-          label="剩餘名額"
-          value={overview ? `${formatNumber(remainingCapacity)} 席` : "—"}
+          label={tx("剩餘名額")}
+          value={overview ? tx("{0} 席", [formatNumber(remainingCapacity)]) : "—"}
           sub={
             overview
-              ? `分布於 ${overview.sessionAvailability.length} 場次`
+              ? tx("分布於 {0} 場次", [overview.sessionAvailability.length])
               : undefined
           }
         />
@@ -299,7 +301,7 @@ export default function AdminDashboard() {
           loading={overviewLoading}
           icon={<Ticket size={22} />}
           tone="orange"
-          title="購買票券"
+          title={tx("購買票券")}
           revenue={overview ? overview.carnivalSales.revenue : 0}
           payerCount={overview ? overview.carnivalSales.payerCount : 0}
           ready={!!overview}
@@ -308,7 +310,7 @@ export default function AdminDashboard() {
           loading={overviewLoading}
           icon={<Users size={22} />}
           tone="purple"
-          title="報名陀螺"
+          title={tx("報名陀螺")}
           revenue={overview ? overview.tournamentSales.revenue : 0}
           payerCount={overview ? overview.tournamentSales.payerCount : 0}
           ready={!!overview}
@@ -317,15 +319,15 @@ export default function AdminDashboard() {
 
       {/* 各付款方式收款金額 */}
       <div className="bg-white p-6 rounded-3xl border shadow-sm">
-        <h2 className="text-xl font-bold mb-1">各付款方式收款</h2>
+        <h2 className="text-xl font-bold mb-1">{tx("各付款方式收款")}</h2>
         <p className="text-sm text-muted-foreground mb-5">
-          已付款訂單（不含退款）依超商繳費、ATM 轉帳、信用卡等方式的金額與筆數
+          {tx("已付款訂單（不含退款）依超商繳費、ATM 轉帳、信用卡等方式的金額與筆數")}
         </p>
         {!paymentMethods ? (
           <div className="h-24 bg-muted/50 animate-pulse rounded-xl" />
         ) : paymentMethods.methods.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
-            尚無收款資料
+            {tx("尚無收款資料")}
           </div>
         ) : (
           <div className="space-y-4">
@@ -339,7 +341,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-between mb-1.5 text-sm">
                     <span className="font-bold">{m.label}</span>
                     <span className="text-muted-foreground">
-                      {formatCurrency(m.revenue)} · {formatNumber(m.orders)} 筆 ·{" "}
+                      {formatCurrency(m.revenue)} · {formatNumber(m.orders)} {tx("筆 ·")}{" "}
                       {pct}%
                     </span>
                   </div>
@@ -357,7 +359,7 @@ export default function AdminDashboard() {
               );
             })}
             <div className="pt-3 mt-2 border-t flex items-center justify-between text-sm font-bold">
-              <span>合計</span>
+              <span>{tx("合計")}</span>
               <span className="text-green-600">
                 {formatCurrency(paymentMethods.totalRevenue)}
               </span>
@@ -368,9 +370,9 @@ export default function AdminDashboard() {
 
       {/* 退票分析 */}
       <div className="bg-white p-6 rounded-3xl border shadow-sm">
-        <h2 className="text-xl font-bold mb-1">退票分析</h2>
+        <h2 className="text-xl font-bold mb-1">{tx("退票分析")}</h2>
         <p className="text-sm text-muted-foreground mb-5">
-          依退票申請統計：核准退款金額、待處理狀況與近 14 天趨勢
+          {tx("依退票申請統計：核准退款金額、待處理狀況與近 14 天趨勢")}
         </p>
         {!refundStats ? (
           <div className="h-24 bg-muted/50 animate-pulse rounded-xl" />
@@ -387,16 +389,16 @@ export default function AdminDashboard() {
               ? Math.round((approved.amount / grossRevenue) * 1000) / 10
               : 0;
             const TYPE_LABELS: Record<string, string> = {
-              single: "單日票",
-              combo: "兩日套票",
-              tournament: "陀螺賽",
-              "tournament-companion": "陀螺賽陪同",
-              unknown: "其他",
+              single: tx("單日票"),
+              combo: tx("兩日套票"),
+              tournament: tx("陀螺賽"),
+              "tournament-companion": tx("陀螺賽陪同"),
+              unknown: tx("其他"),
             };
             if (totalRequests === 0) {
               return (
                 <div className="py-8 text-center text-muted-foreground">
-                  目前沒有任何退票申請
+                  {tx("目前沒有任何退票申請")}
                 </div>
               );
             }
@@ -404,37 +406,37 @@ export default function AdminDashboard() {
               <div className="space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-4 rounded-2xl bg-red-50 border border-red-100">
-                    <p className="text-sm text-muted-foreground">已退款金額</p>
+                    <p className="text-sm text-muted-foreground">{tx("已退款金額")}</p>
                     <p className="text-2xl font-bold text-red-600">
                       {formatCurrency(approved.amount)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {formatNumber(approved.count)} 筆 · {formatNumber(approved.tickets)} 張
+                      {formatNumber(approved.count)} {tx("筆 ·")} {formatNumber(approved.tickets)} {tx("張")}
                     </p>
                   </div>
                   <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100">
-                    <p className="text-sm text-muted-foreground">待處理申請</p>
+                    <p className="text-sm text-muted-foreground">{tx("待處理申請")}</p>
                     <p className="text-2xl font-bold text-amber-600">
-                      {formatNumber(pending.count)} 筆
+                      {formatNumber(pending.count)} {tx("筆")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      預估金額 {formatCurrency(pending.amount)}
+                      {tx("預估金額")} {formatCurrency(pending.amount)}
                     </p>
                   </div>
                   <div className="p-4 rounded-2xl bg-muted/40 border">
-                    <p className="text-sm text-muted-foreground">退款佔總銷售</p>
+                    <p className="text-sm text-muted-foreground">{tx("退款佔總銷售")}</p>
                     <p className="text-2xl font-bold">{refundRate}%</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      總銷售（含已退款）{formatCurrency(grossRevenue)}
+                      {tx("總銷售（含已退款）")}{formatCurrency(grossRevenue)}
                     </p>
                   </div>
                   <div className="p-4 rounded-2xl bg-muted/40 border">
-                    <p className="text-sm text-muted-foreground">其他處理結果</p>
+                    <p className="text-sm text-muted-foreground">{tx("其他處理結果")}</p>
                     <p className="text-2xl font-bold">
-                      {formatNumber(rejected.count + rescheduled.count)} 筆
+                      {formatNumber(rejected.count + rescheduled.count)} {tx("筆")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      拒絕 {formatNumber(rejected.count)} · 改期 {formatNumber(rescheduled.count)}
+                      {tx("拒絕")} {formatNumber(rejected.count)} {tx("· 改期")} {formatNumber(rescheduled.count)}
                     </p>
                   </div>
                 </div>
@@ -442,7 +444,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2">
                     <h3 className="font-bold mb-3 text-sm">
-                      近 14 天核准退款趨勢
+                      {tx("近 14 天核准退款趨勢")}
                     </h3>
                     <ResponsiveContainer width="100%" height={220}>
                       <LineChart data={refundStats.trend}>
@@ -456,7 +458,7 @@ export default function AdminDashboard() {
                         <Tooltip
                           labelFormatter={(v) => formatTrendLabel(String(v))}
                           formatter={(value: number, name: string) =>
-                            name === "退款金額"
+                            name === tx("退款金額")
                               ? [formatCurrency(value), name]
                               : [formatNumber(value), name]
                           }
@@ -465,7 +467,7 @@ export default function AdminDashboard() {
                         <Line
                           type="monotone"
                           dataKey="amount"
-                          name="退款金額"
+                          name={tx("退款金額")}
                           stroke="#EF4444"
                           strokeWidth={2}
                           dot={false}
@@ -473,7 +475,7 @@ export default function AdminDashboard() {
                         <Line
                           type="monotone"
                           dataKey="count"
-                          name="退款筆數"
+                          name={tx("退款筆數")}
                           stroke="#F59E0B"
                           strokeWidth={2}
                           dot={false}
@@ -482,10 +484,10 @@ export default function AdminDashboard() {
                     </ResponsiveContainer>
                   </div>
                   <div>
-                    <h3 className="font-bold mb-3 text-sm">各票種退款分佈</h3>
+                    <h3 className="font-bold mb-3 text-sm">{tx("各票種退款分佈")}</h3>
                     {refundStats.byTicketType.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-6 text-center">
-                        尚無核准的退票
+                        {tx("尚無核准的退票")}
                       </p>
                     ) : (
                       <div className="space-y-4">
@@ -500,7 +502,7 @@ export default function AdminDashboard() {
                                   {TYPE_LABELS[t.ticketType] ?? t.ticketType}
                                 </span>
                                 <span className="text-muted-foreground">
-                                  {formatCurrency(t.amount)} · {formatNumber(t.tickets)} 張 · {pct}%
+                                  {formatCurrency(t.amount)} · {formatNumber(t.tickets)} {tx("張 ·")} {pct}%
                                 </span>
                               </div>
                               <div className="h-2.5 rounded-full bg-muted overflow-hidden">
@@ -532,10 +534,10 @@ export default function AdminDashboard() {
             <div>
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <TrendingUp className="text-primary" size={20} />
-                每日售票趨勢
+                {tx("每日售票趨勢")}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                依購票時間統計（過去 14 天）
+                {tx("依購票時間統計（過去 14 天）")}
               </p>
             </div>
           </div>
@@ -573,8 +575,8 @@ export default function AdminDashboard() {
                     }}
                     formatter={(value: number, name) =>
                       name === "revenue"
-                        ? [formatCurrency(value), "營收"]
-                        : [`${value} 張`, "售票數"]
+                        ? [formatCurrency(value), tx("營收")]
+                        : [tx("{0} 張", [value]), tx("售票數")]
                     }
                   />
                   <Line
@@ -593,16 +595,16 @@ export default function AdminDashboard() {
         </div>
 
         <div className="bg-white p-6 rounded-3xl border shadow-sm">
-          <h2 className="text-xl font-bold mb-1">各票種佔比</h2>
+          <h2 className="text-xl font-bold mb-1">{tx("各票種佔比")}</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            依已付款訂單的票種分布
+            {tx("依已付款訂單的票種分布")}
           </p>
           {overviewLoading ? (
             <div className="h-72 bg-muted/50 animate-pulse rounded-xl" />
           ) : !hasTicketTypeData ? (
             <div className="h-72 flex flex-col items-center justify-center text-muted-foreground">
               <Ticket size={32} className="mb-2 opacity-40" />
-              尚無售票資料
+              {tx("尚無售票資料")}
             </div>
           ) : (
             <div className="h-72 w-full">
@@ -636,7 +638,7 @@ export default function AdminDashboard() {
                       _name: string,
                       item: { payload?: PieDatum },
                     ) => [
-                      `${value} 張（${item.payload?.percentage ?? 0}%）`,
+                      tx("{0} 張（{1}%）", [value, item.payload?.percentage ?? 0]),
                       item.payload?.name ?? "",
                     ]}
                   />
@@ -654,9 +656,9 @@ export default function AdminDashboard() {
 
       {/* Per-session capacity */}
       <div className="bg-white p-6 rounded-3xl border shadow-sm">
-        <h2 className="text-xl font-bold mb-1">各日售票狀況</h2>
+        <h2 className="text-xl font-bold mb-1">{tx("各日售票狀況")}</h2>
         <p className="text-sm text-muted-foreground mb-6">
-          每場次容量 {overview?.sessionAvailability[0]?.totalCapacity ?? 500} 名 · 區分已付款與未付款預訂
+          {tx("每場次容量")} {overview?.sessionAvailability[0]?.totalCapacity ?? 500} {tx("名 · 區分已付款與未付款預訂")}
         </p>
         {overviewLoading ? (
           <div className="h-72 bg-muted/50 animate-pulse rounded-xl" />
@@ -693,11 +695,11 @@ export default function AdminDashboard() {
                   }}
                   formatter={(value: number, name) => {
                     const labels: Record<string, string> = {
-                      paid: "已付款",
-                      reservedUnpaid: "未付款預訂",
-                      remaining: "剩餘",
+                      paid: tx("已付款"),
+                      reservedUnpaid: tx("未付款預訂"),
+                      remaining: tx("剩餘"),
                     };
-                    return [`${value} 張`, labels[name as string] ?? name];
+                    return [tx("{0} 張", [value]), labels[name as string] ?? name];
                   }}
                 />
                 <Legend
@@ -705,10 +707,10 @@ export default function AdminDashboard() {
                   wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
                   formatter={(v) =>
                     v === "paid"
-                      ? "已付款"
+                      ? tx("已付款")
                       : v === "reservedUnpaid"
-                        ? "未付款預訂"
-                        : "剩餘名額"
+                        ? tx("未付款預訂")
+                        : tx("剩餘名額")
                   }
                 />
                 <Bar
@@ -745,22 +747,22 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-3xl border border-amber-200 shadow-sm overflow-hidden">
           <div className="p-6 border-b bg-amber-50/60">
             <h2 className="text-xl font-bold text-amber-800">
-              待確認匯款（{awaitingTransfers.length} 筆）
+              {tx("待確認匯款（")}{awaitingTransfers.length} {tx("筆）")}
             </h2>
             <p className="text-sm text-amber-700/80 mt-1">
-              銀行轉帳訂單，收到款項後請按「確認收款」，系統會開立發票、寄送確認信並通知 Slack。
+              {tx("銀行轉帳訂單，收到款項後請按「確認收款」，系統會開立發票、寄送確認信並通知 Slack。")}
             </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-muted/30">
                 <tr>
-                  <th className="p-4 font-semibold text-muted-foreground">訂單編號</th>
-                  <th className="p-4 font-semibold text-muted-foreground">家長姓名</th>
-                  <th className="p-4 font-semibold text-muted-foreground">聯絡電話</th>
-                  <th className="p-4 font-semibold text-muted-foreground">入場日期</th>
-                  <th className="p-4 font-semibold text-muted-foreground text-right">訂單金額</th>
-                  <th className="p-4 font-semibold text-muted-foreground text-right">操作</th>
+                  <th className="p-4 font-semibold text-muted-foreground">{tx("訂單編號")}</th>
+                  <th className="p-4 font-semibold text-muted-foreground">{tx("家長姓名")}</th>
+                  <th className="p-4 font-semibold text-muted-foreground">{tx("聯絡電話")}</th>
+                  <th className="p-4 font-semibold text-muted-foreground">{tx("入場日期")}</th>
+                  <th className="p-4 font-semibold text-muted-foreground text-right">{tx("訂單金額")}</th>
+                  <th className="p-4 font-semibold text-muted-foreground text-right">{tx("操作")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -781,7 +783,7 @@ export default function AdminDashboard() {
                         disabled={confirmingRef === reg.paymentRef}
                         className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors"
                       >
-                        {confirmingRef === reg.paymentRef ? "處理中..." : "確認收款"}
+                        {confirmingRef === reg.paymentRef ? tx("處理中...") : tx("確認收款")}
                       </button>
                     </td>
                   </tr>
@@ -795,9 +797,9 @@ export default function AdminDashboard() {
       <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
         <div className="p-6 border-b flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold">最新報名名單</h2>
+            <h2 className="text-xl font-bold">{tx("最新報名名單")}</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              最近 10 筆報名紀錄
+              {tx("最近 10 筆報名紀錄")}
             </p>
           </div>
         </div>
@@ -805,28 +807,28 @@ export default function AdminDashboard() {
           <table className="w-full text-left">
             <thead className="bg-muted/30">
               <tr>
-                <th className="p-4 font-semibold text-muted-foreground">報名時間</th>
-                <th className="p-4 font-semibold text-muted-foreground">家長姓名</th>
-                <th className="p-4 font-semibold text-muted-foreground">聯絡電話</th>
-                <th className="p-4 font-semibold text-muted-foreground">票種</th>
-                <th className="p-4 font-semibold text-muted-foreground">入場日期</th>
-                <th className="p-4 font-semibold text-muted-foreground text-right">票數</th>
-                <th className="p-4 font-semibold text-muted-foreground text-right">訂單金額</th>
-                <th className="p-4 font-semibold text-muted-foreground">付款狀態</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("報名時間")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("家長姓名")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("聯絡電話")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("票種")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("入場日期")}</th>
+                <th className="p-4 font-semibold text-muted-foreground text-right">{tx("票數")}</th>
+                <th className="p-4 font-semibold text-muted-foreground text-right">{tx("訂單金額")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("付款狀態")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {regLoading ? (
                 <tr>
                   <td colSpan={8} className="p-8 text-center text-muted-foreground">
-                    載入中...
+                    {tx("載入中...")}
                   </td>
                 </tr>
               ) : (
                 registrations?.slice(0, 10).map((reg) => (
                   <tr key={reg.id} className="hover:bg-muted/20">
                     <td className="p-4 text-sm text-muted-foreground">
-                      {new Date(reg.createdAt).toLocaleString("zh-TW")}
+                      {new Date(reg.createdAt).toLocaleString(getLocale())}
                     </td>
                     <td className="p-4 font-medium">{reg.parentName}</td>
                     <td className="p-4">{reg.phone}</td>
@@ -845,7 +847,7 @@ export default function AdminDashboard() {
               {!regLoading && !registrations?.length && (
                 <tr>
                   <td colSpan={8} className="p-8 text-center text-muted-foreground">
-                    尚無報名資料
+                    {tx("尚無報名資料")}
                   </td>
                 </tr>
               )}
@@ -872,6 +874,7 @@ function KpiCard({
   value: string;
   sub?: string;
 }) {
+  useI18n();
   const toneClasses: Record<string, string> = {
     blue: "bg-blue-100 text-blue-600",
     green: "bg-green-100 text-green-600",
@@ -921,6 +924,7 @@ function CategorySalesCard({
   revenue: number;
   payerCount: number;
 }) {
+  useI18n();
   const toneClasses: Record<string, string> = {
     orange: "bg-orange-100 text-orange-600",
     purple: "bg-purple-100 text-purple-600",
@@ -938,7 +942,7 @@ function CategorySalesCard({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <p className="text-muted-foreground font-medium text-sm">
-            累積售票額
+            {tx("累積售票額")}
           </p>
           {loading || !ready ? (
             <div className="h-8 mt-2 bg-muted/50 animate-pulse rounded" />
@@ -950,13 +954,13 @@ function CategorySalesCard({
         </div>
         <div>
           <p className="text-muted-foreground font-medium text-sm">
-            實際付款人數
+            {tx("實際付款人數")}
           </p>
           {loading || !ready ? (
             <div className="h-8 mt-2 bg-muted/50 animate-pulse rounded" />
           ) : (
             <div className="text-2xl font-display text-foreground mt-1 truncate">
-              {formatNumber(payerCount)} 人
+              {formatNumber(payerCount)} {tx("人")}
             </div>
           )}
         </div>

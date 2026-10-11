@@ -1,3 +1,4 @@
+import { tx, useI18n } from "@/lib/i18n";
 import { useState, useEffect, useCallback } from "react";
 import { Settings, Clock, Zap, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,38 +11,39 @@ interface AutomationSetting {
   updatedAt: string;
 }
 
-const SETTING_DEFS = [
+const SETTING_DEFS = () => ([
   {
     key: "auto_scheduler",
-    label: "自動排程發布",
-    description: "啟用後，系統每 60 秒自動檢查排程貼文並發布",
+    label: tx("自動排程發布"),
+    description: tx("啟用後，系統每 60 秒自動檢查排程貼文並發布"),
     icon: Clock,
     configFields: [
-      { key: "interval_seconds", label: "檢查間隔（秒）", type: "number" as const, default: 60 },
+      { key: "interval_seconds", label: tx("檢查間隔（秒）"), type: "number" as const, default: 60 },
     ],
   },
   {
     key: "auto_hashtag",
-    label: "自動 Hashtag",
-    description: "發布時自動附加預設 Hashtag",
+    label: tx("自動 Hashtag"),
+    description: tx("發布時自動附加預設 Hashtag"),
     icon: Zap,
     configFields: [
-      { key: "default_hashtags", label: "預設 Hashtags（逗號分隔）", type: "text" as const, default: "2026臺灣氣球嘉年華,BalloonCarnival" },
+      { key: "default_hashtags", label: tx("預設 Hashtags（逗號分隔）"), type: "text" as const, default: "2026臺灣氣球嘉年華,BalloonCarnival" },
     ],
   },
   {
     key: "post_notification",
-    label: "發布通知",
-    description: "貼文發布成功或失敗時發送通知",
+    label: tx("發布通知"),
+    description: tx("貼文發布成功或失敗時發送通知"),
     icon: Settings,
     configFields: [
-      { key: "notify_on_success", label: "成功時通知", type: "toggle" as const, default: true },
-      { key: "notify_on_failure", label: "失敗時通知", type: "toggle" as const, default: true },
+      { key: "notify_on_success", label: tx("成功時通知"), type: "toggle" as const, default: true },
+      { key: "notify_on_failure", label: tx("失敗時通知"), type: "toggle" as const, default: true },
     ],
   },
-];
+]);
 
 export default function AutomationSettingsPage() {
+  useI18n();
   const [settings, setSettings] = useState<AutomationSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -94,20 +96,20 @@ export default function AutomationSettingsPage() {
           return next;
         });
       }
-    } catch { alert("儲存失敗"); } finally { setSaving(null); }
+    } catch { alert(tx("儲存失敗")); } finally { setSaving(null); }
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20 text-muted-foreground">載入中...</div>;
+  if (loading) return <div className="flex items-center justify-center py-20 text-muted-foreground">{tx("載入中...")}</div>;
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-display">自動化設定</h1>
-        <p className="text-muted-foreground mt-1">管理社群行銷自動化功能</p>
+        <h1 className="text-3xl font-display">{tx("自動化設定")}</h1>
+        <p className="text-muted-foreground mt-1">{tx("管理社群行銷自動化功能")}</p>
       </div>
 
       <div className="space-y-4">
-        {SETTING_DEFS.map(def => {
+        {SETTING_DEFS().map(def => {
           const value = getSettingValue(def.key);
           const hasChanges = !!localChanges[def.key];
           const Icon = def.icon;
@@ -178,7 +180,7 @@ export default function AutomationSettingsPage() {
                     className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all flex items-center gap-2 disabled:opacity-50"
                   >
                     <Save size={14} />
-                    {saving === def.key ? "儲存中..." : "儲存設定"}
+                    {saving === def.key ? tx("儲存中...") : tx("儲存設定")}
                   </button>
                 </div>
               )}

@@ -1,3 +1,4 @@
+import { tx, getLocale, useI18n, getLang, txApi } from "@/lib/i18n";
 import { useState, useEffect, useCallback } from "react";
 import { Redirect } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -52,12 +53,12 @@ interface DetailResponse {
 
 const EVENT_DATES = ["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"];
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "待處理",
-  approved: "已退票",
-  rejected: "已拒絕",
-  rescheduled: "已改期",
-};
+const STATUS_LABEL = (): Record<string, string> => ({
+  pending: tx("待處理"),
+  approved: tx("已退票"),
+  rejected: tx("已拒絕"),
+  rescheduled: tx("已改期"),
+});
 const STATUS_COLOR: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
   approved: "bg-emerald-100 text-emerald-800",
@@ -68,6 +69,7 @@ const STATUS_COLOR: Record<string, string> = {
 function RefundEditRow({
   request, totalHeads, busy, onSaved,
 }: { request: RefundRow; totalHeads: number; busy: boolean; onSaved: () => void }) {
+  useI18n();
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
   const [count, setCount] = useState(request.refundTicketCount ?? totalHeads);
@@ -77,7 +79,7 @@ function RefundEditRow({
   const save = async () => {
     const amt = Number(amount);
     if (!Number.isFinite(amt) || amt < 0) {
-      toast({ variant: "destructive", title: "退款金額格式錯誤" });
+      toast({ variant: "destructive", title: tx("退款金額格式錯誤") });
       return;
     }
     setSaving(true);
@@ -91,11 +93,11 @@ function RefundEditRow({
         method: "PATCH",
         body: JSON.stringify(body),
       });
-      toast({ title: "已更新退票內容", description: r.refundAmount != null ? `退款金額：NT$ ${r.refundAmount.toLocaleString()}` : undefined });
+      toast({ title: tx("已更新退票內容"), description: r.refundAmount != null ? tx("退款金額：NT$ {0}", [r.refundAmount.toLocaleString()]) : undefined });
       setEditing(false);
       onSaved();
     } catch (e) {
-      toast({ variant: "destructive", title: "更新失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("更新失敗"), description: txApi((e as Error).message) });
     } finally { setSaving(false); }
   };
 
@@ -111,7 +113,7 @@ function RefundEditRow({
         data-testid="button-edit-refund"
         className="px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
       >
-        修改張數 / 金額
+        {tx("修改張數 / 金額")}
       </button>
     );
   }
@@ -120,7 +122,7 @@ function RefundEditRow({
     <div className="border rounded-lg p-3 space-y-2 bg-white" data-testid="refund-edit-panel">
       <div className="flex items-center gap-3 flex-wrap">
         <label className="text-xs flex items-center gap-2">
-          退票張數
+          {tx("退票張數")}
           <select
             value={count}
             onChange={(e) => setCount(Number(e.target.value))}
@@ -128,12 +130,12 @@ function RefundEditRow({
             data-testid="select-edit-refund-count"
           >
             {Array.from({ length: totalHeads }, (_, i) => i + 1).map((n) => (
-              <option key={n} value={n}>{n === totalHeads ? `${n}（全部）` : n}</option>
+              <option key={n} value={n}>{n === totalHeads ? tx("{0}（全部）", [n]) : n}</option>
             ))}
           </select>
         </label>
         <label className="text-xs flex items-center gap-2">
-          退款金額 NT$
+          {tx("退款金額 NT$")}
           <input
             type="number"
             min={0}
@@ -144,7 +146,7 @@ function RefundEditRow({
           />
         </label>
       </div>
-      <div className="text-xs text-muted-foreground">改張數會自動按比例重算金額；若同時填金額，以填的金額為準。</div>
+      <div className="text-xs text-muted-foreground">{tx("改張數會自動按比例重算金額；若同時填金額，以填的金額為準。")}</div>
       <div className="flex items-center gap-2">
         <button
           onClick={save}
@@ -152,10 +154,10 @@ function RefundEditRow({
           data-testid="button-save-refund-edit"
           className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50"
         >
-          {saving ? "儲存中…" : "儲存"}
+          {saving ? tx("儲存中…") : tx("儲存")}
         </button>
         <button onClick={() => setEditing(false)} disabled={saving} className="px-3 py-1.5 rounded-lg border text-xs hover:bg-muted">
-          取消
+          {tx("取消")}
         </button>
       </div>
     </div>
@@ -174,6 +176,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export default function AdminRefundRequestsManage() {
+  useI18n();
   const { hasRole, isLoading } = useAuth();
   const { toast } = useToast();
 
@@ -204,7 +207,7 @@ export default function AdminRefundRequestsManage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch {
-      toast({ variant: "destructive", title: "匯出失敗", description: "請稍後再試" });
+      toast({ variant: "destructive", title: tx("匯出失敗"), description: tx("請稍後再試") });
     } finally {
       setIsExporting(false);
     }
@@ -218,11 +221,11 @@ export default function AdminRefundRequestsManage() {
       setRows(data);
       setSelected(new Set());
     } catch (e) {
-      toast({ variant: "destructive", title: "載入失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("載入失敗"), description: txApi((e as Error).message) });
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, toast]);
+  }, [statusFilter, toast, getLang()]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -234,9 +237,9 @@ export default function AdminRefundRequestsManage() {
       const d = await api<DetailResponse>(`/admin/refund-requests/${id}/detail`);
       setDetail(d);
     } catch (e) {
-      toast({ variant: "destructive", title: "載入訂單詳情失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("載入訂單詳情失敗"), description: txApi((e as Error).message) });
     }
-  }, [toast]);
+  }, [toast, getLang()]);
 
   if (isLoading) return null;
   // Viewer/checkin can read but only editor can act; gate the page at editor+ for clarity.
@@ -249,8 +252,8 @@ export default function AdminRefundRequestsManage() {
     const isPartial = reqCount < detail.totalHeads;
     if (!window.confirm(
       isPartial
-        ? `確定核准部分退票（${reqCount} / ${detail.totalHeads} 張）？票券張數將扣減、其餘票券仍有效；發票不會自動作廢（請視情況手動處理），並自動寄出「退票完成通知」Email 給買家。信用卡訂單將自動向藍新退刷。`
-        : `確定核准退票？將釋放 ${detail.totalHeads} 個名額、自動作廢對應的訂單與發票，並自動寄出「退票完成通知」Email 給買家。信用卡訂單將自動向藍新退刷。`,
+        ? tx("確定核准部分退票（{0} / {1} 張）？票券張數將扣減、其餘票券仍有效；發票不會自動作廢（請視情況手動處理），並自動寄出「退票完成通知」Email 給買家。信用卡訂單將自動向藍新退刷。", [reqCount, detail.totalHeads])
+        : tx("確定核准退票？將釋放 {0} 個名額、自動作廢對應的訂單與發票，並自動寄出「退票完成通知」Email 給買家。信用卡訂單將自動向藍新退刷。", [detail.totalHeads]),
     )) return;
     setBusy(true);
     try {
@@ -267,25 +270,25 @@ export default function AdminRefundRequestsManage() {
       const iv = r.invoiceVoid;
       const ar = r.autoRefund;
       const parts = [
-        iv?.attempted ? `票券已標記為退款。${iv.message}` : "票券已標記為退款，名額已釋放（此訂單無已開立發票）。",
+        iv?.attempted ? tx("票券已標記為退款。{0}", [txApi(iv.message)]) : tx("票券已標記為退款，名額已釋放（此訂單無已開立發票）。"),
       ];
-      if (ar?.attempted) parts.push(ar.success ? `藍新退刷：${ar.message}` : `藍新退刷失敗：${ar.message}`);
+      if (ar?.attempted) parts.push(ar.success ? tx("藍新退刷：{0}", [txApi(ar.message)]) : tx("藍新退刷失敗：{0}", [txApi(ar.message)]));
       toast({
-        title: "已核准退票",
+        title: tx("已核准退票"),
         description: parts.join(" "),
         variant: (iv?.attempted && !iv.success) || (ar?.attempted && !ar.success) ? "destructive" : undefined,
       });
       setOpenId(null);
       refresh();
     } catch (e) {
-      toast({ variant: "destructive", title: "處理失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("處理失敗"), description: txApi((e as Error).message) });
     } finally { setBusy(false); }
   };
 
   const reject = async () => {
     if (!detail) return;
     if (adminNote.trim().length < 3) {
-      toast({ variant: "destructive", title: "請填寫拒絕原因", description: "至少 3 字" });
+      toast({ variant: "destructive", title: tx("請填寫拒絕原因"), description: tx("至少 3 字") });
       return;
     }
     setBusy(true);
@@ -294,39 +297,39 @@ export default function AdminRefundRequestsManage() {
         method: "POST",
         body: JSON.stringify({ adminNote: adminNote.trim() }),
       });
-      toast({ title: "已拒絕退票" });
+      toast({ title: tx("已拒絕退票") });
       setOpenId(null);
       refresh();
     } catch (e) {
-      toast({ variant: "destructive", title: "處理失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("處理失敗"), description: txApi((e as Error).message) });
     } finally { setBusy(false); }
   };
 
   const sendNotifyEmail = async () => {
     if (!detail) return;
-    if (!window.confirm("寄出「退票完成通知」Email 給買家？")) return;
+    if (!window.confirm(tx("寄出「退票完成通知」Email 給買家？"))) return;
     setBusy(true);
     try {
       await api(`/admin/refund-requests/${detail.request.id}/send-notify-email`, { method: "POST" });
-      toast({ title: "已寄出通知信", description: "退票完成通知信件已寄出。" });
+      toast({ title: tx("已寄出通知信"), description: tx("退票完成通知信件已寄出。") });
       openDetail(detail.request.id);
       refresh();
     } catch (e) {
-      toast({ variant: "destructive", title: "寄送失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("寄送失敗"), description: txApi((e as Error).message) });
     } finally { setBusy(false); }
   };
 
   const sendRefundedEmail = async () => {
     if (!detail) return;
-    if (!window.confirm("寄出「已退款通知」Email 給買家？（請確認款項已實際匯出）")) return;
+    if (!window.confirm(tx("寄出「已退款通知」Email 給買家？（請確認款項已實際匯出）"))) return;
     setBusy(true);
     try {
       await api(`/admin/refund-requests/${detail.request.id}/send-refunded-email`, { method: "POST" });
-      toast({ title: "已寄出已退款通知", description: "已退款通知信件已寄出。" });
+      toast({ title: tx("已寄出已退款通知"), description: tx("已退款通知信件已寄出。") });
       openDetail(detail.request.id);
       refresh();
     } catch (e) {
-      toast({ variant: "destructive", title: "寄送失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("寄送失敗"), description: txApi((e as Error).message) });
     } finally { setBusy(false); }
   };
 
@@ -349,18 +352,18 @@ export default function AdminRefundRequestsManage() {
     const ids = [...selected];
     if (ids.length === 0) return;
     const CONFIRM: Record<string, string> = {
-      approve: `批量核准 ${ids.length} 筆退票？票券與付款紀錄將標記為已退款、自動作廢對應發票，並自動寄出「退票完成通知」Email。`,
-      reject: `批量拒絕 ${ids.length} 筆退票申請？`,
-      "send-bank-email": `批量寄出「退款資料表單」Email（${ids.length} 筆）？`,
-      "send-notify-email": `批量寄出「退票完成通知」Email（${ids.length} 筆）？僅已退票的申請會寄出。`,
-      "send-refunded-email": `批量寄出「已退款通知」Email（${ids.length} 筆）？請確認款項已實際匯出，僅已退票的申請會寄出。`,
+      approve: tx("批量核准 {0} 筆退票？票券與付款紀錄將標記為已退款、自動作廢對應發票，並自動寄出「退票完成通知」Email。", [ids.length]),
+      reject: tx("批量拒絕 {0} 筆退票申請？", [ids.length]),
+      "send-bank-email": tx("批量寄出「退款資料表單」Email（{0} 筆）？", [ids.length]),
+      "send-notify-email": tx("批量寄出「退票完成通知」Email（{0} 筆）？僅已退票的申請會寄出。", [ids.length]),
+      "send-refunded-email": tx("批量寄出「已退款通知」Email（{0} 筆）？請確認款項已實際匯出，僅已退票的申請會寄出。", [ids.length]),
     };
     let note = "";
     if (action === "reject") {
-      const input = window.prompt("請輸入拒絕原因（至少 3 字），將套用至所有選取的申請：");
+      const input = window.prompt(tx("請輸入拒絕原因（至少 3 字），將套用至所有選取的申請："));
       if (input === null) return;
       note = input.trim();
-      if (note.length < 3) { toast({ variant: "destructive", title: "拒絕原因至少 3 字" }); return; }
+      if (note.length < 3) { toast({ variant: "destructive", title: tx("拒絕原因至少 3 字") }); return; }
     }
     if (!window.confirm(CONFIRM[action])) return;
     setBusy(true);
@@ -371,46 +374,46 @@ export default function AdminRefundRequestsManage() {
       });
       const failedItems = r.results.filter((x) => !x.ok);
       toast({
-        title: `批量操作完成：成功 ${r.succeeded} 筆，失敗 ${r.failed} 筆`,
+        title: tx("批量操作完成：成功 {0} 筆，失敗 {1} 筆", [r.succeeded, r.failed]),
         description: failedItems.length > 0
-          ? failedItems.slice(0, 5).map((x) => `#${x.id} ${x.message}`).join("；") + (failedItems.length > 5 ? "…" : "")
+          ? failedItems.slice(0, 5).map((x) => `#${x.id} ${txApi(x.message)}`).join(tx("；")) + (failedItems.length > 5 ? "…" : "")
           : undefined,
         variant: r.failed > 0 ? "destructive" : undefined,
       });
       refresh();
     } catch (e) {
-      toast({ variant: "destructive", title: "批量操作失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("批量操作失敗"), description: txApi((e as Error).message) });
     } finally { setBusy(false); }
   };
 
   const resendBankEmail = async () => {
     if (!detail) return;
-    if (!window.confirm("補發「退款資料表單」Email 給買家？")) return;
+    if (!window.confirm(tx("補發「退款資料表單」Email 給買家？"))) return;
     setBusy(true);
     try {
       await api(`/admin/refund-requests/${detail.request.id}/resend-bank-email`, { method: "POST" });
-      toast({ title: "已補發 Email", description: "退款資料表單信件已寄出。" });
+      toast({ title: tx("已補發 Email"), description: tx("退款資料表單信件已寄出。") });
       openDetail(detail.request.id);
       refresh();
     } catch (e) {
-      toast({ variant: "destructive", title: "補發失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("補發失敗"), description: txApi((e as Error).message) });
     } finally { setBusy(false); }
   };
 
   const reschedule = async (regId: number, newDate: string) => {
     if (!detail) return;
-    if (!window.confirm(`確定將票券改期至 ${newDate}？並結案此退票申請？`)) return;
+    if (!window.confirm(tx("確定將票券改期至 {0}？並結案此退票申請？", [newDate]))) return;
     setBusy(true);
     try {
       await api(`/admin/registrations/${regId}/event-date`, {
         method: "PUT",
         body: JSON.stringify({ eventDate: newDate, refundRequestId: detail.request.id }),
       });
-      toast({ title: "已改期", description: `票券日期已更新為 ${newDate}` });
+      toast({ title: tx("已改期"), description: tx("票券日期已更新為 {0}", [newDate]) });
       setOpenId(null);
       refresh();
     } catch (e) {
-      toast({ variant: "destructive", title: "改期失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("改期失敗"), description: txApi((e as Error).message) });
     } finally { setBusy(false); }
   };
 
@@ -418,9 +421,9 @@ export default function AdminRefundRequestsManage() {
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="font-display text-3xl mb-2">退票 / 改票管理</h1>
+          <h1 className="font-display text-3xl mb-2">{tx("退票 / 改票管理")}</h1>
           <p className="text-sm text-muted-foreground">
-            處理買家提出的退票申請。核准退票會釋放名額；如雙方同意改期，可直接點選新日期改票，本筆申請會自動結案。
+            {tx("處理買家提出的退票申請。核准退票會釋放名額；如雙方同意改期，可直接點選新日期改票，本筆申請會自動結案。")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -431,7 +434,7 @@ export default function AdminRefundRequestsManage() {
               data-testid="button-export-refunds"
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border hover:bg-muted text-sm disabled:opacity-50"
             >
-              <Download size={14} /> {isExporting ? "匯出中..." : "匯出 CSV"}
+              <Download size={14} /> {isExporting ? tx("匯出中...") : tx("匯出 CSV")}
             </button>
           )}
           <button
@@ -439,20 +442,20 @@ export default function AdminRefundRequestsManage() {
             data-testid="button-refresh-refunds"
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border hover:bg-muted text-sm"
           >
-            <RefreshCw size={14} /> 重新整理
+            <RefreshCw size={14} /> {tx("重新整理")}
           </button>
         </div>
       </header>
 
       <div className="flex items-center gap-2 text-sm">
         <Filter size={14} className="text-muted-foreground" />
-        <span className="text-muted-foreground">狀態：</span>
+        <span className="text-muted-foreground">{tx("狀態：")}</span>
         {[
-          { v: "pending", label: "待處理" },
-          { v: "approved", label: "已退票" },
-          { v: "rejected", label: "已拒絕" },
-          { v: "rescheduled", label: "已改期" },
-          { v: "", label: "全部" },
+          { v: "pending", label: tx("待處理") },
+          { v: "approved", label: tx("已退票") },
+          { v: "rejected", label: tx("已拒絕") },
+          { v: "rescheduled", label: tx("已改期") },
+          { v: "", label: tx("全部") },
         ].map((f) => (
           <button
             key={f.v}
@@ -469,14 +472,14 @@ export default function AdminRefundRequestsManage() {
 
       {canAct && selected.size > 0 && (
         <div className="flex items-center gap-2 flex-wrap bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 text-sm" data-testid="bulk-toolbar">
-          <span className="font-medium">已選取 {selected.size} 筆</span>
+          <span className="font-medium">{tx("已選取 {0} 筆", [selected.size])}</span>
           <button
             onClick={() => runBulk("approve")}
             disabled={busy}
             data-testid="button-bulk-approve"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
           >
-            <CheckCircle2 size={14} /> 批量退票成功
+            <CheckCircle2 size={14} /> {tx("批量退票成功")}
           </button>
           <button
             onClick={() => runBulk("reject")}
@@ -484,7 +487,7 @@ export default function AdminRefundRequestsManage() {
             data-testid="button-bulk-reject"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-destructive text-destructive text-xs font-medium hover:bg-destructive/5 disabled:opacity-50"
           >
-            <XCircle size={14} /> 批量拒絕
+            <XCircle size={14} /> {tx("批量拒絕")}
           </button>
           <button
             onClick={() => runBulk("send-bank-email")}
@@ -492,7 +495,7 @@ export default function AdminRefundRequestsManage() {
             data-testid="button-bulk-bank-email"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
           >
-            <Mail size={14} /> 批量寄退款資料表單
+            <Mail size={14} /> {tx("批量寄退款資料表單")}
           </button>
           <button
             onClick={() => runBulk("send-notify-email")}
@@ -500,7 +503,7 @@ export default function AdminRefundRequestsManage() {
             data-testid="button-bulk-notify-email"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
           >
-            <Send size={14} /> 批量寄退票通知信
+            <Send size={14} /> {tx("批量寄退票通知信")}
           </button>
           <button
             onClick={() => runBulk("send-refunded-email")}
@@ -508,23 +511,23 @@ export default function AdminRefundRequestsManage() {
             data-testid="button-bulk-refunded-email"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500 text-emerald-700 text-xs font-medium hover:bg-emerald-50 disabled:opacity-50"
           >
-            <Send size={14} /> 批量寄已退款通知
+            <Send size={14} /> {tx("批量寄已退款通知")}
           </button>
           <button
             onClick={() => setSelected(new Set())}
             disabled={busy}
             className="ml-auto px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted"
           >
-            取消選取
+            {tx("取消選取")}
           </button>
         </div>
       )}
 
       <section className="bg-white rounded-2xl border overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin inline mr-2" /> 載入中…</div>
+          <div className="p-12 text-center text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin inline mr-2" /> {tx("載入中…")}</div>
         ) : rows.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground">目前沒有{STATUS_LABEL[statusFilter] ?? ""}的退票申請。</div>
+          <div className="p-12 text-center text-muted-foreground">{tx("目前沒有{0}的退票申請。", [STATUS_LABEL()[statusFilter] ?? ""])}</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase text-muted-foreground border-b bg-muted/30">
@@ -540,14 +543,14 @@ export default function AdminRefundRequestsManage() {
                     />
                   </th>
                 )}
-                <th className="px-4 py-3">訂單編號</th>
-                <th className="px-4 py-3">買家</th>
-                <th className="px-4 py-3">原因</th>
-                <th className="px-4 py-3">張數</th>
-                <th className="px-4 py-3">金額</th>
-                <th className="px-4 py-3">狀態</th>
-                <th className="px-4 py-3">申請時間</th>
-                <th className="px-4 py-3">操作</th>
+                <th className="px-4 py-3">{tx("訂單編號")}</th>
+                <th className="px-4 py-3">{tx("買家")}</th>
+                <th className="px-4 py-3">{tx("原因")}</th>
+                <th className="px-4 py-3">{tx("張數")}</th>
+                <th className="px-4 py-3">{tx("金額")}</th>
+                <th className="px-4 py-3">{tx("狀態")}</th>
+                <th className="px-4 py-3">{tx("申請時間")}</th>
+                <th className="px-4 py-3">{tx("操作")}</th>
               </tr>
             </thead>
             <tbody>
@@ -570,21 +573,21 @@ export default function AdminRefundRequestsManage() {
                     <div className="text-xs text-muted-foreground">{r.buyerContact}</div>
                   </td>
                   <td className="px-4 py-3 max-w-xs truncate" title={r.reason}>{r.reason}</td>
-                  <td className="px-4 py-3">{r.refundTicketCount != null ? `${r.refundTicketCount} 張` : "全部"}</td>
+                  <td className="px-4 py-3">{r.refundTicketCount != null ? tx("{0} 張", [r.refundTicketCount]) : tx("全部")}</td>
                   <td className="px-4 py-3">NT$ {(r.refundAmount ?? 0).toLocaleString()}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLOR[r.status]}`}>
-                      {STATUS_LABEL[r.status] || r.status}
+                      {STATUS_LABEL()[r.status] || r.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleString("zh-TW")}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleString(getLocale())}</td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => openDetail(r.id)}
                       data-testid={`button-detail-${r.id}`}
                       className="px-3 py-1.5 rounded-lg border text-xs hover:bg-muted"
                     >
-                      查看詳情
+                      {tx("查看詳情")}
                     </button>
                   </td>
                 </tr>
@@ -603,22 +606,22 @@ export default function AdminRefundRequestsManage() {
               <div className="p-6 space-y-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h2 className="font-display text-2xl mb-1">退票申請 #{detail.request.id}</h2>
+                    <h2 className="font-display text-2xl mb-1">{tx("退票申請 #")}{detail.request.id}</h2>
                     <div className="text-xs text-muted-foreground font-mono">{detail.request.paymentRef}</div>
                   </div>
                   <span className={`px-2 py-1 rounded text-xs font-medium ${STATUS_COLOR[detail.request.status]}`}>
-                    {STATUS_LABEL[detail.request.status]}
+                    {STATUS_LABEL()[detail.request.status]}
                   </span>
                 </div>
 
                 <div className="bg-muted/30 rounded-xl p-4 text-sm space-y-2">
-                  <div><span className="text-muted-foreground">買家：</span><strong>{detail.request.buyerName}</strong></div>
-                  <div><span className="text-muted-foreground">聯絡：</span>{detail.request.buyerContact}</div>
-                  <div><span className="text-muted-foreground">原因：</span>{detail.request.reason}</div>
-                  <div><span className="text-muted-foreground">退票張數：</span>
-                    <strong>{detail.request.refundTicketCount != null ? `${detail.request.refundTicketCount} 張` : "全部"}</strong>
+                  <div><span className="text-muted-foreground">{tx("買家：")}</span><strong>{detail.request.buyerName}</strong></div>
+                  <div><span className="text-muted-foreground">{tx("聯絡：")}</span>{detail.request.buyerContact}</div>
+                  <div><span className="text-muted-foreground">{tx("原因：")}</span>{detail.request.reason}</div>
+                  <div><span className="text-muted-foreground">{tx("退票張數：")}</span>
+                    <strong>{detail.request.refundTicketCount != null ? tx("{0} 張", [detail.request.refundTicketCount]) : tx("全部")}</strong>
                   </div>
-                  <div><span className="text-muted-foreground">建議退款金額：</span>
+                  <div><span className="text-muted-foreground">{tx("建議退款金額：")}</span>
                     <strong className="text-primary">NT$ {(detail.request.refundAmount ?? 0).toLocaleString()}</strong>
                   </div>
                   {canAct && detail.request.status === "pending" && (
@@ -630,14 +633,14 @@ export default function AdminRefundRequestsManage() {
                     />
                   )}
                   {detail.request.adminNote && (
-                    <div><span className="text-muted-foreground">處理備註：</span>{detail.request.adminNote}</div>
+                    <div><span className="text-muted-foreground">{tx("處理備註：")}</span>{detail.request.adminNote}</div>
                   )}
                 </div>
 
                 <div className="rounded-xl border p-4 text-sm space-y-2">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <h3 className="font-medium flex items-center gap-2">
-                      <Landmark size={16} className="text-primary" /> 退款帳戶資料
+                      <Landmark size={16} className="text-primary" /> {tx("退款帳戶資料")}
                     </h3>
                     {canAct && (
                       <div className="flex items-center gap-2 flex-wrap">
@@ -647,7 +650,7 @@ export default function AdminRefundRequestsManage() {
                           data-testid="button-resend-bank-email"
                           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
                         >
-                          <Mail size={14} /> 補發退款資料表單 Email
+                          <Mail size={14} /> {tx("補發退款資料表單 Email")}
                         </button>
                         {detail.request.status === "approved" && (
                           <button
@@ -656,7 +659,7 @@ export default function AdminRefundRequestsManage() {
                             data-testid="button-send-notify-email"
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted disabled:opacity-50"
                           >
-                            <Send size={14} /> 寄退票完成通知信
+                            <Send size={14} /> {tx("寄退票完成通知信")}
                           </button>
                         )}
                         {detail.request.status === "approved" && (
@@ -666,7 +669,7 @@ export default function AdminRefundRequestsManage() {
                             data-testid="button-send-refunded-email"
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-500 text-emerald-700 text-xs hover:bg-emerald-50 disabled:opacity-50"
                           >
-                            <Send size={14} /> 寄已退款通知信
+                            <Send size={14} /> {tx("寄已退款通知信")}
                           </button>
                         )}
                       </div>
@@ -674,13 +677,13 @@ export default function AdminRefundRequestsManage() {
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {detail.request.bankInfoEmailSentAt
-                      ? `表單 Email 已於 ${new Date(detail.request.bankInfoEmailSentAt).toLocaleString("zh-TW")} 寄出`
-                      : "尚未寄出退款資料表單 Email"}
+                      ? tx("表單 Email 已於 {0} 寄出", [new Date(detail.request.bankInfoEmailSentAt).toLocaleString(getLocale())])
+                      : tx("尚未寄出退款資料表單 Email")}
                     {detail.request.notifyEmailSentAt && (
-                      <> ・退票通知信已於 {new Date(detail.request.notifyEmailSentAt).toLocaleString("zh-TW")} 寄出</>
+                      <> {tx("・退票通知信已於 {0} 寄出", [new Date(detail.request.notifyEmailSentAt).toLocaleString(getLocale())])}</>
                     )}
                     {detail.request.refundedNotifySentAt && (
-                      <> ・已退款通知已於 {new Date(detail.request.refundedNotifySentAt).toLocaleString("zh-TW")} 寄出</>
+                      <> {tx("・已退款通知已於 {0} 寄出", [new Date(detail.request.refundedNotifySentAt).toLocaleString(getLocale())])}</>
                     )}
                   </div>
                   {detail.request.autoRefundAt && (
@@ -688,32 +691,32 @@ export default function AdminRefundRequestsManage() {
                       className={`text-xs rounded-lg px-3 py-2 ${detail.request.autoRefundStatus === "success" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}
                       data-testid="auto-refund-result"
                     >
-                      藍新信用卡退刷{detail.request.autoRefundStatus === "success" ? "成功" : "失敗"}：
+                      {tx("藍新信用卡退刷")}{detail.request.autoRefundStatus === "success" ? tx("成功") : tx("失敗")}{tx("：")}
                       {detail.request.autoRefundMessage}
-                      （{new Date(detail.request.autoRefundAt).toLocaleString("zh-TW")}）
-                      {detail.request.autoRefundStatus !== "success" && "，請改人工匯款或至藍新後台處理。"}
+                      {tx("（")}{new Date(detail.request.autoRefundAt).toLocaleString(getLocale())}{tx("）")}
+                      {detail.request.autoRefundStatus !== "success" && tx("，請改人工匯款或至藍新後台處理。")}
                     </div>
                   )}
                   {detail.request.bankInfoSubmittedAt ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 pt-1">
-                      <div><span className="text-muted-foreground">購買時間：</span>{detail.request.formPurchaseInfo}</div>
-                      <div><span className="text-muted-foreground">姓名：</span>{detail.request.formName}</div>
-                      <div><span className="text-muted-foreground">電話：</span>{detail.request.formPhone}</div>
-                      <div><span className="text-muted-foreground">銀行：</span>{detail.request.bankName}</div>
-                      <div><span className="text-muted-foreground">分行：</span>{detail.request.bankBranch}</div>
-                      <div><span className="text-muted-foreground">戶名：</span>{detail.request.bankAccountName}</div>
-                      <div><span className="text-muted-foreground">帳號：</span><span className="font-mono">{detail.request.bankAccountNumber}</span></div>
+                      <div><span className="text-muted-foreground">{tx("購買時間：")}</span>{detail.request.formPurchaseInfo}</div>
+                      <div><span className="text-muted-foreground">{tx("姓名：")}</span>{detail.request.formName}</div>
+                      <div><span className="text-muted-foreground">{tx("電話：")}</span>{detail.request.formPhone}</div>
+                      <div><span className="text-muted-foreground">{tx("銀行：")}</span>{detail.request.bankName}</div>
+                      <div><span className="text-muted-foreground">{tx("分行：")}</span>{detail.request.bankBranch}</div>
+                      <div><span className="text-muted-foreground">{tx("戶名：")}</span>{detail.request.bankAccountName}</div>
+                      <div><span className="text-muted-foreground">{tx("帳號：")}</span><span className="font-mono">{detail.request.bankAccountNumber}</span></div>
                       <div className="text-xs text-muted-foreground sm:col-span-2">
-                        提交時間：{new Date(detail.request.bankInfoSubmittedAt).toLocaleString("zh-TW")}
+                        {tx("提交時間：")}{new Date(detail.request.bankInfoSubmittedAt).toLocaleString(getLocale())}
                       </div>
                     </div>
                   ) : (
-                    <div className="text-amber-700">買家尚未回填退款帳戶資料。</div>
+                    <div className="text-amber-700">{tx("買家尚未回填退款帳戶資料。")}</div>
                   )}
                 </div>
 
                 <div>
-                  <h3 className="font-medium mb-2">訂單票券</h3>
+                  <h3 className="font-medium mb-2">{tx("訂單票券")}</h3>
                   <div className="space-y-2">
                     {detail.registrations.map((reg) => (
                       <div key={reg.id} className="border rounded-lg p-3 text-sm" data-testid={`detail-reg-${reg.id}`}>
@@ -722,8 +725,8 @@ export default function AdminRefundRequestsManage() {
                             <div className="font-medium">{reg.parentName} · {reg.ticketType ?? "—"} × {reg.ticketCount}</div>
                             <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                               <Calendar size={12} /> {reg.eventDate}
-                              {reg.checkedInAt && <span className="ml-2 text-emerald-600">已入場</span>}
-                              {reg.paymentStatus === "refunded" && <span className="ml-2 text-gray-500">已退款</span>}
+                              {reg.checkedInAt && <span className="ml-2 text-emerald-600">{tx("已入場")}</span>}
+                              {reg.paymentStatus === "refunded" && <span className="ml-2 text-gray-500">{tx("已退款")}</span>}
                             </div>
                           </div>
                           {canAct && detail.request.status === "pending" && !reg.checkedInAt && reg.paymentStatus !== "refunded" && (
@@ -734,7 +737,7 @@ export default function AdminRefundRequestsManage() {
                               className="text-xs px-2 py-1 rounded border"
                               data-testid={`select-reschedule-${reg.id}`}
                             >
-                              <option value="">改期至…</option>
+                              <option value="">{tx("改期至…")}</option>
                               {EVENT_DATES.filter((d) => d !== reg.eventDate).map((d) => (
                                 <option key={d} value={d}>{d}</option>
                               ))}
@@ -749,13 +752,13 @@ export default function AdminRefundRequestsManage() {
                 {canAct && detail.request.status === "pending" && (
                   <div className="space-y-3 border-t pt-4">
                     <label className="text-sm block">
-                      <span className="block mb-1 font-medium">處理備註（拒絕時必填）</span>
+                      <span className="block mb-1 font-medium">{tx("處理備註（拒絕時必填）")}</span>
                       <textarea
                         value={adminNote}
                         onChange={(e) => setAdminNote(e.target.value)}
                         rows={2}
                         className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="例如：已退款至原帳戶 / 因活動 7 天前不予退票…"
+                        placeholder={tx("例如：已退款至原帳戶 / 因活動 7 天前不予退票…")}
                         data-testid="input-admin-note"
                       />
                     </label>
@@ -766,7 +769,7 @@ export default function AdminRefundRequestsManage() {
                         data-testid="button-approve-refund"
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 disabled:opacity-50"
                       >
-                        <CheckCircle2 size={16} /> 核准退票
+                        <CheckCircle2 size={16} /> {tx("核准退票")}
                       </button>
                       <button
                         onClick={reject}
@@ -774,21 +777,21 @@ export default function AdminRefundRequestsManage() {
                         data-testid="button-reject-refund"
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-destructive text-destructive font-medium hover:bg-destructive/5 disabled:opacity-50"
                       >
-                        <XCircle size={16} /> 拒絕退票
+                        <XCircle size={16} /> {tx("拒絕退票")}
                       </button>
                       <button
                         onClick={() => setOpenId(null)}
                         disabled={busy}
                         className="ml-auto px-4 py-2 rounded-lg border hover:bg-muted text-sm"
                       >
-                        關閉
+                        {tx("關閉")}
                       </button>
                     </div>
                   </div>
                 )}
                 {(!canAct || detail.request.status !== "pending") && (
                   <div className="border-t pt-4">
-                    <button onClick={() => setOpenId(null)} className="px-4 py-2 rounded-lg border hover:bg-muted text-sm">關閉</button>
+                    <button onClick={() => setOpenId(null)} className="px-4 py-2 rounded-lg border hover:bg-muted text-sm">{tx("關閉")}</button>
                   </div>
                 )}
               </div>

@@ -671,7 +671,7 @@ function identityKey(
 }
 
 function buildPaymentReminderEmail(name: string): { subject: string; body: string } {
-  const subject = "【2026 臺灣氣球嘉年華｜戰鬥陀螺賽】付款提醒 — 參賽名額保留中";
+  const subject = "【2026 臺灣氣球嘉年華｜戰鬥陀螺賽】付款提醒 / Tournament payment reminder";
   const body = `親愛的 ${name} 您好，
 
 提醒您，您報名的「${EVENT_INFO.name} 戰鬥陀螺賽」目前尚未完成付款。
@@ -689,6 +689,26 @@ function buildPaymentReminderEmail(name: string): { subject: string; body: strin
 如有任何問題，請洽服務專線 ${EVENT_INFO.servicePhone}。
 
 ${EVENT_INFO.name} 主辦團隊
+
+────────────────────────
+English
+────────────────────────
+
+Dear ${name},
+
+Payment for your Taiwan Balloon Carnival 2026 Beyblade tournament registration is still pending.
+Your place is being held for approximately one more day.
+If you wish to participate, please complete payment promptly to secure your place.
+If you no longer need the ticket, no reply is required. Your place will be released to other waiting participants after the reservation period.
+
+TOURNAMENT INFORMATION
+Date: Sunday, July 26, 2026
+Check-in: 11:00–12:30
+Venue: Building M, POPOP Taipei (Taipei Bottle Cap Factory)
+Tournament starts at 13:00.
+
+For assistance, call ${EVENT_INFO.servicePhone}.
+Taiwan Balloon Carnival 2026 Organizing Team
 `;
   return { subject, body };
 }

@@ -1,3 +1,4 @@
+import { tx, useI18n } from "@/lib/i18n";
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2, Trash2, X, ExternalLink } from "lucide-react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
@@ -13,12 +14,12 @@ interface Sponsor {
   tier: string;
 }
 
-const tierLabels: Record<string, string> = {
-  platinum: "白金級",
-  gold: "金級",
-  silver: "銀級",
-  bronze: "銅級",
-};
+const tierLabels = (): Record<string, string> => ({
+  platinum: tx("白金級"),
+  gold: tx("金級"),
+  silver: tx("銀級"),
+  bronze: tx("銅級"),
+});
 
 const tierColors: Record<string, string> = {
   platinum: "bg-slate-100 text-slate-700 border-slate-300",
@@ -29,7 +30,7 @@ const tierColors: Record<string, string> = {
 
 async function fetchAdminSponsors(): Promise<Sponsor[]> {
   const res = await fetch(`${BASE}/api/admin/sponsors`, { credentials: "include" });
-  if (!res.ok) throw new Error("載入失敗");
+  if (!res.ok) throw new Error(tx("載入失敗"));
   return res.json();
 }
 
@@ -40,7 +41,7 @@ async function createSponsor(data: Omit<Sponsor, "id">): Promise<Sponsor> {
     credentials: "include",
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("新增失敗");
+  if (!res.ok) throw new Error(tx("新增失敗"));
   return res.json();
 }
 
@@ -51,7 +52,7 @@ async function updateSponsor(id: number, data: Partial<Sponsor>): Promise<Sponso
     credentials: "include",
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("更新失敗");
+  if (!res.ok) throw new Error(tx("更新失敗"));
   return res.json();
 }
 
@@ -60,10 +61,11 @@ async function deleteSponsorApi(id: number): Promise<void> {
     method: "DELETE",
     credentials: "include",
   });
-  if (!res.ok) throw new Error("刪除失敗");
+  if (!res.ok) throw new Error(tx("刪除失敗"));
 }
 
 export default function AdminSponsorsManage() {
+  useI18n();
   const queryClient = useQueryClient();
   const queryKey = ["admin-sponsors"];
 
@@ -113,7 +115,7 @@ export default function AdminSponsorsManage() {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("確定要刪除這個贊助廠商嗎？")) {
+    if (confirm(tx("確定要刪除這個贊助廠商嗎？"))) {
       deleteMut.mutate(id);
     }
   };
@@ -143,23 +145,23 @@ export default function AdminSponsorsManage() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-display">贊助廠商管理</h1>
-          <p className="text-muted-foreground mt-1">管理贊助廠商資訊，前台贊助廠商頁面將自動更新</p>
+          <h1 className="text-3xl font-display">{tx("贊助廠商管理")}</h1>
+          <p className="text-muted-foreground mt-1">{tx("管理贊助廠商資訊，前台贊助廠商頁面將自動更新")}</p>
         </div>
         <button
           onClick={openCreate}
           className="bg-accent text-accent-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:bg-accent/90 transition-all shadow-md"
         >
-          <Plus size={18} /> 新增廠商
+          <Plus size={18} /> {tx("新增廠商")}
         </button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-10">載入中...</div>
+        <div className="text-center py-10">{tx("載入中...")}</div>
       ) : !sponsors?.length ? (
         <div className="text-center py-16 bg-white rounded-3xl border">
-          <p className="text-muted-foreground text-lg">尚無贊助廠商</p>
-          <p className="text-muted-foreground text-sm mt-1">點擊「新增廠商」開始新增</p>
+          <p className="text-muted-foreground text-lg">{tx("尚無贊助廠商")}</p>
+          <p className="text-muted-foreground text-sm mt-1">{tx("點擊「新增廠商」開始新增")}</p>
         </div>
       ) : (
         tierOrder.map(tier => {
@@ -169,9 +171,9 @@ export default function AdminSponsorsManage() {
             <div key={tier}>
               <div className="flex items-center gap-3 mb-4">
                 <span className={`px-3 py-1 rounded-full text-sm font-bold border ${tierColors[tier]}`}>
-                  {tierLabels[tier]}
+                  {tierLabels()[tier]}
                 </span>
-                <span className="text-muted-foreground text-sm">{items.length} 家</span>
+                <span className="text-muted-foreground text-sm">{items.length} {tx("家")}</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {items.map(s => (
@@ -195,7 +197,7 @@ export default function AdminSponsorsManage() {
                     </div>
                     <div className="flex gap-2 border-t pt-3 mt-auto">
                       <button onClick={() => openEdit(s)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
-                        <Edit2 size={16} /> 編輯
+                        <Edit2 size={16} /> {tx("編輯")}
                       </button>
                       <button onClick={() => handleDelete(s.id)} className="px-4 py-2 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors flex items-center justify-center">
                         <Trash2 size={16} />
@@ -220,36 +222,36 @@ export default function AdminSponsorsManage() {
             </button>
 
             <div className="p-8">
-              <h2 className="text-2xl font-bold mb-6">{editingId ? "編輯廠商" : "新增廠商"}</h2>
+              <h2 className="text-2xl font-bold mb-6">{editingId ? tx("編輯廠商") : tx("新增廠商")}</h2>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-bold mb-2">廠商名稱</label>
+                  <label className="block text-sm font-bold mb-2">{tx("廠商名稱")}</label>
                   <input
                     required
                     type="text"
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                     className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
-                    placeholder="例：台灣氣球股份有限公司"
+                    placeholder={tx("例：台灣氣球股份有限公司")}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-2">贊助等級</label>
+                  <label className="block text-sm font-bold mb-2">{tx("贊助等級")}</label>
                   <select
                     value={formData.tier}
                     onChange={e => setFormData({ ...formData, tier: e.target.value })}
                     className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none bg-white"
                   >
                     {tierOrder.map(t => (
-                      <option key={t} value={t}>{tierLabels[t]}</option>
+                      <option key={t} value={t}>{tierLabels()[t]}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-2">Logo 圖片 URL</label>
+                  <label className="block text-sm font-bold mb-2">{tx("Logo 圖片 URL")}</label>
                   <input
                     required
                     type="url"
@@ -261,7 +263,7 @@ export default function AdminSponsorsManage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-2">官方網站 URL</label>
+                  <label className="block text-sm font-bold mb-2">{tx("官方網站 URL")}</label>
                   <input
                     required
                     type="url"
@@ -273,9 +275,9 @@ export default function AdminSponsorsManage() {
                 </div>
 
                 <div className="pt-4 flex justify-end gap-3 border-t">
-                  <button type="button" onClick={() => setIsDialogOpen(false)} className="px-6 py-2.5 rounded-full font-bold bg-muted hover:bg-muted/80">取消</button>
+                  <button type="button" onClick={() => setIsDialogOpen(false)} className="px-6 py-2.5 rounded-full font-bold bg-muted hover:bg-muted/80">{tx("取消")}</button>
                   <button type="submit" disabled={createMut.isPending || updateMut.isPending} className="px-8 py-2.5 rounded-full font-bold bg-primary text-white hover:bg-primary/90">
-                    {createMut.isPending || updateMut.isPending ? "儲存中..." : "儲存"}
+                    {createMut.isPending || updateMut.isPending ? tx("儲存中...") : tx("儲存")}
                   </button>
                 </div>
               </form>

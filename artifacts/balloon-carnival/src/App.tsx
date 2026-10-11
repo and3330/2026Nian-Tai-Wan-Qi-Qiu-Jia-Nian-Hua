@@ -5,6 +5,8 @@ import { trackPageView } from "@/lib/fbPixel";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@workspace/replit-auth-web";
+import { LanguageProvider, useI18n } from "@/lib/i18n";
+import { DocumentMeta } from "@/components/DocumentMeta";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/Layout";
 
@@ -67,6 +69,7 @@ function PixelPageViewTracker() {
 }
 
 function Router() {
+  useI18n();
   return (
     <Layout>
       <PixelPageViewTracker />
@@ -148,12 +151,19 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
+        {/* Render-prop: a language change re-renders (never remounts) the tree,
+            so in-progress form input, carts and selections are preserved. */}
+        <LanguageProvider>
+          {() => (
+            <TooltipProvider>
+              <DocumentMeta />
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <Router />
+              </WouterRouter>
+              <Toaster />
+            </TooltipProvider>
+          )}
+        </LanguageProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

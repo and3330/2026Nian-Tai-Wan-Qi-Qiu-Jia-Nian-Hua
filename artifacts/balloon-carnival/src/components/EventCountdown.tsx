@@ -1,3 +1,4 @@
+import { tx, useI18n } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ function compute(): Parts {
 }
 
 export function EventCountdown({ className, compact = false }: { className?: string; compact?: boolean }) {
+  useI18n();
   const [t, setT] = useState<Parts>(() => compute());
   useEffect(() => {
     const id = setInterval(() => setT(compute()), 1000);
@@ -23,22 +25,22 @@ export function EventCountdown({ className, compact = false }: { className?: str
   if (t.over) {
     return (
       <div className={cn("inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-700 font-bold text-sm", className)}>
-        <Timer size={16} /> 活動進行中
+        <Timer size={16} /> {tx("活動進行中")}
       </div>
     );
   }
 
   const cells = [
-    { v: t.d, label: "天" },
-    { v: t.h, label: "時" },
-    { v: t.m, label: "分" },
+    { v: t.d, label: tx("天") },
+    { v: t.h, label: tx("時") },
+    { v: t.m, label: tx("分") },
   ];
 
   if (compact) {
     return (
       <div className={cn("inline-flex items-center gap-1.5 text-sm font-bold tracking-wide", className)} data-testid="countdown-compact">
         <Timer size={14} className="opacity-70" />
-        <span>距離開幕 {t.d}天 {String(t.h).padStart(2, "0")}:{String(t.m).padStart(2, "0")}:{String(t.s).padStart(2, "0")}</span>
+        <span>{tx("距離開幕")} {t.d}{tx("天")} {String(t.h).padStart(2, "0")}:{String(t.m).padStart(2, "0")}:{String(t.s).padStart(2, "0")}</span>
       </div>
     );
   }
@@ -46,7 +48,7 @@ export function EventCountdown({ className, compact = false }: { className?: str
   return (
     <div className={cn("inline-flex flex-col items-center gap-2", className)} data-testid="countdown">
       <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-foreground/60">
-        <Timer size={12} /> 距離開幕還有
+        <Timer size={12} /> {tx("距離開幕還有")}
       </div>
       <div className="flex items-stretch gap-2">
         {cells.map((c, i) => (
@@ -63,6 +65,7 @@ export function EventCountdown({ className, compact = false }: { className?: str
 }
 
 export function AnimatedNumber({ value, duration = 600, className }: { value: number; duration?: number; className?: string }) {
+  useI18n();
   const [display, setDisplay] = useState(value);
   const [flash, setFlash] = useState(false);
 

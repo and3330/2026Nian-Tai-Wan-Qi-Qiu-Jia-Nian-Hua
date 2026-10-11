@@ -8,7 +8,7 @@ import {
   buildRegistrationVars,
   getEmailMode,
   getQrImageUrl,
-  renderTemplate,
+  renderBuyerEmail,
   sendEmail,
 } from "../services/email-service";
 
@@ -91,8 +91,7 @@ router.post("/admin/email-templates/:key/test", async (req, res): Promise<void> 
   sampleVars.qrUrl = getQrImageUrl("sample-token-preview");
   const result = await sendEmail({
     to: recipient,
-    subject: renderTemplate(tpl.subject, sampleVars),
-    body: renderTemplate(tpl.body, sampleVars),
+    ...renderBuyerEmail(key as EmailTemplateKey, tpl, sampleVars),
     qrImageUrl: sampleVars.qrUrl,
     htmlOverride:
       key === "confirmation" ? buildConfirmationEmailHtml(sampleVars) : undefined,

@@ -1,28 +1,30 @@
+import { tx, useI18n } from "@/lib/i18n";
 import { Crown, Sparkles } from "lucide-react";
 
-const sponsors = [
-  { name: "台北氣球派對", logo: "images/sponsors/taipei-balloon.jpg" },
-  { name: "曄達氣球", logo: "images/sponsors/yeda.jpg" },
-  { name: "彩飛屋", logo: "images/sponsors/caifeiwu.svg" },
-  { name: "藝仁有限公司", logo: null },
-  { name: "氣球屋", logo: "images/sponsors/balloon-house.png" },
-];
+const sponsors = () => ([
+  { name: tx("台北氣球派對"), logo: "images/sponsors/taipei-balloon.jpg" },
+  { name: tx("曄達氣球"), logo: "images/sponsors/yeda.jpg" },
+  { name: tx("彩飛屋"), logo: "images/sponsors/caifeiwu.svg" },
+  { name: tx("藝仁有限公司"), logo: null },
+  { name: tx("氣球屋"), logo: "images/sponsors/balloon-house.png" },
+]);
 
 export default function SponsorsPage() {
+  useI18n();
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 md:py-20">
       <div className="text-center mb-16">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-primary/10 text-primary rounded-full mb-6">
           <Crown size={40} />
         </div>
-        <h1 className="font-display text-4xl md:text-5xl mb-4">贊助廠商專區</h1>
+        <h1 className="font-display text-4xl md:text-5xl mb-4">{tx("贊助廠商專區")}</h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          特別感謝以下合作夥伴的鼎力支持，讓 2026 臺灣氣球嘉年華得以順利舉行。
+          {tx("特別感謝以下合作夥伴的鼎力支持，讓 2026 臺灣氣球嘉年華得以順利舉行。")}
         </p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 md:gap-6 max-w-6xl mx-auto">
-        {sponsors.map(s => (
+        {sponsors().map(s => (
           <div
             key={s.name}
             className="group bg-white rounded-3xl border border-border/60 p-6 md:p-8 flex flex-col items-center justify-center gap-4 aspect-square shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"

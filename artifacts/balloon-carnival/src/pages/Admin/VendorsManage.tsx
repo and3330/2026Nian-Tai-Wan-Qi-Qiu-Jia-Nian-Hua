@@ -1,3 +1,4 @@
+import { tx, getLocale, useI18n, getLang, txApi } from "@/lib/i18n";
 import { useState, useEffect, useCallback } from "react";
 import { Redirect } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -38,6 +39,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export default function AdminVendorsManage() {
+  useI18n();
   const { role, hasRole, isLoading } = useAuth();
   const { toast } = useToast();
 
@@ -65,11 +67,11 @@ export default function AdminVendorsManage() {
     try {
       setVendors(await api<VendorRow[]>("/admin/vendors"));
     } catch (e) {
-      toast({ variant: "destructive", title: "載入失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("載入失敗"), description: txApi((e as Error).message) });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, getLang()]);
 
   useEffect(() => {
     if (canManage) refresh();
@@ -86,11 +88,11 @@ export default function AdminVendorsManage() {
         method: "POST",
         body: JSON.stringify({ name: name.trim(), boothNumber: boothNumber.trim() || null, contact: contact.trim() || null }),
       });
-      toast({ title: "已新增商家" });
+      toast({ title: tx("已新增商家") });
       setName(""); setBoothNumber(""); setContact("");
       refresh();
     } catch (e) {
-      toast({ variant: "destructive", title: "新增失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("新增失敗"), description: txApi((e as Error).message) });
     } finally {
       setSubmitting(false);
     }
@@ -110,23 +112,23 @@ export default function AdminVendorsManage() {
         method: "PUT",
         body: JSON.stringify({ name: editName.trim(), boothNumber: editBooth.trim() || null, contact: editContact.trim() || null }),
       });
-      toast({ title: "已更新商家" });
+      toast({ title: tx("已更新商家") });
       setEditing(null);
       refresh();
     } catch (e) {
-      toast({ variant: "destructive", title: "更新失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("更新失敗"), description: txApi((e as Error).message) });
     }
   };
 
   const onToggleActive = async (v: VendorRow) => {
-    const verb = v.active ? "停用" : "啟用";
-    if (!window.confirm(`確定要${verb}「${v.name}」嗎？${v.active ? "停用後該商家帳號將無法收款開發票。" : ""}`)) return;
+    const verb = v.active ? tx("停用") : tx("啟用");
+    if (!window.confirm(tx("確定要{0}「{1}」嗎？{2}", [verb, v.name, v.active ? tx("停用後該商家帳號將無法收款開發票。") : ""]))) return;
     try {
       await api(`/admin/vendors/${v.id}`, { method: "PUT", body: JSON.stringify({ active: !v.active }) });
-      toast({ title: `已${verb}` });
+      toast({ title: tx("已{0}", [verb]) });
       refresh();
     } catch (e) {
-      toast({ variant: "destructive", title: "操作失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("操作失敗"), description: txApi((e as Error).message) });
     }
   };
 
@@ -137,7 +139,7 @@ export default function AdminVendorsManage() {
     try {
       setDetailRows(await api<VendorInvoiceRow[]>(`/admin/vendors/${v.id}/invoices`));
     } catch (e) {
-      toast({ variant: "destructive", title: "載入明細失敗", description: (e as Error).message });
+      toast({ variant: "destructive", title: tx("載入明細失敗"), description: txApi((e as Error).message) });
     } finally {
       setDetailLoading(false);
     }
@@ -148,17 +150,17 @@ export default function AdminVendorsManage() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="font-display text-3xl mb-2 flex items-center gap-3"><Store className="text-primary" /> 攤位商家管理</h1>
+        <h1 className="font-display text-3xl mb-2 flex items-center gap-3"><Store className="text-primary" /> {tx("攤位商家管理")}</h1>
         <p className="text-sm text-muted-foreground">
-          管理現場攤位商家與各商家的 POS 收款統計。商家帳號請到「帳號管理」建立（角色選「攤位商家」並綁定商家）。
+          {tx("管理現場攤位商家與各商家的 POS 收款統計。商家帳號請到「帳號管理」建立（角色選「攤位商家」並綁定商家）。")}
         </p>
       </header>
 
       <section className="bg-white rounded-2xl p-6 border">
-        <h2 className="font-medium text-lg mb-4 flex items-center gap-2"><Plus size={20} /> 新增商家</h2>
+        <h2 className="font-medium text-lg mb-4 flex items-center gap-2"><Plus size={20} /> {tx("新增商家")}</h2>
         <form onSubmit={onCreate} className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <label className="text-sm">
-            <span className="block mb-1 font-medium">商家名稱 *</span>
+            <span className="block mb-1 font-medium">{tx("商家名稱 *")}</span>
             <input
               data-testid="input-vendor-name"
               required minLength={2}
@@ -167,20 +169,20 @@ export default function AdminVendorsManage() {
             />
           </label>
           <label className="text-sm">
-            <span className="block mb-1 font-medium">攤位編號（選填）</span>
+            <span className="block mb-1 font-medium">{tx("攤位編號（選填）")}</span>
             <input
               data-testid="input-vendor-booth"
               value={boothNumber} onChange={(e) => setBoothNumber(e.target.value)}
-              placeholder="例如 A12"
+              placeholder={tx("例如 A12")}
               className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </label>
           <label className="text-sm">
-            <span className="block mb-1 font-medium">聯絡方式（選填）</span>
+            <span className="block mb-1 font-medium">{tx("聯絡方式（選填）")}</span>
             <input
               data-testid="input-vendor-contact"
               value={contact} onChange={(e) => setContact(e.target.value)}
-              placeholder="電話或 Email"
+              placeholder={tx("電話或 Email")}
               className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </label>
@@ -190,7 +192,7 @@ export default function AdminVendorsManage() {
               data-testid="button-create-vendor"
               className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50"
             >
-              {submitting ? "新增中..." : "新增商家"}
+              {submitting ? tx("新增中...") : tx("新增商家")}
             </button>
           </div>
         </form>
@@ -198,27 +200,27 @@ export default function AdminVendorsManage() {
 
       <section className="bg-white rounded-2xl p-6 border">
         <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-          <h2 className="font-medium text-lg">商家列表與收款統計（{vendors.length}）</h2>
+          <h2 className="font-medium text-lg">{tx("商家列表與收款統計（")}{vendors.length}{tx("）")}</h2>
           <div className="text-sm text-muted-foreground">
-            全部商家已開立總額：<span className="font-bold text-foreground">NT${totalAll.toLocaleString()}</span>
+            {tx("全部商家已開立總額：")}<span className="font-bold text-foreground">NT${totalAll.toLocaleString()}</span>
           </div>
         </div>
         {loading ? (
-          <p className="text-muted-foreground text-sm">載入中…</p>
+          <p className="text-muted-foreground text-sm">{tx("載入中…")}</p>
         ) : vendors.length === 0 ? (
-          <p className="text-muted-foreground text-sm">尚未建立任何商家。</p>
+          <p className="text-muted-foreground text-sm">{tx("尚未建立任何商家。")}</p>
         ) : (
           <div className="overflow-x-auto -mx-2">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-muted-foreground border-b">
                 <tr>
-                  <th className="px-3 py-2">商家</th>
-                  <th className="px-3 py-2">攤位</th>
-                  <th className="px-3 py-2">帳號</th>
-                  <th className="px-3 py-2 text-right">開立筆數</th>
-                  <th className="px-3 py-2 text-right">收款總額</th>
-                  <th className="px-3 py-2">狀態</th>
-                  <th className="px-3 py-2">操作</th>
+                  <th className="px-3 py-2">{tx("商家")}</th>
+                  <th className="px-3 py-2">{tx("攤位")}</th>
+                  <th className="px-3 py-2">{tx("帳號")}</th>
+                  <th className="px-3 py-2 text-right">{tx("開立筆數")}</th>
+                  <th className="px-3 py-2 text-right">{tx("收款總額")}</th>
+                  <th className="px-3 py-2">{tx("狀態")}</th>
+                  <th className="px-3 py-2">{tx("操作")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -230,13 +232,13 @@ export default function AdminVendorsManage() {
                     </td>
                     <td className="px-3 py-3">{v.boothNumber || "—"}</td>
                     <td className="px-3 py-3 text-xs text-muted-foreground">
-                      {v.accounts.length > 0 ? v.accounts.join(", ") : "尚未綁定"}
+                      {v.accounts.length > 0 ? v.accounts.join(", ") : tx("尚未綁定")}
                     </td>
                     <td className="px-3 py-3 text-right">{v.issuedCount}</td>
                     <td className="px-3 py-3 text-right font-bold">NT${v.issuedTotal.toLocaleString()}</td>
                     <td className="px-3 py-3">
                       <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", v.active ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground")}>
-                        {v.active ? "啟用中" : "已停用"}
+                        {v.active ? tx("啟用中") : tx("已停用")}
                       </span>
                     </td>
                     <td className="px-3 py-3">
@@ -246,7 +248,7 @@ export default function AdminVendorsManage() {
                           onClick={() => openDetail(v)}
                           data-testid={`button-vendor-detail-${v.id}`}
                           className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                          title="收款明細"
+                          title={tx("收款明細")}
                         >
                           <ReceiptText size={16} />
                         </button>
@@ -255,7 +257,7 @@ export default function AdminVendorsManage() {
                           onClick={() => startEdit(v)}
                           data-testid={`button-vendor-edit-${v.id}`}
                           className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                          title="編輯"
+                          title={tx("編輯")}
                         >
                           <Pencil size={16} />
                         </button>
@@ -265,7 +267,7 @@ export default function AdminVendorsManage() {
                           data-testid={`button-vendor-toggle-${v.id}`}
                           className={cn("px-2 py-1 rounded text-xs font-medium", v.active ? "text-destructive hover:bg-destructive/10" : "text-green-700 hover:bg-green-50")}
                         >
-                          {v.active ? "停用" : "啟用"}
+                          {v.active ? tx("停用") : tx("啟用")}
                         </button>
                       </div>
                     </td>
@@ -281,25 +283,25 @@ export default function AdminVendorsManage() {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-lg">編輯商家</h3>
+              <h3 className="font-bold text-lg">{tx("編輯商家")}</h3>
               <button type="button" onClick={() => setEditing(null)} className="p-1 rounded hover:bg-muted"><X size={18} /></button>
             </div>
             <label className="text-sm block">
-              <span className="block mb-1 font-medium">商家名稱 *</span>
+              <span className="block mb-1 font-medium">{tx("商家名稱 *")}</span>
               <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-3 py-2 rounded-lg border" data-testid="input-edit-vendor-name" />
             </label>
             <label className="text-sm block">
-              <span className="block mb-1 font-medium">攤位編號</span>
+              <span className="block mb-1 font-medium">{tx("攤位編號")}</span>
               <input value={editBooth} onChange={(e) => setEditBooth(e.target.value)} className="w-full px-3 py-2 rounded-lg border" data-testid="input-edit-vendor-booth" />
             </label>
             <label className="text-sm block">
-              <span className="block mb-1 font-medium">聯絡方式</span>
+              <span className="block mb-1 font-medium">{tx("聯絡方式")}</span>
               <input value={editContact} onChange={(e) => setEditContact(e.target.value)} className="w-full px-3 py-2 rounded-lg border" data-testid="input-edit-vendor-contact" />
             </label>
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 rounded-xl border font-medium">取消</button>
+              <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 rounded-xl border font-medium">{tx("取消")}</button>
               <button type="button" onClick={onSaveEdit} disabled={editName.trim().length < 2} className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-50" data-testid="button-save-vendor">
-                儲存
+                {tx("儲存")}
               </button>
             </div>
           </div>
@@ -310,32 +312,32 @@ export default function AdminVendorsManage() {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setDetailVendor(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-lg">{detailVendor.name} — 收款明細</h3>
+              <h3 className="font-bold text-lg">{detailVendor.name} {tx("— 收款明細")}</h3>
               <button type="button" onClick={() => setDetailVendor(null)} className="p-1 rounded hover:bg-muted"><X size={18} /></button>
             </div>
             {detailLoading ? (
-              <p className="text-sm text-muted-foreground">載入中…</p>
+              <p className="text-sm text-muted-foreground">{tx("載入中…")}</p>
             ) : detailRows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">此商家尚無收款紀錄。</p>
+              <p className="text-sm text-muted-foreground">{tx("此商家尚無收款紀錄。")}</p>
             ) : (
               <table className="w-full text-sm">
                 <thead className="text-left text-xs uppercase text-muted-foreground border-b">
                   <tr>
-                    <th className="px-2 py-2">時間</th>
-                    <th className="px-2 py-2">發票號碼</th>
-                    <th className="px-2 py-2">買受人</th>
-                    <th className="px-2 py-2 text-right">金額</th>
-                    <th className="px-2 py-2">狀態</th>
+                    <th className="px-2 py-2">{tx("時間")}</th>
+                    <th className="px-2 py-2">{tx("發票號碼")}</th>
+                    <th className="px-2 py-2">{tx("買受人")}</th>
+                    <th className="px-2 py-2 text-right">{tx("金額")}</th>
+                    <th className="px-2 py-2">{tx("狀態")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {detailRows.map((r) => (
                     <tr key={r.id} className="border-b last:border-0">
-                      <td className="px-2 py-2 whitespace-nowrap">{new Date(r.createdAt).toLocaleString("zh-TW")}</td>
+                      <td className="px-2 py-2 whitespace-nowrap">{new Date(r.createdAt).toLocaleString(getLocale())}</td>
                       <td className="px-2 py-2 font-mono">{r.invoiceNumber || "—"}</td>
                       <td className="px-2 py-2">{r.buyerName || "—"}</td>
                       <td className="px-2 py-2 text-right font-bold">NT${r.amount.toLocaleString()}</td>
-                      <td className="px-2 py-2">{r.status === "issued" ? "已開立" : r.status === "failed" ? "失敗" : r.status === "voided" ? "已作廢" : r.status}</td>
+                      <td className="px-2 py-2">{r.status === "issued" ? tx("已開立") : r.status === "failed" ? tx("失敗") : r.status === "voided" ? tx("已作廢") : r.status}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -1,3 +1,4 @@
+import { tx, getLocale, useI18n, txApi } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import {
   useAdminListRegistrations,
@@ -27,50 +28,50 @@ import {
 import { formatDate } from "@/lib/utils";
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("zh-TW", {
+  return new Intl.NumberFormat(getLocale(), {
     style: "currency",
     currency: "TWD",
     maximumFractionDigits: 0,
   }).format(value);
 }
 
-const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  paid: "已付款",
-  pending: "處理中",
-  awaiting_transfer: "待匯款",
-  unpaid: "未付款",
-  failed: "付款失敗",
-  refunded: "已退款",
-};
+const PAYMENT_STATUS_LABELS = (): Record<string, string> => ({
+  paid: tx("已付款"),
+  pending: tx("處理中"),
+  awaiting_transfer: tx("待匯款"),
+  unpaid: tx("未付款"),
+  failed: tx("付款失敗"),
+  refunded: tx("已退款"),
+});
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  newebpay: "藍新金流",
-  stripe: "Stripe 信用卡",
-  bank: "銀行轉帳 / ATM",
-  onsite: "現場售票",
-};
+const PAYMENT_METHOD_LABELS = (): Record<string, string> => ({
+  newebpay: tx("藍新金流"),
+  stripe: tx("Stripe 信用卡"),
+  bank: tx("銀行轉帳 / ATM"),
+  onsite: tx("現場售票"),
+});
 
-const TICKET_TYPE_LABELS: Record<string, string> = {
-  single: "單日票",
-  combo: "兩日套票",
-  tournament: "戰鬥陀螺賽參賽",
-  "tournament-companion": "戰鬥陀螺賽隨同票",
-};
+const TICKET_TYPE_LABELS = (): Record<string, string> => ({
+  single: tx("單日票"),
+  combo: tx("兩日套票"),
+  tournament: tx("戰鬥陀螺賽參賽"),
+  "tournament-companion": tx("戰鬥陀螺賽隨同票"),
+});
 
 // Carnival event days, used for the order date filter.
 const EVENT_DATES = ["2026-07-23", "2026-07-24", "2026-07-25", "2026-07-26"];
 
-const EVENT_DATE_WEEKDAY: Record<string, string> = {
-  "2026-07-23": "四",
-  "2026-07-24": "五",
-  "2026-07-25": "六",
-  "2026-07-26": "日",
-};
+const EVENT_DATE_WEEKDAY = (): Record<string, string> => ({
+  "2026-07-23": tx("四"),
+  "2026-07-24": tx("五"),
+  "2026-07-25": tx("六"),
+  "2026-07-26": tx("日"),
+});
 
 function eventDateLabel(d: string) {
   const [, m, day] = d.split("-");
-  const wd = EVENT_DATE_WEEKDAY[d];
-  return `${Number(m)}/${Number(day)}${wd ? `（${wd}）` : ""}`;
+  const wd = EVENT_DATE_WEEKDAY()[d];
+  return `${Number(m)}/${Number(day)}${wd ? tx("（{0}）", [wd]) : ""}`;
 }
 
 type OrderStatus =
@@ -149,19 +150,19 @@ function buildOrders(registrations: Registration[]): Order[] {
 
 type FilterKey = "all" | OrderStatus;
 
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: "all", label: "全部" },
-  { key: "paid", label: "已付款" },
-  { key: "awaiting_transfer", label: "待匯款" },
-  { key: "unpaid", label: "未付款 / 處理中" },
-  { key: "failed", label: "付款失敗" },
-  { key: "refunded", label: "已退款" },
-];
+const FILTERS = (): { key: FilterKey; label: string }[] => ([
+  { key: "all", label: tx("全部") },
+  { key: "paid", label: tx("已付款") },
+  { key: "awaiting_transfer", label: tx("待匯款") },
+  { key: "unpaid", label: tx("未付款 / 處理中") },
+  { key: "failed", label: tx("付款失敗") },
+  { key: "refunded", label: tx("已退款") },
+]);
 
 function statusBadge(status: string) {
   const key = normalizeStatus(status);
   const realKey = status ?? "unpaid";
-  const label = PAYMENT_STATUS_LABELS[realKey] ?? realKey;
+  const label = PAYMENT_STATUS_LABELS()[realKey] ?? realKey;
   const tone =
     key === "paid"
       ? "bg-green-100 text-green-700"
@@ -182,6 +183,7 @@ function statusBadge(status: string) {
 }
 
 export default function OrdersManage() {
+  useI18n();
   const { hasRole } = useAuth();
   const canConfirm = hasRole("editor");
   const {
@@ -244,22 +246,22 @@ export default function OrdersManage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        window.alert(data?.error || "建立訂單失敗");
+        window.alert(txApi(data?.error) || tx("建立訂單失敗"));
         return;
       }
       window.alert(
-        `訂單建立成功（已付款）！\n訂單編號：${data.paymentRef}\n` +
+        tx("訂單建立成功（已付款）！\n訂單編號：{0}\n", [data.paymentRef]) +
           (createForm.email.trim()
             ? data.emailSent
-              ? "入場 QR Code 確認信已寄出。"
-              : "確認信寄送失敗，可稍後在列表中「補寄確認信」。"
-            : "未填 Email，不會寄送 QR Code；入場時可用姓名/電話查詢。"),
+              ? tx("入場 QR Code 確認信已寄出。")
+              : tx("確認信寄送失敗，可稍後在列表中「補寄確認信」。")
+            : tx("未填 Email，不會寄送 QR Code；入場時可用姓名/電話查詢。")),
       );
       setCreateOpen(false);
       setCreateForm({ parentName: "", phone: "", email: "", ticketCount: 1, amount: 300, eventDate: createForm.eventDate });
       await refetch();
     } catch {
-      window.alert("建立訂單失敗，請稍後再試");
+      window.alert(tx("建立訂單失敗，請稍後再試"));
     } finally {
       setIsCreating(false);
     }
@@ -391,11 +393,11 @@ export default function OrdersManage() {
     ).length;
     const warn =
       paidCount > 0
-        ? `\n\n⚠️ 其中有 ${paidCount} 筆「已付款」訂單，刪除後將一併移除該筆營收與報到紀錄。`
+        ? tx("\n\n⚠️ 其中有 {0} 筆「已付款」訂單，刪除後將一併移除該筆營收與報到紀錄。", [paidCount])
         : "";
     if (
       !window.confirm(
-        `確定要刪除選取的 ${sel.length} 筆訂單嗎？此操作無法復原。${warn}`,
+        tx("確定要刪除選取的 {0} 筆訂單嗎？此操作無法復原。{1}", [sel.length, warn]),
       )
     ) {
       return;
@@ -410,12 +412,12 @@ export default function OrdersManage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "刪除失敗");
+        throw new Error(txApi(data?.error) || tx("刪除失敗"));
       }
       setSelected(new Set());
       await refetch();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "刪除失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("刪除失敗，請稍後再試"));
     } finally {
       setIsBulkDeleting(false);
     }
@@ -427,7 +429,7 @@ export default function OrdersManage() {
     if (targets.length === 0) return;
     if (
       !window.confirm(
-        `確認已收到這 ${targets.length} 筆銀行匯款？\n系統會逐筆開立發票、寄送購票確認信（含入場 QR）、發送 Slack 通知。`,
+        tx("確認已收到這 {0} 筆銀行匯款？\n系統會逐筆開立發票、寄送購票確認信（含入場 QR）、發送 Slack 通知。", [targets.length]),
       )
     ) {
       return;
@@ -452,7 +454,7 @@ export default function OrdersManage() {
       setSelected(new Set());
       if (failed.length > 0) {
         window.alert(
-          `完成 ${ok} 筆，${failed.length} 筆失敗：\n${failed.join("\n")}`,
+          tx("完成 {0} 筆，{1} 筆失敗：\n{2}", [ok, failed.length, failed.join("\n")]),
         );
       }
     } finally {
@@ -466,7 +468,7 @@ export default function OrdersManage() {
     if (targets.length === 0) return;
     if (
       !window.confirm(
-        `確定要重新發送這 ${targets.length} 筆訂單的購票確認信（含入場 QR Code）嗎？\n系統會寄送至每筆訂單的 Email；兩日套票會分別寄出兩天的 QR Code。`,
+        tx("確定要重新發送這 {0} 筆訂單的購票確認信（含入場 QR Code）嗎？\n系統會寄送至每筆訂單的 Email；兩日套票會分別寄出兩天的 QR Code。", [targets.length]),
       )
     ) {
       return;
@@ -482,7 +484,7 @@ export default function OrdersManage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "重新發送失敗");
+        throw new Error(txApi(data?.error) || tx("重新發送失敗"));
       }
       const data = (await res.json().catch(() => ({}))) as {
         sent?: number;
@@ -491,13 +493,13 @@ export default function OrdersManage() {
       };
       setSelected(new Set());
       window.alert(
-        `已重新發送 ${data.sent ?? 0} 封確認信。` +
-          (data.skipped ? `\n略過 ${data.skipped} 封（無 QR 或無 Email）。` : "") +
-          (data.failed ? `\n失敗 ${data.failed} 封，請稍後再試。` : ""),
+        tx("已重新發送 {0} 封確認信。", [data.sent ?? 0]) +
+          (data.skipped ? tx("\n略過 {0} 封（無 QR 或無 Email）。", [data.skipped]) : "") +
+          (data.failed ? tx("\n失敗 {0} 封，請稍後再試。", [data.failed]) : ""),
       );
     } catch (err) {
       window.alert(
-        err instanceof Error ? err.message : "重新發送失敗，請稍後再試",
+        err instanceof Error ? txApi(err.message) : tx("重新發送失敗，請稍後再試"),
       );
     } finally {
       setIsResending(false);
@@ -510,7 +512,7 @@ export default function OrdersManage() {
     if (targets.length === 0) return;
     if (
       !window.confirm(
-        `要為這 ${targets.length} 筆訂單批量開立電子發票嗎？\n系統會逐筆向綠界送出開立要求，並寄送發票通知給顧客。`,
+        tx("要為這 {0} 筆訂單批量開立電子發票嗎？\n系統會逐筆向綠界送出開立要求，並寄送發票通知給顧客。", [targets.length]),
       )
     ) {
       return;
@@ -534,12 +536,12 @@ export default function OrdersManage() {
             ok += 1;
           } else {
             errors.push(
-              `${o.buyerName}：${result.errorMessage || result.error || "未成功"}`,
+              tx("{0}：{1}", [o.buyerName, txApi(result.errorMessage) || txApi(result.error) || tx("未成功")]),
             );
           }
         } catch (err) {
           errors.push(
-            `${o.buyerName}：${err instanceof Error ? err.message : "連線錯誤"}`,
+            tx("{0}：{1}", [o.buyerName, err instanceof Error ? txApi(err.message) : tx("連線錯誤")]),
           );
         }
       }
@@ -547,9 +549,9 @@ export default function OrdersManage() {
       await refetch();
       await refetchInvoices();
       window.alert(
-        `批量開立完成：成功 ${ok} 張，失敗 ${errors.length} 張。` +
+        tx("批量開立完成：成功 {0} 張，失敗 {1} 張。", [ok, errors.length]) +
           (errors.length
-            ? `\n\n失敗明細：\n${errors.slice(0, 10).join("\n")}${errors.length > 10 ? "\n…" : ""}`
+            ? tx("\n\n失敗明細：\n{0}{1}", [errors.slice(0, 10).join("\n"), errors.length > 10 ? "\n…" : ""])
             : ""),
       );
     } finally {
@@ -560,7 +562,7 @@ export default function OrdersManage() {
   const handleConfirmBank = async (paymentRef: string) => {
     if (
       !window.confirm(
-        "確認已收到這筆銀行匯款？\n確認後系統會：開立發票、寄送購票確認信（含入場 QR）、發送 Slack 通知。",
+        tx("確認已收到這筆銀行匯款？\n確認後系統會：開立發票、寄送購票確認信（含入場 QR）、發送 Slack 通知。"),
       )
     ) {
       return;
@@ -573,11 +575,11 @@ export default function OrdersManage() {
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "確認失敗");
+        throw new Error(txApi(data?.error) || tx("確認失敗"));
       }
       await refetch();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "確認失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("確認失敗，請稍後再試"));
     } finally {
       setConfirmingRef(null);
     }
@@ -591,7 +593,7 @@ export default function OrdersManage() {
     if (remaining <= 0) return;
     if (
       !window.confirm(
-        `確認為此訂單報到？\n購買人：${o.buyerName}\n將簽到剩餘 ${remaining} 位（共 ${totalSeats} 位）。`,
+        tx("確認為此訂單報到？\n購買人：{0}\n將簽到剩餘 {1} 位（共 {2} 位）。", [o.buyerName, remaining, totalSeats]),
       )
     ) {
       return;
@@ -611,16 +613,16 @@ export default function OrdersManage() {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           failed.push(
-            `${eventDateLabel(leg.eventDate)}：${data?.error || "報到失敗"}`,
+            tx("{0}：{1}", [eventDateLabel(leg.eventDate), txApi(data?.error) || tx("報到失敗")]),
           );
         }
       }
       await refetch();
       if (failed.length > 0) {
-        window.alert(`部分報到失敗：\n${failed.join("\n")}`);
+        window.alert(tx("部分報到失敗：\n{0}", [failed.join("\n")]));
       }
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "報到失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("報到失敗，請稍後再試"));
     } finally {
       setCheckinRef(null);
     }
@@ -629,7 +631,7 @@ export default function OrdersManage() {
   const handleMarkPaid = async (o: Order) => {
     if (
       !window.confirm(
-        "確認將這筆訂單標記為「已付款」？\n適用於現場收款、手動匯款等情況。系統會寄送購票確認信（含入場 QR Code）給購買人。",
+        tx("確認將這筆訂單標記為「已付款」？\n適用於現場收款、手動匯款等情況。系統會寄送購票確認信（含入場 QR Code）給購買人。"),
       )
     ) {
       return;
@@ -645,11 +647,11 @@ export default function OrdersManage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "標記失敗");
+        throw new Error(txApi(data?.error) || tx("標記失敗"));
       }
       await refetch();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "標記失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("標記失敗，請稍後再試"));
     } finally {
       setMarkingPaidRef(null);
     }
@@ -670,7 +672,7 @@ export default function OrdersManage() {
   const submitRefund = async () => {
     if (!refundOrder) return;
     if (refundReason.trim().length < 5) {
-      window.alert("請填寫退票原因（至少 5 字）");
+      window.alert(tx("請填寫退票原因（至少 5 字）"));
       return;
     }
     setRefundingRef(refundOrder.ref);
@@ -686,15 +688,15 @@ export default function OrdersManage() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "退票申請建立失敗");
+      if (!res.ok) throw new Error(txApi(data?.error) || tx("退票申請建立失敗"));
       window.alert(
-        `已建立退票申請（退 ${data.refundTicketCount} 張、建議退款 NT$ ${(data.refundAmount ?? 0).toLocaleString()}），` +
-          `並寄出退款資料表單 Email 給買家。\n請到「退票管理」審核並核准後才會實際扣票。`,
+        tx("已建立退票申請（退 {0} 張、建議退款 NT$ {1}），", [data.refundTicketCount, (data.refundAmount ?? 0).toLocaleString()]) +
+          tx("並寄出退款資料表單 Email 給買家。\n請到「退票管理」審核並核准後才會實際扣票。"),
       );
       setRefundOrder(null);
       await refetch();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "退票申請建立失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("退票申請建立失敗，請稍後再試"));
     } finally {
       setRefundingRef(null);
     }
@@ -706,7 +708,7 @@ export default function OrdersManage() {
     if (targets.length === 0) return;
     if (
       !window.confirm(
-        `確認將選取的 ${targets.length} 筆訂單標記為「已付款」？\n系統會逐筆寄送購票確認信（含入場 QR Code）給購買人。`,
+        tx("確認將選取的 {0} 筆訂單標記為「已付款」？\n系統會逐筆寄送購票確認信（含入場 QR Code）給購買人。", [targets.length]),
       )
     ) {
       return;
@@ -722,12 +724,12 @@ export default function OrdersManage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "標記失敗");
+        throw new Error(txApi(data?.error) || tx("標記失敗"));
       }
       setSelected(new Set());
       await refetch();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "標記失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("標記失敗，請稍後再試"));
     } finally {
       setIsBulkMarking(false);
     }
@@ -739,7 +741,7 @@ export default function OrdersManage() {
     if (
       next &&
       !window.confirm(
-        "將這筆訂單設為「早鳥VIP」？\n報到時會標示「VIP・可帶 6 歲以下兒童免費入場」，僅供現場放行使用，不會改變金額或票數。",
+        tx("將這筆訂單設為「早鳥VIP」？\n報到時會標示「VIP・可帶 6 歲以下兒童免費入場」，僅供現場放行使用，不會改變金額或票數。"),
       )
     ) {
       return;
@@ -754,11 +756,11 @@ export default function OrdersManage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "設定失敗");
+        throw new Error(txApi(data?.error) || tx("設定失敗"));
       }
       await refetch();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "設定失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("設定失敗，請稍後再試"));
     } finally {
       setVipBusyRef(null);
     }
@@ -774,7 +776,7 @@ export default function OrdersManage() {
     if (!o) return;
     const email = editEmailValue.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      window.alert("請輸入有效的 Email 地址");
+      window.alert(tx("請輸入有效的 Email 地址"));
       return;
     }
     setIsSavingEmail(true);
@@ -788,7 +790,7 @@ export default function OrdersManage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "儲存失敗");
+        throw new Error(txApi(data?.error) || tx("儲存失敗"));
       }
       await refetch();
       setEditEmailOrder(null);
@@ -798,7 +800,7 @@ export default function OrdersManage() {
       if (
         normalizeStatus(o.paymentStatus) === "paid" &&
         window.confirm(
-          "Email 已更新。要立即寄送購票確認信（含入場 QR Code）給這位顧客嗎？",
+          tx("Email 已更新。要立即寄送購票確認信（含入場 QR Code）給這位顧客嗎？"),
         )
       ) {
         const sendRes = await fetch(
@@ -816,16 +818,16 @@ export default function OrdersManage() {
           failed?: number;
         };
         if (!sendRes.ok) {
-          throw new Error("確認信寄送失敗");
+          throw new Error(tx("確認信寄送失敗"));
         }
         window.alert(
-          `已寄送 ${data.sent ?? 0} 封確認信。` +
-            (data.skipped ? `\n略過 ${data.skipped} 封（無 QR 或無 Email）。` : "") +
-            (data.failed ? `\n失敗 ${data.failed} 封，請稍後再試。` : ""),
+          tx("已寄送 {0} 封確認信。", [data.sent ?? 0]) +
+            (data.skipped ? tx("\n略過 {0} 封（無 QR 或無 Email）。", [data.skipped]) : "") +
+            (data.failed ? tx("\n失敗 {0} 封，請稍後再試。", [data.failed]) : ""),
         );
       }
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "操作失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("操作失敗，請稍後再試"));
     } finally {
       setIsSavingEmail(false);
     }
@@ -834,7 +836,7 @@ export default function OrdersManage() {
   const handleReconcile = async () => {
     if (
       !window.confirm(
-        "向藍新金流（NewebPay）逐筆查詢「待付款」訂單的真實付款狀態？\n凡是藍新顯示「已付款」的訂單，系統會自動確認、開立發票並補寄購票確認信（含入場 QR）。未付款的訂單不會有任何變動。",
+        tx("向藍新金流（NewebPay）逐筆查詢「待付款」訂單的真實付款狀態？\n凡是藍新顯示「已付款」的訂單，系統會自動確認、開立發票並補寄購票確認信（含入場 QR）。未付款的訂單不會有任何變動。"),
       )
     ) {
       return;
@@ -847,7 +849,7 @@ export default function OrdersManage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "對帳失敗");
+        throw new Error(txApi(data?.error) || tx("對帳失敗"));
       }
       const data = (await res.json()) as {
         checked?: number;
@@ -857,11 +859,11 @@ export default function OrdersManage() {
       };
       await refetch();
       window.alert(
-        `對帳完成：\n共查詢 ${data.checked ?? 0} 筆待付款訂單\n已確認並補寄確認信 ${data.confirmed ?? 0} 筆\n仍未付款 ${data.stillUnpaid ?? 0} 筆` +
-          (data.errors ? `\n查詢失敗 ${data.errors} 筆，請稍後再試一次` : ""),
+        tx("對帳完成：\n共查詢 {0} 筆待付款訂單\n已確認並補寄確認信 {1} 筆\n仍未付款 {2} 筆", [data.checked ?? 0, data.confirmed ?? 0, data.stillUnpaid ?? 0]) +
+          (data.errors ? tx("\n查詢失敗 {0} 筆，請稍後再試一次", [data.errors]) : ""),
       );
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "對帳失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("對帳失敗，請稍後再試"));
     } finally {
       setIsReconciling(false);
     }
@@ -887,7 +889,7 @@ export default function OrdersManage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch {
-      window.alert("匯出失敗");
+      window.alert(tx("匯出失敗"));
     } finally {
       setIsExporting(false);
     }
@@ -901,9 +903,9 @@ export default function OrdersManage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-display">訂單管理</h1>
+          <h1 className="text-3xl font-display">{tx("訂單管理")}</h1>
           <p className="text-muted-foreground mt-1">
-            查詢所有購票訂單、確認銀行匯款、追蹤付款與報到狀態
+            {tx("查詢所有購票訂單、確認銀行匯款、追蹤付款與報到狀態")}
           </p>
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto">
@@ -913,17 +915,17 @@ export default function OrdersManage() {
             className="border px-4 py-2.5 rounded-full font-semibold flex items-center gap-2 hover:bg-muted transition-all disabled:opacity-50"
           >
             <RefreshCw size={16} className={isRefetching ? "animate-spin" : ""} />
-            重新整理
+            {tx("重新整理")}
           </button>
           {canConfirm && (
             <button
               onClick={handleReconcile}
               disabled={isReconciling}
-              title="向藍新金流查詢待付款訂單的真實狀態，已付款者自動補確認並補寄確認信"
+              title={tx("向藍新金流查詢待付款訂單的真實狀態，已付款者自動補確認並補寄確認信")}
               className="border border-emerald-500 text-emerald-700 px-4 py-2.5 rounded-full font-semibold flex items-center gap-2 hover:bg-emerald-50 transition-all disabled:opacity-50"
             >
               <Banknote size={16} className={isReconciling ? "animate-pulse" : ""} />
-              {isReconciling ? "對帳中..." : "藍新對帳"}
+              {isReconciling ? tx("對帳中...") : tx("藍新對帳")}
             </button>
           )}
           <button
@@ -932,7 +934,7 @@ export default function OrdersManage() {
             className="bg-primary text-white px-5 py-2.5 rounded-full font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-md disabled:opacity-50"
           >
             <Download size={18} />
-            {isExporting ? "匯出中..." : "匯出 CSV"}
+            {isExporting ? tx("匯出中...") : tx("匯出 CSV")}
           </button>
           {canConfirm && (
             <button
@@ -941,7 +943,7 @@ export default function OrdersManage() {
               data-testid="button-create-order"
             >
               <Package size={18} />
-              新增訂單
+              {tx("新增訂單")}
             </button>
           )}
         </div>
@@ -951,17 +953,17 @@ export default function OrdersManage() {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !isCreating && setCreateOpen(false)}>
           <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold">新增訂單（現場售票）</h2>
+              <h2 className="text-xl font-bold">{tx("新增訂單（現場售票）")}</h2>
               <button onClick={() => !isCreating && setCreateOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={22} />
               </button>
             </div>
             <p className="text-sm text-muted-foreground mb-5">
-              建立後訂單立即為「已付款」狀態；若填寫 Email 會自動寄送入場 QR Code 確認信。
+              {tx("建立後訂單立即為「已付款」狀態；若填寫 Email 會自動寄送入場 QR Code 確認信。")}
             </p>
             <form onSubmit={handleCreateOrder} className="space-y-4">
               <div>
-                <label className="text-sm font-bold block mb-1.5">姓名 <span className="text-destructive">*</span></label>
+                <label className="text-sm font-bold block mb-1.5">{tx("姓名")} <span className="text-destructive">*</span></label>
                 <input
                   required type="text" value={createForm.parentName}
                   onChange={(e) => setCreateForm({ ...createForm, parentName: e.target.value })}
@@ -970,7 +972,7 @@ export default function OrdersManage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-bold block mb-1.5">電話 <span className="text-destructive">*</span></label>
+                <label className="text-sm font-bold block mb-1.5">{tx("電話")} <span className="text-destructive">*</span></label>
                 <input
                   required type="tel" value={createForm.phone}
                   onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
@@ -979,7 +981,7 @@ export default function OrdersManage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-bold block mb-1.5">Email <span className="text-xs font-normal text-muted-foreground">（選填，填寫將寄送 QR Code）</span></label>
+                <label className="text-sm font-bold block mb-1.5">Email <span className="text-xs font-normal text-muted-foreground">{tx("（選填，填寫將寄送 QR Code）")}</span></label>
                 <input
                   type="email" value={createForm.email}
                   onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
@@ -988,7 +990,7 @@ export default function OrdersManage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-bold block mb-1.5">入場日期 <span className="text-destructive">*</span></label>
+                <label className="text-sm font-bold block mb-1.5">{tx("入場日期")} <span className="text-destructive">*</span></label>
                 <select
                   value={createForm.eventDate}
                   onChange={(e) => setCreateForm({ ...createForm, eventDate: e.target.value })}
@@ -1002,7 +1004,7 @@ export default function OrdersManage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-bold block mb-1.5">張數 <span className="text-destructive">*</span></label>
+                  <label className="text-sm font-bold block mb-1.5">{tx("張數")} <span className="text-destructive">*</span></label>
                   <input
                     required type="number" min={1} max={50} value={createForm.ticketCount}
                     onChange={(e) => {
@@ -1014,7 +1016,7 @@ export default function OrdersManage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-bold block mb-1.5">總金額（NT$）<span className="text-destructive">*</span></label>
+                  <label className="text-sm font-bold block mb-1.5">{tx("總金額（NT$）")}<span className="text-destructive">*</span></label>
                   <input
                     required type="number" min={0} step={1} value={createForm.amount}
                     onChange={(e) => setCreateForm({ ...createForm, amount: Math.max(0, Math.round(Number(e.target.value) || 0)) })}
@@ -1023,14 +1025,14 @@ export default function OrdersManage() {
                   />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">張數調整時金額會自動帶入 300/張，可再手動修改總金額。</p>
+              <p className="text-xs text-muted-foreground">{tx("張數調整時金額會自動帶入 300/張，可再手動修改總金額。")}</p>
               <button
                 type="submit"
                 disabled={isCreating}
                 className="w-full py-3.5 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-all"
                 data-testid="button-create-submit"
               >
-                {isCreating ? "建立中..." : "建立訂單（已付款）"}
+                {isCreating ? tx("建立中...") : tx("建立訂單（已付款）")}
               </button>
             </form>
           </div>
@@ -1042,34 +1044,34 @@ export default function OrdersManage() {
         <SummaryCard
           icon={<Package size={22} />}
           tone="blue"
-          label="總訂單數"
-          value={`${counts.all} 筆`}
+          label={tx("總訂單數")}
+          value={tx("{0} 筆", [counts.all])}
         />
         <SummaryCard
           icon={<CheckCircle2 size={22} />}
           tone="green"
-          label="已付款訂單"
-          value={`${counts.paid} 筆`}
+          label={tx("已付款訂單")}
+          value={tx("{0} 筆", [counts.paid])}
           sub={formatCurrency(paidRevenue)}
         />
         <SummaryCard
           icon={<Banknote size={22} />}
           tone="amber"
-          label="待確認匯款"
-          value={`${counts.awaiting_transfer} 筆`}
+          label={tx("待確認匯款")}
+          value={tx("{0} 筆", [counts.awaiting_transfer])}
         />
         <SummaryCard
           icon={<Clock size={22} />}
           tone="slate"
-          label="未付款 / 處理中"
-          value={`${counts.unpaid} 筆`}
+          label={tx("未付款 / 處理中")}
+          value={tx("{0} 筆", [counts.unpaid])}
         />
       </div>
 
       {/* Filters + search */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => (
+          {FILTERS().map((f) => (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
@@ -1090,7 +1092,7 @@ export default function OrdersManage() {
             onChange={(e) => setDateFilter(e.target.value)}
             className="w-full sm:w-40 px-3 py-2.5 rounded-full border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
-            <option value="all">全部日期</option>
+            <option value="all">{tx("全部日期")}</option>
             {EVENT_DATES.map((d) => (
               <option key={d} value={d}>
                 {eventDateLabel(d)}
@@ -1105,7 +1107,7 @@ export default function OrdersManage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜尋姓名、電話、Email、訂單編號"
+              placeholder={tx("搜尋姓名、電話、Email、訂單編號")}
               className="w-full pl-9 pr-3 py-2.5 rounded-full border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
@@ -1116,10 +1118,10 @@ export default function OrdersManage() {
       {canConfirm && selected.size > 0 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3">
           <div className="text-sm font-semibold text-foreground">
-            已選取 {selected.size} 筆訂單
+            {tx("已選取 {0} 筆訂單", [selected.size])}
             {selectedAwaiting.length > 0 && (
               <span className="ml-2 text-amber-600 font-normal">
-                （其中 {selectedAwaiting.length} 筆待匯款）
+                {tx("（其中")} {selectedAwaiting.length} {tx("筆待匯款）")}
               </span>
             )}
           </div>
@@ -1132,8 +1134,8 @@ export default function OrdersManage() {
               >
                 <Banknote size={16} />
                 {isBulkConfirming
-                  ? "確認中..."
-                  : `批量確認收款（${selectedAwaiting.length}）`}
+                  ? tx("確認中...")
+                  : tx("批量確認收款（{0}）", [selectedAwaiting.length])}
               </button>
             )}
             {selectedMarkable.length > 0 && (
@@ -1144,21 +1146,21 @@ export default function OrdersManage() {
               >
                 <CheckCircle2 size={16} />
                 {isBulkMarking
-                  ? "標記中..."
-                  : `標記已付款（${selectedMarkable.length}）`}
+                  ? tx("標記中...")
+                  : tx("標記已付款（{0}）", [selectedMarkable.length])}
               </button>
             )}
             {selectedIssuable.length > 0 && (
               <button
                 onClick={handleBulkIssueInvoice}
                 disabled={anyBulkBusy}
-                title="為已付款且尚未開立發票的訂單批量開立電子發票"
+                title={tx("為已付款且尚未開立發票的訂單批量開立電子發票")}
                 className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 <ReceiptText size={16} />
                 {isBulkIssuing
-                  ? "開立中..."
-                  : `批量開立發票（${selectedIssuable.length}）`}
+                  ? tx("開立中...")
+                  : tx("批量開立發票（{0}）", [selectedIssuable.length])}
               </button>
             )}
             {selectedResendable.length > 0 && (
@@ -1169,8 +1171,8 @@ export default function OrdersManage() {
               >
                 <Send size={16} />
                 {isResending
-                  ? "發送中..."
-                  : `批量重新發送 QR（${selectedResendable.length}）`}
+                  ? tx("發送中...")
+                  : tx("批量重新發送 QR（{0}）", [selectedResendable.length])}
               </button>
             )}
             <button
@@ -1179,14 +1181,14 @@ export default function OrdersManage() {
               className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors flex items-center gap-2"
             >
               <Trash2 size={16} />
-              {isBulkDeleting ? "刪除中..." : `批量刪除（${selected.size}）`}
+              {isBulkDeleting ? tx("刪除中...") : tx("批量刪除（{0}）", [selected.size])}
             </button>
             <button
               onClick={() => setSelected(new Set())}
               disabled={isBulkDeleting || isBulkConfirming}
               className="px-4 py-2 rounded-xl border text-sm font-semibold hover:bg-muted disabled:opacity-50 transition-colors"
             >
-              取消選取
+              {tx("取消選取")}
             </button>
           </div>
         </div>
@@ -1202,7 +1204,7 @@ export default function OrdersManage() {
                   <th className="p-4 w-10">
                     <input
                       type="checkbox"
-                      aria-label="全選"
+                      aria-label={tx("全選")}
                       checked={allFilteredSelected}
                       onChange={toggleAll}
                       disabled={filtered.length === 0}
@@ -1210,30 +1212,30 @@ export default function OrdersManage() {
                     />
                   </th>
                 )}
-                <th className="p-4 font-semibold text-muted-foreground">訂單編號</th>
-                <th className="p-4 font-semibold text-muted-foreground">購買人</th>
-                <th className="p-4 font-semibold text-muted-foreground">聯絡方式</th>
-                <th className="p-4 font-semibold text-muted-foreground">票種</th>
-                <th className="p-4 font-semibold text-muted-foreground">入場日期</th>
-                <th className="p-4 font-semibold text-muted-foreground text-right">票數</th>
-                <th className="p-4 font-semibold text-muted-foreground text-right">金額</th>
-                <th className="p-4 font-semibold text-muted-foreground">付款方式</th>
-                <th className="p-4 font-semibold text-muted-foreground">狀態</th>
-                <th className="p-4 font-semibold text-muted-foreground">報到</th>
-                <th className="p-4 font-semibold text-muted-foreground text-right">操作</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("訂單編號")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("購買人")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("聯絡方式")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("票種")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("入場日期")}</th>
+                <th className="p-4 font-semibold text-muted-foreground text-right">{tx("票數")}</th>
+                <th className="p-4 font-semibold text-muted-foreground text-right">{tx("金額")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("付款方式")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("狀態")}</th>
+                <th className="p-4 font-semibold text-muted-foreground">{tx("報到")}</th>
+                <th className="p-4 font-semibold text-muted-foreground text-right">{tx("操作")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
                   <td colSpan={canConfirm ? 12 : 11} className="p-10 text-center text-muted-foreground">
-                    載入中...
+                    {tx("載入中...")}
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={canConfirm ? 12 : 11} className="p-10 text-center text-muted-foreground">
-                    {orders.length === 0 ? "尚無訂單資料" : "沒有符合條件的訂單"}
+                    {orders.length === 0 ? tx("尚無訂單資料") : tx("沒有符合條件的訂單")}
                   </td>
                 </tr>
               ) : (
@@ -1254,7 +1256,7 @@ export default function OrdersManage() {
                         <td className="p-4">
                           <input
                             type="checkbox"
-                            aria-label={`選取訂單 ${o.isRealRef ? o.ref : o.buyerName}`}
+                            aria-label={tx("選取訂單 {0}", [o.isRealRef ? o.ref : o.buyerName])}
                             checked={isSelected}
                             onChange={() => toggleOne(o.ref)}
                             className="h-4 w-4 rounded border-muted-foreground/40 accent-primary cursor-pointer"
@@ -1264,7 +1266,7 @@ export default function OrdersManage() {
                       <td className="p-4 font-mono text-xs">
                         {o.isRealRef ? o.ref : "—"}
                         <div className="text-[11px] text-muted-foreground mt-1">
-                          {new Date(o.createdAt).toLocaleString("zh-TW")}
+                          {new Date(o.createdAt).toLocaleString(getLocale())}
                         </div>
                       </td>
                       <td className="p-4 font-medium whitespace-nowrap">
@@ -1272,7 +1274,7 @@ export default function OrdersManage() {
                         {o.isVip && (
                           <span
                             className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold align-middle"
-                            title="早鳥VIP：報到時可帶 6 歲以下兒童免費入場"
+                            title={tx("早鳥VIP：報到時可帶 6 歲以下兒童免費入場")}
                           >
                             <Crown size={11} /> VIP
                           </span>
@@ -1288,11 +1290,11 @@ export default function OrdersManage() {
                       </td>
                       <td className="p-4 whitespace-nowrap">
                         {o.ticketType
-                          ? (TICKET_TYPE_LABELS[o.ticketType] ?? o.ticketType)
+                          ? (TICKET_TYPE_LABELS()[o.ticketType] ?? o.ticketType)
                           : "—"}
                       </td>
                       <td className="p-4 text-primary font-medium whitespace-nowrap">
-                        {o.eventDates.map((d) => formatDate(d)).join("、")}
+                        {o.eventDates.map((d) => formatDate(d)).join(tx("、"))}
                       </td>
                       <td className="p-4 text-right font-bold">{o.ticketCount}</td>
                       <td className="p-4 text-right font-bold text-green-600 whitespace-nowrap">
@@ -1300,7 +1302,7 @@ export default function OrdersManage() {
                       </td>
                       <td className="p-4 whitespace-nowrap">
                         {o.paymentMethod
-                          ? (PAYMENT_METHOD_LABELS[o.paymentMethod] ??
+                          ? (PAYMENT_METHOD_LABELS()[o.paymentMethod] ??
                             o.paymentMethod)
                           : "—"}
                       </td>
@@ -1309,11 +1311,11 @@ export default function OrdersManage() {
                         <div className="flex flex-col items-start gap-1.5">
                           {o.checkedInCount > 0 ? (
                             <span className="text-green-600 font-medium">
-                              已報到 {o.checkedInCount}/{totalSeats}
+                              {tx("已報到")} {o.checkedInCount}/{totalSeats}
                             </span>
                           ) : (
                             <span className="text-muted-foreground">
-                              未報到
+                              {tx("未報到")}
                             </span>
                           )}
                           {canConfirm &&
@@ -1322,11 +1324,11 @@ export default function OrdersManage() {
                               <button
                                 onClick={() => handleCheckinOrder(o)}
                                 disabled={checkinRef === o.ref}
-                                title="現場簽到：將此訂單剩餘人數全部報到"
+                                title={tx("現場簽到：將此訂單剩餘人數全部報到")}
                                 className="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap inline-flex items-center gap-1"
                               >
                                 <CheckCircle2 size={12} />
-                                {checkinRef === o.ref ? "處理中..." : "簽到"}
+                                {checkinRef === o.ref ? tx("處理中...") : tx("簽到")}
                               </button>
                             )}
                         </div>
@@ -1335,10 +1337,10 @@ export default function OrdersManage() {
                         <div className="flex flex-col items-end gap-2">
                           <button
                             onClick={() => setDetailOrder(o)}
-                            title="查看訂單詳情"
+                            title={tx("查看訂單詳情")}
                             className="px-3 py-1.5 rounded-xl border text-xs font-semibold hover:bg-muted disabled:opacity-50 transition-colors whitespace-nowrap inline-flex items-center gap-1"
                           >
-                            <Eye size={12} /> 詳情
+                            <Eye size={12} /> {tx("詳情")}
                           </button>
                           {o.paymentStatus === "awaiting_transfer" &&
                           o.isRealRef ? (
@@ -1348,11 +1350,11 @@ export default function OrdersManage() {
                                 disabled={confirmingRef === o.ref}
                                 className="px-3 py-1.5 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors whitespace-nowrap"
                               >
-                                {confirmingRef === o.ref ? "處理中..." : "確認收款"}
+                                {confirmingRef === o.ref ? tx("處理中...") : tx("確認收款")}
                               </button>
                             ) : (
                               <span className="text-xs text-muted-foreground">
-                                待編輯確認
+                                {tx("待編輯確認")}
                               </span>
                             )
                           ) : normalizeStatus(o.paymentStatus) === "unpaid" ? (
@@ -1360,12 +1362,12 @@ export default function OrdersManage() {
                               <button
                                 onClick={() => handleMarkPaid(o)}
                                 disabled={markingPaidRef === o.ref}
-                                title="現場收款 / 手動匯款：標記後寄送購票確認信（含入場 QR）"
+                                title={tx("現場收款 / 手動匯款：標記後寄送購票確認信（含入場 QR）")}
                                 className="px-3 py-1.5 rounded-xl bg-green-600 text-white text-xs font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                               >
                                 {markingPaidRef === o.ref
-                                  ? "處理中..."
-                                  : "標記已付款"}
+                                  ? tx("處理中...")
+                                  : tx("標記已付款")}
                               </button>
                             ) : null
                           ) : normalizeStatus(o.paymentStatus) === "paid" ? (
@@ -1373,21 +1375,21 @@ export default function OrdersManage() {
                               <button
                                 onClick={() => openRefundDialog(o)}
                                 disabled={refundingRef === o.ref}
-                                title="退票：輸入原因後建立退票申請並寄退款資料表單 Email 給買家（到退票管理核准後才會實際扣票）"
+                                title={tx("退票：輸入原因後建立退票申請並寄退款資料表單 Email 給買家（到退票管理核准後才會實際扣票）")}
                                 data-testid={`button-refund-${o.ref}`}
                                 className="px-3 py-1.5 rounded-xl border border-red-400 text-red-600 text-xs font-semibold hover:bg-red-50 disabled:opacity-50 transition-colors whitespace-nowrap inline-flex items-center gap-1"
                               >
                                 <Undo2 size={12} />
-                                {refundingRef === o.ref ? "處理中..." : "退票"}
+                                {refundingRef === o.ref ? tx("處理中...") : tx("退票")}
                               </button>
                             ) : null
                           ) : o.paymentStatus === "refunded" ? (
                             <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-                              <Undo2 size={12} /> 已退款
+                              <Undo2 size={12} /> {tx("已退款")}
                             </span>
                           ) : o.paymentStatus === "failed" ? (
                             <span className="inline-flex items-center gap-1 text-xs text-red-500">
-                              <XCircle size={12} /> 失敗
+                              <XCircle size={12} /> {tx("失敗")}
                             </span>
                           ) : null}
                           {canConfirm && (
@@ -1399,14 +1401,14 @@ export default function OrdersManage() {
                                   ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
                                   : "border border-amber-400 text-amber-700 hover:bg-amber-50"
                               }`}
-                              title="早鳥VIP：報到時可帶 6 歲以下兒童免費入場（不影響金額與票數）"
+                              title={tx("早鳥VIP：報到時可帶 6 歲以下兒童免費入場（不影響金額與票數）")}
                             >
                               <Crown size={12} />
                               {vipBusyRef === o.ref
-                                ? "處理中..."
+                                ? tx("處理中...")
                                 : o.isVip
-                                  ? "取消VIP"
-                                  : "設為VIP"}
+                                  ? tx("取消VIP")
+                                  : tx("設為VIP")}
                             </button>
                           )}
                           {canConfirm && (
@@ -1419,12 +1421,12 @@ export default function OrdersManage() {
                               }`}
                               title={
                                 o.email
-                                  ? "修改這筆訂單的 Email"
-                                  : "這筆訂單沒有 Email，點此補上後可寄送確認信"
+                                  ? tx("修改這筆訂單的 Email")
+                                  : tx("這筆訂單沒有 Email，點此補上後可寄送確認信")
                               }
                             >
                               <Mail size={12} />
-                              {o.email ? "改 Email" : "補 Email"}
+                              {o.email ? tx("改 Email") : tx("補 Email")}
                             </button>
                           )}
                         </div>
@@ -1439,7 +1441,7 @@ export default function OrdersManage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        共 {filtered.length} 筆訂單{filter !== "all" ? "（已套用篩選）" : ""}。兩日套票會合併為一筆訂單顯示。
+        {tx("共")} {filtered.length} {tx("筆訂單")}{filter !== "all" ? tx("（已套用篩選）") : ""}{tx("。兩日套票會合併為一筆訂單顯示。")}
       </p>
 
       {detailOrder && (
@@ -1458,28 +1460,28 @@ export default function OrdersManage() {
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold flex items-center gap-2">
                 <Undo2 size={18} />
-                退票申請
+                {tx("退票申請")}
               </h3>
               <button
                 onClick={() => setRefundOrder(null)}
                 className="rounded-lg p-1 hover:bg-muted"
-                title="關閉"
+                title={tx("關閉")}
               >
                 <XCircle size={18} />
               </button>
             </div>
             <div className="space-y-3 text-sm">
               <div className="bg-muted/40 rounded-xl p-3 space-y-1">
-                <div><span className="text-muted-foreground">買家：</span><strong>{refundOrder.buyerName}</strong></div>
-                <div><span className="text-muted-foreground">訂單編號：</span>{refundOrder.ref}</div>
-                <div><span className="text-muted-foreground">訂單金額：</span>NT$ {refundOrder.amount.toLocaleString()}</div>
+                <div><span className="text-muted-foreground">{tx("買家：")}</span><strong>{refundOrder.buyerName}</strong></div>
+                <div><span className="text-muted-foreground">{tx("訂單編號：")}</span>{refundOrder.ref}</div>
+                <div><span className="text-muted-foreground">{tx("訂單金額：")}</span>NT$ {refundOrder.amount.toLocaleString()}</div>
                 {refundOrder.checkedInCount > 0 && (
-                  <div className="text-amber-700">此訂單已有 {refundOrder.checkedInCount} 人簽到，仍可退票（後台裁量）。</div>
+                  <div className="text-amber-700">{tx("此訂單已有")} {refundOrder.checkedInCount} {tx("人簽到，仍可退票（後台裁量）。")}</div>
                 )}
               </div>
               {Math.max(...refundOrder.legs.map((l) => l.ticketCount)) > 1 && (
                 <label className="block">
-                  <span className="block mb-1 font-bold">退票張數</span>
+                  <span className="block mb-1 font-bold">{tx("退票張數")}</span>
                   <select
                     value={refundCount}
                     onChange={(e) => setRefundCount(Number(e.target.value))}
@@ -1493,7 +1495,7 @@ export default function OrdersManage() {
                       const total = Math.max(...refundOrder.legs.map((l) => l.ticketCount));
                       return (
                         <option key={n} value={n}>
-                          {n === total ? `${n} 張（全部退票）` : `${n} 張`}
+                          {n === total ? tx("{0} 張（全部退票）", [n]) : tx("{0} 張", [n])}
                         </option>
                       );
                     })}
@@ -1501,26 +1503,26 @@ export default function OrdersManage() {
                 </label>
               )}
               <label className="block">
-                <span className="block mb-1 font-bold">退票原因 *</span>
+                <span className="block mb-1 font-bold">{tx("退票原因 *")}</span>
                 <textarea
                   value={refundReason}
                   onChange={(e) => setRefundReason(e.target.value)}
                   rows={3}
                   maxLength={500}
-                  placeholder="請輸入退票原因（至少 5 字），會記錄在退票申請中"
+                  placeholder={tx("請輸入退票原因（至少 5 字），會記錄在退票申請中")}
                   className="w-full px-3 py-2 border-2 rounded-xl focus:border-primary focus:outline-none"
                   data-testid="input-admin-refund-reason"
                 />
               </label>
               <div className="text-xs text-muted-foreground leading-relaxed">
-                送出後會建立退票申請並自動寄「退款資料表單」Email 給買家；請再到「退票管理」核准，核准後才會實際扣票與計算退款。
+                {tx("送出後會建立退票申請並自動寄「退款資料表單」Email 給買家；請再到「退票管理」核准，核准後才會實際扣票與計算退款。")}
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   onClick={() => setRefundOrder(null)}
                   className="px-4 py-2 rounded-xl border text-sm hover:bg-muted"
                 >
-                  取消
+                  {tx("取消")}
                 </button>
                 <button
                   onClick={submitRefund}
@@ -1528,7 +1530,7 @@ export default function OrdersManage() {
                   data-testid="button-admin-refund-submit"
                   className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
                 >
-                  {refundingRef === refundOrder.ref ? "送出中..." : "建立退票申請"}
+                  {refundingRef === refundOrder.ref ? tx("送出中...") : tx("建立退票申請")}
                 </button>
               </div>
             </div>
@@ -1542,22 +1544,22 @@ export default function OrdersManage() {
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold flex items-center gap-2">
                 <Mail size={18} />
-                {editEmailOrder.email ? "修改 Email" : "補上 Email"}
+                {editEmailOrder.email ? tx("修改 Email") : tx("補上 Email")}
               </h3>
               <button
                 onClick={() => setEditEmailOrder(null)}
                 className="rounded-lg p-1 hover:bg-muted"
-                title="關閉"
+                title={tx("關閉")}
               >
                 <X size={18} />
               </button>
             </div>
             <p className="mb-3 text-sm text-muted-foreground">
-              訂購人：
+              {tx("訂購人：")}
               <span className="font-medium text-foreground">
                 {editEmailOrder.buyerName}
               </span>
-              （{editEmailOrder.phone}）
+              {tx("（")}{editEmailOrder.phone}{tx("）")}
             </p>
             <input
               type="email"
@@ -1572,8 +1574,8 @@ export default function OrdersManage() {
             />
             <p className="mt-2 text-xs text-muted-foreground">
               {normalizeStatus(editEmailOrder.paymentStatus) === "paid"
-                ? "儲存後可立即寄送購票確認信（含入場 QR Code）給顧客。"
-                : "此訂單尚未付款，補上 Email 後，確認付款時會自動寄送購票確認信。"}
+                ? tx("儲存後可立即寄送購票確認信（含入場 QR Code）給顧客。")
+                : tx("此訂單尚未付款，補上 Email 後，確認付款時會自動寄送購票確認信。")}
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
@@ -1581,14 +1583,14 @@ export default function OrdersManage() {
                 disabled={isSavingEmail}
                 className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
               >
-                取消
+                {tx("取消")}
               </button>
               <button
                 onClick={handleSaveEmail}
                 disabled={isSavingEmail}
                 className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
-                {isSavingEmail ? "處理中..." : "儲存"}
+                {isSavingEmail ? tx("處理中...") : tx("儲存")}
               </button>
             </div>
           </div>
@@ -1605,6 +1607,7 @@ function DetailRow({
   label: string;
   value: React.ReactNode;
 }) {
+  useI18n();
   return (
     <div className="flex justify-between gap-4 py-1.5 text-sm">
       <span className="text-muted-foreground shrink-0">{label}</span>
@@ -1615,24 +1618,24 @@ function DetailRow({
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return null;
-  return new Date(value).toLocaleString("zh-TW");
+  return new Date(value).toLocaleString(getLocale());
 }
 
-const INVOICE_STATUS_LABELS: Record<string, string> = {
-  pending: "待開立",
-  issued: "已開立",
-  failed: "開立失敗",
-  voided: "已作廢",
-};
+const INVOICE_STATUS_LABELS = (): Record<string, string> => ({
+  pending: tx("待開立"),
+  issued: tx("已開立"),
+  failed: tx("開立失敗"),
+  voided: tx("已作廢"),
+});
 
-const INVOICE_TYPE_LABELS: Record<string, string> = {
-  personal: "個人",
-  company: "公司（統編）",
-  donation: "捐贈",
-};
+const INVOICE_TYPE_LABELS = (): Record<string, string> => ({
+  personal: tx("個人"),
+  company: tx("公司（統編）"),
+  donation: tx("捐贈"),
+});
 
 function invoiceStatusBadge(status: string) {
-  const label = INVOICE_STATUS_LABELS[status] ?? status;
+  const label = INVOICE_STATUS_LABELS()[status] ?? status;
   const tone =
     status === "issued"
       ? "bg-green-100 text-green-700"
@@ -1663,6 +1666,7 @@ function OrderDetailModal({
   onInvoiceChanged: () => void;
   onClose: () => void;
 }) {
+  useI18n();
   const totalChildren = order.legs.reduce((s, l) => s + (l.childCount ?? 0), 0);
   const totalInfants = order.legs.reduce((s, l) => s + (l.infantCount ?? 0), 0);
   const [invoiceBusy, setInvoiceBusy] = useState(false);
@@ -1671,7 +1675,7 @@ function OrderDetailModal({
   const handleIssueInvoice = async () => {
     if (
       !window.confirm(
-        `要為這筆訂單${invoice?.status === "failed" ? "重新" : ""}開立電子發票嗎？\n系統會向綠界送出開立要求並回填發票號碼。`,
+        tx("要為這筆訂單{0}開立電子發票嗎？\n系統會向綠界送出開立要求並回填發票號碼。", [invoice?.status === "failed" ? tx("重新") : ""]),
       )
     ) {
       return;
@@ -1688,17 +1692,17 @@ function OrderDetailModal({
         errorMessage?: string | null;
         error?: string;
       };
-      if (!res.ok) throw new Error(result?.error || "開立失敗");
+      if (!res.ok) throw new Error(txApi(result?.error) || tx("開立失敗"));
       onInvoiceChanged();
       if (result.status === "issued") {
-        window.alert(`開立成功，發票號碼：${result.invoiceNumber ?? "—"}`);
+        window.alert(tx("開立成功，發票號碼：{0}", [result.invoiceNumber ?? "—"]));
       } else {
         window.alert(
-          `尚未開立成功（狀態：${result.status ? (INVOICE_STATUS_LABELS[result.status] ?? result.status) : "未知"}）。\n${result.errorMessage ?? "請確認此訂單已填寫發票資訊。"}`,
+          tx("尚未開立成功（狀態：{0}）。\n{1}", [result.status ? (INVOICE_STATUS_LABELS()[result.status] ?? result.status) : tx("未知"), txApi(result.errorMessage) ?? tx("請確認此訂單已填寫發票資訊。")]),
         );
       }
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "開立失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("開立失敗，請稍後再試"));
     } finally {
       setInvoiceBusy(false);
     }
@@ -1706,8 +1710,8 @@ function OrderDetailModal({
 
   const handleVoidInvoice = async () => {
     const reason = window.prompt(
-      `要作廢發票「${invoice?.invoiceNumber}」嗎？請輸入作廢原因：`,
-      "訂單取消",
+      tx("要作廢發票「{0}」嗎？請輸入作廢原因：", [invoice?.invoiceNumber]),
+      tx("訂單取消"),
     );
     if (reason === null) return;
     setInvoiceBusy(true);
@@ -1726,13 +1730,13 @@ function OrderDetailModal({
         message?: string;
         error?: string;
       };
-      if (!res.ok) throw new Error(result?.error || "作廢失敗");
+      if (!res.ok) throw new Error(txApi(result?.error) || tx("作廢失敗"));
       onInvoiceChanged();
       window.alert(
-        result.success ? "發票已作廢。" : `作廢未成功：${result.message ?? "請稍後再試"}`,
+        result.success ? tx("發票已作廢。") : tx("作廢未成功：{0}", [txApi(result.message) ?? tx("請稍後再試")]),
       );
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : "作廢失敗，請稍後再試");
+      window.alert(err instanceof Error ? txApi(err.message) : tx("作廢失敗，請稍後再試"));
     } finally {
       setInvoiceBusy(false);
     }
@@ -1750,7 +1754,7 @@ function OrderDetailModal({
         <div className="flex items-start justify-between gap-4 p-6 border-b sticky top-0 bg-white rounded-t-3xl">
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2">
-              訂單詳情
+              {tx("訂單詳情")}
               {order.isVip && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold">
                   <Crown size={11} /> VIP
@@ -1758,12 +1762,12 @@ function OrderDetailModal({
               )}
             </h2>
             <p className="font-mono text-xs text-muted-foreground mt-1">
-              {order.isRealRef ? order.ref : "（無訂單編號）"}
+              {order.isRealRef ? order.ref : tx("（無訂單編號）")}
             </p>
           </div>
           <button
             onClick={onClose}
-            aria-label="關閉"
+            aria-label={tx("關閉")}
             className="p-2 rounded-full hover:bg-muted transition-colors shrink-0"
           >
             <X size={18} />
@@ -1774,11 +1778,11 @@ function OrderDetailModal({
           {/* Buyer */}
           <section>
             <h3 className="text-sm font-bold text-muted-foreground mb-2">
-              購買人
+              {tx("購買人")}
             </h3>
             <div className="rounded-2xl border p-4">
-              <DetailRow label="姓名" value={order.buyerName} />
-              <DetailRow label="電話" value={order.phone} />
+              <DetailRow label={tx("姓名")} value={order.buyerName} />
+              <DetailRow label={tx("電話")} value={order.phone} />
               <DetailRow label="Email" value={order.email ?? "—"} />
             </div>
           </section>
@@ -1786,21 +1790,21 @@ function OrderDetailModal({
           {/* Payment */}
           <section>
             <h3 className="text-sm font-bold text-muted-foreground mb-2">
-              付款資訊
+              {tx("付款資訊")}
             </h3>
             <div className="rounded-2xl border p-4">
-              <DetailRow label="狀態" value={statusBadge(order.paymentStatus)} />
+              <DetailRow label={tx("狀態")} value={statusBadge(order.paymentStatus)} />
               <DetailRow
-                label="付款方式"
+                label={tx("付款方式")}
                 value={
                   order.paymentMethod
-                    ? (PAYMENT_METHOD_LABELS[order.paymentMethod] ??
+                    ? (PAYMENT_METHOD_LABELS()[order.paymentMethod] ??
                       order.paymentMethod)
                     : "—"
                 }
               />
               <DetailRow
-                label="訂單金額"
+                label={tx("訂單金額")}
                 value={
                   <span className="text-green-600">
                     {formatCurrency(order.amount)}
@@ -1808,8 +1812,8 @@ function OrderDetailModal({
                 }
               />
               <DetailRow
-                label="建立時間"
-                value={new Date(order.createdAt).toLocaleString("zh-TW")}
+                label={tx("建立時間")}
+                value={new Date(order.createdAt).toLocaleString(getLocale())}
               />
             </div>
           </section>
@@ -1817,56 +1821,56 @@ function OrderDetailModal({
           {/* Invoice */}
           <section>
             <h3 className="text-sm font-bold text-muted-foreground mb-2">
-              電子發票
+              {tx("電子發票")}
             </h3>
             <div className="rounded-2xl border p-4">
               {invoice ? (
                 <>
                   <DetailRow
-                    label="狀態"
+                    label={tx("狀態")}
                     value={invoiceStatusBadge(invoice.status)}
                   />
                   <DetailRow
-                    label="發票號碼"
+                    label={tx("發票號碼")}
                     value={
                       invoice.invoiceNumber ? (
                         <span className="font-mono">{invoice.invoiceNumber}</span>
                       ) : (
-                        <span className="text-muted-foreground">尚未取號</span>
+                        <span className="text-muted-foreground">{tx("尚未取號")}</span>
                       )
                     }
                   />
                   <DetailRow
-                    label="發票類型"
+                    label={tx("發票類型")}
                     value={
-                      INVOICE_TYPE_LABELS[invoice.invoiceType] ??
+                      INVOICE_TYPE_LABELS()[invoice.invoiceType] ??
                       invoice.invoiceType
                     }
                   />
                   {invoice.taxId && (
                     <DetailRow
-                      label="統一編號"
-                      value={`${invoice.taxId}${invoice.companyTitle ? `（${invoice.companyTitle}）` : ""}`}
+                      label={tx("統一編號")}
+                      value={`${invoice.taxId}${invoice.companyTitle ? tx("（{0}）", [invoice.companyTitle]) : ""}`}
                     />
                   )}
                   {invoice.loveCode && (
-                    <DetailRow label="愛心碼" value={invoice.loveCode} />
+                    <DetailRow label={tx("愛心碼")} value={invoice.loveCode} />
                   )}
                   {invoice.carrierNum && (
-                    <DetailRow label="載具" value={invoice.carrierNum} />
+                    <DetailRow label={tx("載具")} value={invoice.carrierNum} />
                   )}
                   {invoice.invoiceDate && (
-                    <DetailRow label="開立日期" value={invoice.invoiceDate} />
+                    <DetailRow label={tx("開立日期")} value={invoice.invoiceDate} />
                   )}
                   {invoice.status === "voided" && invoice.voidedAt && (
                     <DetailRow
-                      label="作廢時間"
+                      label={tx("作廢時間")}
                       value={formatDateTime(invoice.voidedAt)}
                     />
                   )}
                   {invoice.status === "failed" && invoice.errorMessage && (
                     <DetailRow
-                      label="失敗原因"
+                      label={tx("失敗原因")}
                       value={
                         <span className="text-red-600">
                           {invoice.errorMessage}
@@ -1877,7 +1881,7 @@ function OrderDetailModal({
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  此訂單沒有發票資料{isPaid ? "" : "（訂單尚未付款）"}。
+                  {tx("此訂單沒有發票資料")}{isPaid ? "" : tx("（訂單尚未付款）")}{tx("。")}
                 </p>
               )}
 
@@ -1893,7 +1897,7 @@ function OrderDetailModal({
                           className="inline-flex items-center gap-1.5 border border-primary text-primary px-4 py-2 rounded-full text-sm font-semibold hover:bg-primary/10 disabled:opacity-50"
                         >
                           <ReceiptText size={15} />
-                          {invoice.status === "failed" ? "重試開立" : "開立發票"}
+                          {invoice.status === "failed" ? tx("重試開立") : tx("開立發票")}
                         </button>
                       )}
                     {invoice.status === "issued" && (
@@ -1903,14 +1907,14 @@ function OrderDetailModal({
                         className="inline-flex items-center gap-1.5 border border-red-400 text-red-600 px-4 py-2 rounded-full text-sm font-semibold hover:bg-red-50 disabled:opacity-50"
                       >
                         <XCircle size={15} />
-                        作廢發票
+                        {tx("作廢發票")}
                       </button>
                     )}
                     {!isPaid &&
                       invoice.status !== "issued" &&
                       invoice.status !== "voided" && (
                         <p className="text-xs text-muted-foreground self-center">
-                          訂單付款後才能開立發票。
+                          {tx("訂單付款後才能開立發票。")}
                         </p>
                       )}
                   </div>
@@ -1921,7 +1925,7 @@ function OrderDetailModal({
           {/* Tickets */}
           <section>
             <h3 className="text-sm font-bold text-muted-foreground mb-2">
-              票券明細（{order.legs.length} 張）
+              {tx("票券明細（")}{order.legs.length} {tx("張）")}
             </h3>
             <div className="space-y-3">
               {order.legs
@@ -1938,41 +1942,41 @@ function OrderDetailModal({
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {leg.ticketType
-                            ? (TICKET_TYPE_LABELS[leg.ticketType] ??
+                            ? (TICKET_TYPE_LABELS()[leg.ticketType] ??
                               leg.ticketType)
                             : "—"}
                         </span>
                       </div>
-                      <DetailRow label="票數" value={`${leg.ticketCount} 張`} />
+                      <DetailRow label={tx("票數")} value={tx("{0} 張", [leg.ticketCount])} />
                       {(leg.childCount ?? 0) > 0 && (
                         <DetailRow
-                          label="兒童"
-                          value={`${leg.childCount} 位`}
+                          label={tx("兒童")}
+                          value={tx("{0} 位", [leg.childCount])}
                         />
                       )}
                       {(leg.infantCount ?? 0) > 0 && (
                         <DetailRow
-                          label="嬰兒（免費）"
-                          value={`${leg.infantCount} 位`}
+                          label={tx("嬰兒（免費）")}
+                          value={tx("{0} 位", [leg.infantCount])}
                         />
                       )}
                       <DetailRow
-                        label="報到"
+                        label={tx("報到")}
                         value={
                           checkedIn ? (
                             <span className="text-green-600">{checkedIn}</span>
                           ) : (
-                            <span className="text-muted-foreground">未報到</span>
+                            <span className="text-muted-foreground">{tx("未報到")}</span>
                           )
                         }
                       />
                       <DetailRow
-                        label="入場 QR"
-                        value={leg.qrToken ? "已產生" : "—"}
+                        label={tx("入場 QR")}
+                        value={leg.qrToken ? tx("已產生") : "—"}
                       />
                       <DetailRow
-                        label="確認信"
-                        value={emailSent ?? "未寄送"}
+                        label={tx("確認信")}
+                        value={emailSent ?? tx("未寄送")}
                       />
                     </div>
                   );
@@ -1980,8 +1984,8 @@ function OrderDetailModal({
             </div>
             {(totalChildren > 0 || totalInfants > 0) && (
               <p className="text-xs text-muted-foreground mt-2">
-                合計兒童 {totalChildren} 位
-                {totalInfants > 0 ? `、嬰兒 ${totalInfants} 位（免費）` : ""}。
+                {tx("合計兒童")} {totalChildren} {tx("位")}
+                {totalInfants > 0 ? tx("、嬰兒 {0} 位（免費）", [totalInfants]) : ""}{tx("。")}
               </p>
             )}
           </section>
@@ -2004,6 +2008,7 @@ function SummaryCard({
   value: string;
   sub?: string;
 }) {
+  useI18n();
   const toneClasses: Record<string, string> = {
     blue: "bg-blue-100 text-blue-600",
     green: "bg-green-100 text-green-600",

@@ -1,3 +1,4 @@
+import { tx, getLocale, useI18n, getLang, txApi } from "@/lib/i18n";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ScanLine, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff, Crown, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,27 +39,27 @@ const FILE_SCAN_ELEMENT_ID = "qr-file-scan-container";
 // point them at the "拍照掃描" fallback which opens the native camera app.
 function describeCameraError(err: unknown): string {
   const name = (err as { name?: string })?.name || "";
-  const msg = (err as { message?: string })?.message || String(err);
+  const msg = txApi((err as { message?: string })?.message || String(err));
   const insecure =
     typeof window !== "undefined" &&
     !window.isSecureContext &&
     window.location.hostname !== "localhost";
   if (insecure) {
-    return "瀏覽器基於安全限制，必須在 https 安全連線下才能開啟相機。請改用「拍照掃描」或確認網址為 https。";
+    return tx("瀏覽器基於安全限制，必須在 https 安全連線下才能開啟相機。請改用「拍照掃描」或確認網址為 https。");
   }
   if (/Failed to fetch dynamically imported module|Importing a module script failed/i.test(msg)) {
-    return "系統剛更新，頁面版本過舊。請重新整理此頁後再開啟相機。";
+    return tx("系統剛更新，頁面版本過舊。請重新整理此頁後再開啟相機。");
   }
   if (name === "NotAllowedError" || /permission|denied/i.test(msg)) {
-    return "相機權限被拒絕。請到瀏覽器設定允許本網站使用相機，或改用下方「拍照掃描」。";
+    return tx("相機權限被拒絕。請到瀏覽器設定允許本網站使用相機，或改用下方「拍照掃描」。");
   }
   if (name === "NotFoundError" || name === "OverconstrainedError") {
-    return "找不到可用的後置相機，請改用下方「拍照掃描」。";
+    return tx("找不到可用的後置相機，請改用下方「拍照掃描」。");
   }
   if (name === "NotReadableError") {
-    return "相機被其他程式佔用，請關閉其他相機 App 後再試，或改用下方「拍照掃描」。";
+    return tx("相機被其他程式佔用，請關閉其他相機 App 後再試，或改用下方「拍照掃描」。");
   }
-  return `${msg || "無法啟動相機"}。若使用 LINE / FB / IG 內建瀏覽器，請改用 Safari 或 Chrome 開啟，或使用下方「拍照掃描」。`;
+  return tx("{0}。若使用 LINE / FB / IG 內建瀏覽器，請改用 Safari 或 Chrome 開啟，或使用下方「拍照掃描」。", [msg || tx("無法啟動相機")]);
 }
 
 type DayStat = { eventDate: string; checkedIn: number; total: number };
@@ -71,6 +72,7 @@ type PhoneEntry = {
 };
 
 export default function CheckinPage() {
+  useI18n();
   const [tokenInput, setTokenInput] = useState("");
   const [dayStats, setDayStats] = useState<DayStat[]>([]);
   const [phoneInput, setPhoneInput] = useState("");
@@ -113,7 +115,7 @@ export default function CheckinPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setResult({ kind: "error", message: err.error || `查詢失敗 (${res.status})` });
+        setResult({ kind: "error", message: txApi(err.error) || tx("查詢失敗 ({0})", [res.status]) });
         return;
       }
       const data = await res.json();
@@ -125,9 +127,9 @@ export default function CheckinPage() {
         admissible: data.admissible !== false,
       });
     } catch (err) {
-      setResult({ kind: "error", message: (err as Error).message });
+      setResult({ kind: "error", message: txApi((err as Error).message) });
     }
-  }, []);
+  }, [getLang()]);
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,12 +149,12 @@ export default function CheckinPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setPhoneError(data.error || `查詢失敗 (${res.status})`);
+        setPhoneError(txApi(data.error) || tx("查詢失敗 ({0})", [res.status]));
         return;
       }
       setPhoneEntries(data.registrations ?? []);
     } catch (err) {
-      setPhoneError((err as Error).message);
+      setPhoneError(txApi((err as Error).message));
     } finally {
       setPhoneLoading(false);
     }
@@ -169,7 +171,7 @@ export default function CheckinPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setPhoneError(data.error || `報到失敗 (${res.status})`);
+        setPhoneError(txApi(data.error) || tx("報到失敗 ({0})", [res.status]));
         return;
       }
       setPhoneError(null);
@@ -187,7 +189,7 @@ export default function CheckinPage() {
       );
       refreshStats();
     } catch (err) {
-      setPhoneError((err as Error).message);
+      setPhoneError(txApi((err as Error).message));
     } finally {
       setPhoneCheckingId(null);
     }
@@ -207,7 +209,7 @@ export default function CheckinPage() {
         return;
       }
       if (!res.ok) {
-        setResult({ kind: "error", message: data.error || `報到失敗 (${res.status})` });
+        setResult({ kind: "error", message: txApi(data.error) || tx("報到失敗 ({0})", [res.status]) });
         return;
       }
       setResult({
@@ -218,7 +220,7 @@ export default function CheckinPage() {
       });
       refreshStats();
     } catch (err) {
-      setResult({ kind: "error", message: (err as Error).message });
+      setResult({ kind: "error", message: txApi((err as Error).message) });
     }
   };
 
@@ -317,13 +319,13 @@ export default function CheckinPage() {
       } catch {
         setResult({
           kind: "error",
-          message: "照片中找不到 QR Code，請對準票券重新拍攝，或改用手動輸入 token。",
+          message: tx("照片中找不到 QR Code，請對準票券重新拍攝，或改用手動輸入 token。"),
         });
       } finally {
         setDecodingFile(false);
       }
     },
-    [onDecoded],
+    [onDecoded, getLang()],
   );
 
   useEffect(() => {
@@ -336,10 +338,10 @@ export default function CheckinPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-display flex items-center gap-3">
-          <ScanLine className="text-primary" /> 現場報到
+          <ScanLine className="text-primary" /> {tx("現場報到")}
         </h1>
         <p className="text-muted-foreground mt-1">
-          掃描入場 QR Code 或手動輸入 token 進行報到驗票
+          {tx("掃描入場 QR Code 或手動輸入 token 進行報到驗票")}
         </p>
       </div>
 
@@ -350,18 +352,18 @@ export default function CheckinPage() {
             <div key={d.eventDate} className="bg-white rounded-3xl border shadow-sm p-5 flex items-center justify-between" data-testid={`checkin-stat-${d.eventDate}`}>
               <div>
                 <div className="text-sm text-muted-foreground font-bold">
-                  {new Date(d.eventDate).toLocaleDateString("zh-TW", { month: "numeric", day: "numeric" })} 已報到
+                  {new Date(d.eventDate).toLocaleDateString(getLocale(), { month: "numeric", day: "numeric" })} {tx("已報到")}
                 </div>
                 <div className="mt-1 flex items-baseline gap-1.5">
                   <span className="text-3xl font-bold text-primary">{d.checkedIn.toLocaleString()}</span>
-                  <span className="text-sm text-muted-foreground">/ {d.total.toLocaleString()} 人</span>
+                  <span className="text-sm text-muted-foreground">/ {d.total.toLocaleString()} {tx("人")}</span>
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-2xl font-bold text-emerald-600">
                   {d.total > 0 ? Math.round((d.checkedIn / d.total) * 100) : 0}%
                 </div>
-                <div className="text-xs text-muted-foreground">報到率</div>
+                <div className="text-xs text-muted-foreground">{tx("報到率")}</div>
               </div>
             </div>
           ))}
@@ -373,7 +375,7 @@ export default function CheckinPage() {
         <div className="bg-white rounded-3xl border shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-lg flex items-center gap-2">
-              <Camera size={20} /> 相機掃描
+              <Camera size={20} /> {tx("相機掃描")}
             </h2>
             <button
               onClick={() => (scanning ? stopScanner() : startScanner())}
@@ -383,7 +385,7 @@ export default function CheckinPage() {
               )}
               data-testid="button-toggle-scanner"
             >
-              {scanning ? <><CameraOff size={16} /> 停止</> : <><Camera size={16} /> 開始掃描</>}
+              {scanning ? <><CameraOff size={16} /> {tx("停止")}</> : <><Camera size={16} /> {tx("開始掃描")}</>}
             </button>
           </div>
           <div
@@ -400,12 +402,12 @@ export default function CheckinPage() {
             <div id={SCANNER_ELEMENT_ID} className={cn("w-full", scanning ? "" : "hidden")} />
             {!scanning && !cameraError && (
               <div className="min-h-[160px] flex items-center justify-center text-muted-foreground text-sm">
-                點擊「開始掃描」以啟動相機
+                {tx("點擊「開始掃描」以啟動相機")}
               </div>
             )}
             {cameraError && (
               <div className="min-h-[160px] flex flex-col items-center justify-center text-red-500 text-sm p-4 text-center">
-                <AlertTriangle className="mx-auto mb-2" /> 相機錯誤：{cameraError}
+                <AlertTriangle className="mx-auto mb-2" /> {tx("相機錯誤：")}{cameraError}
               </div>
             )}
           </div>
@@ -431,7 +433,7 @@ export default function CheckinPage() {
               data-testid="button-file-scan"
             >
               <Camera size={16} />
-              {decodingFile ? "辨識中..." : "無法開啟相機？改用「拍照掃描」"}
+              {decodingFile ? tx("辨識中...") : tx("無法開啟相機？改用「拍照掃描」")}
             </button>
           </div>
           <div id={FILE_SCAN_ELEMENT_ID} className="hidden" />
@@ -440,14 +442,14 @@ export default function CheckinPage() {
         {/* Manual entry */}
         <div className="bg-white rounded-3xl border shadow-sm p-6">
           <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-            <Search size={20} /> 手動輸入 QR Token
+            <Search size={20} /> {tx("手動輸入 QR Token")}
           </h2>
           <form onSubmit={handleManualSubmit} className="space-y-3">
             <input
               type="text"
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value)}
-              placeholder="貼上或輸入 QR token"
+              placeholder={tx("貼上或輸入 QR token")}
               className="w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-primary text-sm font-mono"
               data-testid="input-token"
             />
@@ -457,7 +459,7 @@ export default function CheckinPage() {
               className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all disabled:opacity-50"
               data-testid="button-lookup"
             >
-              {result.kind === "loading" ? "查詢中..." : "查詢票券"}
+              {result.kind === "loading" ? tx("查詢中...") : tx("查詢票券")}
             </button>
           </form>
         </div>
@@ -466,17 +468,17 @@ export default function CheckinPage() {
       {/* 手機號碼報到：QR 無法掃描時的備援 */}
       <div className="bg-white rounded-3xl border shadow-sm p-6">
         <h2 className="font-bold text-lg mb-1 flex items-center gap-2">
-          <Phone size={20} /> 手機號碼報到
+          <Phone size={20} /> {tx("手機號碼報到")}
         </h2>
         <p className="text-sm text-muted-foreground mb-4">
-          客人 QR Code 無法掃描時，輸入購票時填寫的手機號碼即可查出票券直接報到
+          {tx("客人 QR Code 無法掃描時，輸入購票時填寫的手機號碼即可查出票券直接報到")}
         </p>
         <form onSubmit={handlePhoneSearch} className="flex gap-3">
           <input
             type="tel"
             value={phoneInput}
             onChange={(e) => setPhoneInput(e.target.value)}
-            placeholder="輸入客人手機號碼"
+            placeholder={tx("輸入客人手機號碼")}
             className="flex-1 px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-primary text-sm"
             data-testid="input-phone-checkin"
           />
@@ -486,7 +488,7 @@ export default function CheckinPage() {
             className="px-6 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all disabled:opacity-50 shrink-0"
             data-testid="button-phone-search"
           >
-            {phoneLoading ? "查詢中..." : "查詢"}
+            {phoneLoading ? tx("查詢中...") : tx("查詢")}
           </button>
         </form>
 
@@ -520,8 +522,8 @@ export default function CheckinPage() {
                       <span className="text-primary font-bold">{r.eventDate}</span>
                     </div>
                     <div className="text-muted-foreground mt-0.5">
-                      共 {r.ticketCount} 位・已報到 {r.checkedInCount ?? 0} 位
-                      {!en.admissible && <span className="text-red-600 font-bold">・未付款，不可入場</span>}
+                      {tx("共")} {r.ticketCount} {tx("位・已報到")} {r.checkedInCount ?? 0} {tx("位")}
+                      {!en.admissible && <span className="text-red-600 font-bold">{tx("・未付款，不可入場")}</span>}
                     </div>
                   </div>
                   {en.admissible && !en.alreadyCheckedIn ? (
@@ -532,11 +534,11 @@ export default function CheckinPage() {
                       data-testid={`button-phone-checkin-${r.id}`}
                     >
                       <CheckCircle2 size={18} />
-                      {phoneCheckingId === r.id ? "報到中..." : `報到 ${en.remaining} 位`}
+                      {phoneCheckingId === r.id ? tx("報到中...") : tx("報到 {0} 位", [en.remaining])}
                     </button>
                   ) : en.alreadyCheckedIn ? (
                     <span className="text-amber-700 font-bold text-sm flex items-center gap-1">
-                      <CheckCircle2 size={16} /> 已全數報到
+                      <CheckCircle2 size={16} /> {tx("已全數報到")}
                     </span>
                   ) : null}
                 </div>
@@ -568,8 +570,8 @@ export default function CheckinPage() {
               <div className="text-red-700 flex items-start gap-4">
                 <XCircle size={32} className="shrink-0 mt-1" />
                 <div>
-                  <h3 className="font-bold text-lg mb-1">無法找到票券</h3>
-                  <p className="text-sm">{result.message}</p>
+                  <h3 className="font-bold text-lg mb-1">{tx("無法找到票券")}</h3>
+                  <p className="text-sm">{txApi(result.message)}</p>
                 </div>
               </div>
               <button
@@ -577,7 +579,7 @@ export default function CheckinPage() {
                 className="mt-4 w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
                 data-testid="button-scan-next-error"
               >
-                <Camera size={18} /> 掃描下一位
+                <Camera size={18} /> {tx("掃描下一位")}
               </button>
             </div>
           )}
@@ -597,26 +599,26 @@ export default function CheckinPage() {
                 <div className="flex-1">
                   <h3 className={cn("font-bold text-xl mb-1", result.kind === "found" && !result.admissible && "text-red-700")}>
                     {result.kind === "found" && !result.admissible
-                      ? "此票沒付款，不得進來"
+                      ? tx("此票沒付款，不得進來")
                       : result.kind === "checked" && !result.alreadyCheckedIn
-                        ? `報到成功 ✓${result.checkedInNow ? `（本次 ${result.checkedInNow} 位）` : ""}`
+                        ? tx("報到成功 ✓{0}", [result.checkedInNow ? tx("（本次 {0} 位）", [result.checkedInNow]) : ""])
                         : result.alreadyCheckedIn
-                          ? "已全數報到"
-                          : "票券資訊"}
+                          ? tx("已全數報到")
+                          : tx("票券資訊")}
                   </h3>
                   {result.kind === "found" && !result.admissible && (
                     <p className="text-sm text-red-700 font-bold">
-                      此票券尚未完成付款，請勿放行。可請客人出示付款證明，或至訂單管理確認付款狀態。
+                      {tx("此票券尚未完成付款，請勿放行。可請客人出示付款證明，或至訂單管理確認付款狀態。")}
                     </p>
                   )}
                   {result.alreadyCheckedIn && result.reg.checkedInAt && (
                     <p className="text-sm text-amber-700">
-                      此票券 {result.reg.ticketCount} 位已全數報到（最後報到 {new Date(result.reg.checkedInAt).toLocaleString("zh-TW")}）
+                      {tx("此票券")} {result.reg.ticketCount} {tx("位已全數報到（最後報到")} {new Date(result.reg.checkedInAt).toLocaleString(getLocale())}{tx("）")}
                     </p>
                   )}
                   {result.kind === "checked" && !result.alreadyCheckedIn && remainingOf(result.reg) > 0 && (
                     <p className="text-sm text-amber-700 font-bold">
-                      尚有 {remainingOf(result.reg)} 位未報到，之後可再掃同一張票補報到
+                      {tx("尚有")} {remainingOf(result.reg)} {tx("位未報到，之後可再掃同一張票補報到")}
                     </p>
                   )}
                 </div>
@@ -625,38 +627,38 @@ export default function CheckinPage() {
               {result.reg.isVip && (
                 <div className="mb-4 flex items-center gap-2 rounded-2xl bg-amber-100 border-2 border-amber-300 px-4 py-3 text-amber-800 font-bold">
                   <Crown size={20} className="shrink-0" />
-                  VIP・可帶 6 歲以下兒童免費入場
+                  {tx("VIP・可帶 6 歲以下兒童免費入場")}
                 </div>
               )}
 
               <div className="bg-white/60 rounded-2xl p-4 grid grid-cols-2 gap-3 text-sm">
-                <div className="text-muted-foreground">姓名：</div>
+                <div className="text-muted-foreground">{tx("姓名：")}</div>
                 <div className="font-bold">{result.reg.parentName}</div>
-                <div className="text-muted-foreground">電話：</div>
+                <div className="text-muted-foreground">{tx("電話：")}</div>
                 <div className="font-bold">{result.reg.phone}</div>
                 {result.reg.email && (<>
-                  <div className="text-muted-foreground">Email：</div>
+                  <div className="text-muted-foreground">{tx("Email：")}</div>
                   <div className="font-bold break-all">{result.reg.email}</div>
                 </>)}
-                <div className="text-muted-foreground">入場人數：</div>
+                <div className="text-muted-foreground">{tx("入場人數：")}</div>
                 <div className="font-bold">
                   {(result.reg.childCount && result.reg.childCount > 0) || (result.reg.infantCount && result.reg.infantCount > 0)
-                    ? `共 ${result.reg.ticketCount} 位（${[
-                        `大人 ${result.reg.ticketCount - (result.reg.childCount ?? 0) - (result.reg.infantCount ?? 0)}`,
-                        ...(result.reg.childCount && result.reg.childCount > 0 ? [`兒童 ${result.reg.childCount}`] : []),
-                        ...(result.reg.infantCount && result.reg.infantCount > 0 ? [`1 歲以下 ${result.reg.infantCount}`] : []),
-                      ].join("、")}）`
-                    : `${result.reg.ticketCount} 位`}
+                    ? tx("共 {0} 位（{1}）", [result.reg.ticketCount, [
+                        tx("大人 {0}", [result.reg.ticketCount - (result.reg.childCount ?? 0) - (result.reg.infantCount ?? 0)]),
+                        ...(result.reg.childCount && result.reg.childCount > 0 ? [tx("兒童 {0}", [result.reg.childCount])] : []),
+                        ...(result.reg.infantCount && result.reg.infantCount > 0 ? [tx("1 歲以下 {0}", [result.reg.infantCount])] : []),
+                      ].join("、")])
+                    : tx("{0} 位", [result.reg.ticketCount])}
                 </div>
-                <div className="text-muted-foreground">入場日期：</div>
+                <div className="text-muted-foreground">{tx("入場日期：")}</div>
                 <div className="font-bold text-primary">{result.reg.eventDate}</div>
                 {(result.reg.checkedInCount ?? 0) > 0 && (
                   <>
-                    <div className="text-muted-foreground">報到進度：</div>
+                    <div className="text-muted-foreground">{tx("報到進度：")}</div>
                     <div className="font-bold">
-                      已報到 {result.reg.checkedInCount} / {result.reg.ticketCount} 位
+                      {tx("已報到")} {result.reg.checkedInCount} / {result.reg.ticketCount} {tx("位")}
                       {remainingOf(result.reg) > 0 && (
-                        <span className="text-amber-700">（尚餘 {remainingOf(result.reg)} 位）</span>
+                        <span className="text-amber-700">{tx("（尚餘")} {remainingOf(result.reg)} {tx("位）")}</span>
                       )}
                     </div>
                   </>
@@ -667,7 +669,7 @@ export default function CheckinPage() {
                 <div className="mt-6 space-y-3">
                   {remainingOf(result.reg) > 1 && (
                     <div className="bg-white/60 rounded-2xl p-4">
-                      <div className="text-sm font-bold mb-2">本次報到人數</div>
+                      <div className="text-sm font-bold mb-2">{tx("本次報到人數")}</div>
                       <div className="flex flex-wrap gap-2">
                         {Array.from({ length: remainingOf(result.reg) }, (_, i) => i + 1).map((n) => (
                           <button
@@ -696,7 +698,7 @@ export default function CheckinPage() {
                     data-testid="button-confirm-checkin"
                   >
                     <CheckCircle2 size={20} />
-                    確認報到{remainingOf(result.reg) > 1 ? ` ${Math.min(checkinCount, remainingOf(result.reg))} 位` : ""}
+                    {tx("確認報到")}{remainingOf(result.reg) > 1 ? tx(" {0} 位", [Math.min(checkinCount, remainingOf(result.reg))]) : ""}
                   </button>
                 </div>
               )}
@@ -706,7 +708,7 @@ export default function CheckinPage() {
                 className="mt-4 w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
                 data-testid="button-clear"
               >
-                <Camera size={18} /> 掃描下一位
+                <Camera size={18} /> {tx("掃描下一位")}
               </button>
             </>
           )}

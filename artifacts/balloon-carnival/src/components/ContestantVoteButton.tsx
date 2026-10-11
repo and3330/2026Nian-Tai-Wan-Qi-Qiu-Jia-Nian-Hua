@@ -1,3 +1,4 @@
+import { tx, useI18n, txApi } from "@/lib/i18n";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Heart, Check } from "lucide-react";
@@ -39,6 +40,7 @@ export function useContestantVoteData() {
 }
 
 export function ContestantVoteButton({ contestantId, count, voted, token }: { contestantId: number; count: number; voted: boolean; token: string }) {
+  useI18n();
   const queryClient = useQueryClient();
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const mutation = useMutation({
@@ -50,7 +52,7 @@ export function ContestantVoteButton({ contestantId, count, voted, token }: { co
       });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
-        throw new Error(j?.error ?? "投票失敗");
+        throw new Error(txApi(j?.error) ?? tx("投票失敗"));
       }
       return r.json();
     },
@@ -60,7 +62,7 @@ export function ContestantVoteButton({ contestantId, count, voted, token }: { co
       queryClient.invalidateQueries({ queryKey: MINE_KEY(token) });
     },
     onError: (e: Error) => {
-      setErrMsg(e.message);
+      setErrMsg(txApi(e.message));
       queryClient.invalidateQueries({ queryKey: MINE_KEY(token) });
       queryClient.invalidateQueries({ queryKey: COUNTS_KEY });
     },
@@ -70,14 +72,14 @@ export function ContestantVoteButton({ contestantId, count, voted, token }: { co
     <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-rose-50/60 border border-rose-100">
       <div className="flex items-center gap-2 text-sm">
         <Heart size={16} className="text-rose-500 fill-rose-500" />
-        <span className="font-medium text-foreground/80">觀眾票數</span>
+        <span className="font-medium text-foreground/80">{tx("觀眾票數")}</span>
         <span className="font-display text-xl text-rose-600">
           <AnimatedNumber value={count} />
         </span>
       </div>
       {voted ? (
         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
-          <Check size={14} /> 已投票
+          <Check size={14} /> {tx("已投票")}
         </span>
       ) : (
         <button
@@ -92,7 +94,7 @@ export function ContestantVoteButton({ contestantId, count, voted, token }: { co
               : "bg-rose-500 text-white hover:bg-rose-600 hover:shadow",
           )}
         >
-          <Heart size={14} /> {mutation.isPending ? "投票中…" : "投他一票"}
+          <Heart size={14} /> {mutation.isPending ? tx("投票中…") : tx("投他一票")}
         </button>
       )}
       {errMsg && (

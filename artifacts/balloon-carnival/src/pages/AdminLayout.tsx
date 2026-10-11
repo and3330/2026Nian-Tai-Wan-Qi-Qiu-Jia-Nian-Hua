@@ -1,3 +1,5 @@
+import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { tx, useI18n } from "@/lib/i18n";
 import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, useLocation, Redirect } from "wouter";
 import { useAuth, type AdminRole } from "@workspace/replit-auth-web";
@@ -12,35 +14,36 @@ type NavItem = {
   roles: AdminRole[]; // owner is always allowed (handled by hasRole)
 };
 
-const ALL_NAVS: NavItem[] = [
-  { href: "/admin", label: "報名監控總覽", icon: LayoutDashboard, exact: true, roles: ["viewer", "editor"] },
-  { href: "/admin/orders", label: "訂單管理", icon: ShoppingCart, roles: ["editor"] },
-  { href: "/admin/invoices", label: "發票管理", icon: ReceiptText, roles: ["editor"] },
-  { href: "/admin/tournament", label: "戰鬥陀螺賽", icon: Trophy, roles: ["editor"] },
-  { href: "/admin/checkin", label: "現場報到", icon: ScanLine, roles: ["checkin"] },
-  { href: "/admin/pos", label: "現場收費開發票", icon: ReceiptText, roles: ["vendor"] },
-  { href: "/admin/vendors", label: "攤位商家管理", icon: Store, roles: ["editor"] },
-  { href: "/admin/email-templates", label: "Email 模板", icon: Mail, roles: ["editor"] },
-  { href: "/admin/news", label: "最新消息管理", icon: Newspaper, roles: ["editor"] },
-  { href: "/admin/contestants", label: "選手管理", icon: Users, roles: ["editor"] },
-  { href: "/admin/sponsors", label: "贊助廠商管理", icon: Handshake, roles: ["editor"] },
-  { href: "/admin/social-accounts", label: "社群帳號", icon: Share2, roles: ["editor"] },
-  { href: "/admin/social-posts", label: "社群貼文", icon: FileText, roles: ["editor"] },
-  { href: "/admin/automation", label: "自動化設定", icon: Settings, roles: ["editor"] },
-  { href: "/admin/promo-codes", label: "優惠碼管理", icon: Tag, roles: ["editor"] },
-  { href: "/admin/refund-requests", label: "退票 / 改票", icon: Undo2, roles: ["editor", "viewer"] },
-  { href: "/admin/users", label: "帳號管理", icon: ShieldCheck, roles: [] }, // owner-only
-];
+const ALL_NAVS = (): NavItem[] => ([
+  { href: "/admin", label: tx("報名監控總覽"), icon: LayoutDashboard, exact: true, roles: ["viewer", "editor"] },
+  { href: "/admin/orders", label: tx("訂單管理"), icon: ShoppingCart, roles: ["editor"] },
+  { href: "/admin/invoices", label: tx("發票管理"), icon: ReceiptText, roles: ["editor"] },
+  { href: "/admin/tournament", label: tx("戰鬥陀螺賽"), icon: Trophy, roles: ["editor"] },
+  { href: "/admin/checkin", label: tx("現場報到"), icon: ScanLine, roles: ["checkin"] },
+  { href: "/admin/pos", label: tx("現場收費開發票"), icon: ReceiptText, roles: ["vendor"] },
+  { href: "/admin/vendors", label: tx("攤位商家管理"), icon: Store, roles: ["editor"] },
+  { href: "/admin/email-templates", label: tx("Email 模板"), icon: Mail, roles: ["editor"] },
+  { href: "/admin/news", label: tx("最新消息管理"), icon: Newspaper, roles: ["editor"] },
+  { href: "/admin/contestants", label: tx("選手管理"), icon: Users, roles: ["editor"] },
+  { href: "/admin/sponsors", label: tx("贊助廠商管理"), icon: Handshake, roles: ["editor"] },
+  { href: "/admin/social-accounts", label: tx("社群帳號"), icon: Share2, roles: ["editor"] },
+  { href: "/admin/social-posts", label: tx("社群貼文"), icon: FileText, roles: ["editor"] },
+  { href: "/admin/automation", label: tx("自動化設定"), icon: Settings, roles: ["editor"] },
+  { href: "/admin/promo-codes", label: tx("優惠碼管理"), icon: Tag, roles: ["editor"] },
+  { href: "/admin/refund-requests", label: tx("退票 / 改票"), icon: Undo2, roles: ["editor", "viewer"] },
+  { href: "/admin/users", label: tx("帳號管理"), icon: ShieldCheck, roles: [] }, // owner-only
+]);
 
-const ROLE_LABELS: Record<AdminRole, string> = {
-  owner: "擁有者",
-  editor: "編輯",
-  checkin: "現場報到",
-  viewer: "檢視",
-  vendor: "攤位商家",
-};
+const ROLE_LABELS = (): Record<AdminRole, string> => ({
+  owner: tx("擁有者"),
+  editor: tx("編輯"),
+  checkin: tx("現場報到"),
+  viewer: tx("檢視"),
+  vendor: tx("攤位商家"),
+});
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
+  useI18n();
   const [location] = useLocation();
   const { isAuthenticated, isLoading, user, role, hasRole, logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -70,20 +73,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     };
   }, [drawerOpen]);
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center">載入中...</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center">{tx("載入中...")}</div>;
   if (!isAuthenticated) return <Redirect to="/admin/login" />;
   // Vendor accounts have no dashboard access — send them straight to POS.
   if (role === "vendor" && location === "/admin") return <Redirect to="/admin/pos" />;
   // Check-in staff accounts only do check-in — send them straight there.
   if (role === "checkin" && location === "/admin") return <Redirect to="/admin/checkin" />;
 
-  const navs = ALL_NAVS.filter((n) => hasRole(...n.roles));
-  const currentNav = ALL_NAVS.find(n => n.exact ? location === n.href : location.startsWith(n.href));
+  const navs = ALL_NAVS().filter((n) => hasRole(...n.roles));
+  const currentNav = ALL_NAVS().find(n => n.exact ? location === n.href : location.startsWith(n.href));
 
   const sidebarContent = (
     <>
       <div className="mb-6">
-        <h2 className="font-display text-xl">管理後臺</h2>
+        <h2 className="font-display text-xl">{tx("管理後臺")}</h2>
         <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">Admin Dashboard</p>
       </div>
 
@@ -91,7 +94,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <div className="mb-6 p-3 rounded-lg bg-muted/40 text-sm" data-testid="admin-user-info">
           <div className="font-medium truncate">{user.displayName || user.username}</div>
           <div className="text-xs text-muted-foreground mt-1">
-            角色：<span className="font-medium text-foreground">{role ? ROLE_LABELS[role] : "—"}</span>
+            {tx("角色：")}<span className="font-medium text-foreground">{role ? ROLE_LABELS()[role] : "—"}</span>
           </div>
         </div>
       )}
@@ -117,16 +120,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       </nav>
 
       <div className="mt-8 pt-6 border-t space-y-2">
+        <LanguageSwitch className="mb-2" testId="switch-language-admin" />
         <button
           type="button"
           onClick={() => logout()}
           data-testid="button-logout"
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-medium px-2"
         >
-          <LogOut size={16} /> 登出
+          <LogOut size={16} /> {tx("登出")}
         </button>
         <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-medium px-2">
-          <ArrowLeft size={16} /> 返回前台網站
+          <ArrowLeft size={16} /> {tx("返回前台網站")}
         </Link>
       </div>
     </>
@@ -140,7 +144,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           ref={menuBtnRef}
           type="button"
           onClick={() => setDrawerOpen(true)}
-          aria-label="開啟選單"
+          aria-label={tx("開啟選單")}
           aria-expanded={drawerOpen}
           aria-controls="admin-mobile-drawer"
           data-testid="button-mobile-menu"
@@ -149,13 +153,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <Menu size={22} />
         </button>
         <div className="flex-1 min-w-0 text-center">
-          <div className="font-bold text-sm truncate">{currentNav?.label ?? "管理後臺"}</div>
-          {role && <div className="text-[10px] text-muted-foreground">{ROLE_LABELS[role]} ・ {user?.displayName || user?.username}</div>}
+          <div className="font-bold text-sm truncate">{currentNav?.label ?? tx("管理後臺")}</div>
+          {role && <div className="text-[10px] text-muted-foreground">{ROLE_LABELS()[role]} ・ {user?.displayName || user?.username}</div>}
         </div>
         <button
           type="button"
           onClick={() => logout()}
-          aria-label="登出"
+          aria-label={tx("登出")}
           data-testid="button-mobile-logout"
           className="p-2 -mr-2 rounded-lg hover:bg-muted active:bg-muted/70 text-muted-foreground"
         >
@@ -175,9 +179,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         id="admin-mobile-drawer"
         role="dialog"
         aria-modal="true"
-        aria-label="管理後臺選單"
+        aria-label={tx("管理後臺選單")}
         aria-hidden={!drawerOpen}
-        {...(!drawerOpen && { inert: "" as unknown as boolean })}
+        inert={!drawerOpen}
         className={cn(
           "md:hidden fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-white p-5 overflow-y-auto shadow-2xl transition-transform duration-200",
           drawerOpen ? "translate-x-0" : "-translate-x-full",
@@ -187,7 +191,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           ref={drawerCloseBtnRef}
           type="button"
           onClick={() => setDrawerOpen(false)}
-          aria-label="關閉選單"
+          aria-label={tx("關閉選單")}
           className="absolute top-3 right-3 p-2 rounded-lg hover:bg-muted"
         >
           <X size={20} />

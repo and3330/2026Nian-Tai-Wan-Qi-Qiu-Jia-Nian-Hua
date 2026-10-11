@@ -1,3 +1,4 @@
+import { tx, useI18n, txApi } from "@/lib/i18n";
 import { useState, useRef } from "react";
 import { useListNews, useAdminCreateNews, useAdminUpdateNews, useAdminDeleteNews } from "@workspace/api-client-react";
 import { Plus, Edit2, Trash2, X, Upload, Image as ImageIcon } from "lucide-react";
@@ -7,6 +8,7 @@ import { useUpload } from "@workspace/object-storage-web";
 import { formatDate } from "@/lib/utils";
 
 export default function AdminNewsManage() {
+  useI18n();
   const { data: news, isLoading } = useListNews();
   const queryClient = useQueryClient();
 
@@ -30,11 +32,11 @@ export default function AdminNewsManage() {
 
   const handleFileSelect = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      alert("請選擇圖片檔案");
+      alert(tx("請選擇圖片檔案"));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      alert("圖片大小不可超過 10MB");
+      alert(tx("圖片大小不可超過 10MB"));
       return;
     }
     await uploadFile(file);
@@ -60,7 +62,7 @@ export default function AdminNewsManage() {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("確定要刪除這篇最新消息嗎？")) {
+    if (confirm(tx("確定要刪除這篇最新消息嗎？"))) {
       deleteMutation.mutate({ id }, {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: getListNewsQueryKey() })
       });
@@ -91,14 +93,14 @@ export default function AdminNewsManage() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-display">最新消息管理</h1>
-          <p className="text-muted-foreground mt-1">發布大會公告與活動亮點</p>
+          <h1 className="text-3xl font-display">{tx("最新消息管理")}</h1>
+          <p className="text-muted-foreground mt-1">{tx("發布大會公告與活動亮點")}</p>
         </div>
         <button
           onClick={openCreate}
           className="bg-primary text-white px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-md"
         >
-          <Plus size={18} /> 新增消息
+          <Plus size={18} /> {tx("新增消息")}
         </button>
       </div>
 
@@ -106,15 +108,15 @@ export default function AdminNewsManage() {
         <table className="w-full text-left">
           <thead className="bg-muted/30">
             <tr>
-              <th className="p-4 font-semibold text-muted-foreground w-20">圖片</th>
-              <th className="p-4 font-semibold text-muted-foreground w-32">發布日期</th>
-              <th className="p-4 font-semibold text-muted-foreground">標題</th>
-              <th className="p-4 font-semibold text-muted-foreground w-32 text-right">操作</th>
+              <th className="p-4 font-semibold text-muted-foreground w-20">{tx("圖片")}</th>
+              <th className="p-4 font-semibold text-muted-foreground w-32">{tx("發布日期")}</th>
+              <th className="p-4 font-semibold text-muted-foreground">{tx("標題")}</th>
+              <th className="p-4 font-semibold text-muted-foreground w-32 text-right">{tx("操作")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {isLoading ? (
-              <tr><td colSpan={4} className="p-8 text-center">載入中...</td></tr>
+              <tr><td colSpan={4} className="p-8 text-center">{tx("載入中...")}</td></tr>
             ) : news?.map((article) => (
               <tr key={article.id} className="hover:bg-muted/20 transition-colors">
                 <td className="p-4">
@@ -153,11 +155,11 @@ export default function AdminNewsManage() {
             </button>
             
             <div className="p-8">
-              <h2 className="text-2xl font-bold mb-6">{editingId ? "編輯消息" : "新增消息"}</h2>
+              <h2 className="text-2xl font-bold mb-6">{editingId ? tx("編輯消息") : tx("新增消息")}</h2>
               
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-bold mb-2">標題</label>
+                  <label className="block text-sm font-bold mb-2">{tx("標題")}</label>
                   <input
                     required
                     type="text"
@@ -168,7 +170,7 @@ export default function AdminNewsManage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-2">封面圖片 (選填)</label>
+                  <label className="block text-sm font-bold mb-2">{tx("封面圖片 (選填)")}</label>
                   {formData.imageUrl ? (
                     <div className="relative inline-block">
                       <img src={formData.imageUrl} alt="preview" className="w-full max-h-56 object-cover rounded-xl border" onError={e => (e.currentTarget.style.display = "none")} />
@@ -188,7 +190,7 @@ export default function AdminNewsManage() {
                       {isUploading ? (
                         <div className="space-y-2">
                           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-                          <p className="text-sm text-muted-foreground">上傳中... {progress}%</p>
+                          <p className="text-sm text-muted-foreground">{tx("上傳中...")} {progress}%</p>
                           <div className="w-full bg-muted rounded-full h-1.5 max-w-[200px] mx-auto">
                             <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
                           </div>
@@ -196,17 +198,17 @@ export default function AdminNewsManage() {
                       ) : (
                         <>
                           <Upload size={28} className="mx-auto text-muted-foreground/40 mb-2" />
-                          <p className="text-sm text-muted-foreground">拖放圖片或點擊選擇</p>
-                          <p className="text-xs text-muted-foreground/60 mt-1">支援 JPG、PNG、WebP，最大 10MB</p>
+                          <p className="text-sm text-muted-foreground">{tx("拖放圖片或點擊選擇")}</p>
+                          <p className="text-xs text-muted-foreground/60 mt-1">{tx("支援 JPG、PNG、WebP，最大 10MB")}</p>
                         </>
                       )}
-                      {uploadError && <p className="text-xs text-red-500 mt-2">{uploadError.message}</p>}
+                      {uploadError && <p className="text-xs text-red-500 mt-2">{txApi(uploadError.message)}</p>}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-2">摘要 (選填，顯示於列表)</label>
+                  <label className="block text-sm font-bold mb-2">{tx("摘要 (選填，顯示於列表)")}</label>
                   <textarea
                     value={formData.summary}
                     onChange={e => setFormData({...formData, summary: e.target.value})}
@@ -214,7 +216,7 @@ export default function AdminNewsManage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold mb-2">詳細內容</label>
+                  <label className="block text-sm font-bold mb-2">{tx("詳細內容")}</label>
                   <textarea
                     required
                     value={formData.content}
@@ -224,9 +226,9 @@ export default function AdminNewsManage() {
                 </div>
                 
                 <div className="pt-4 flex justify-end gap-3 border-t">
-                  <button type="button" onClick={() => setIsDialogOpen(false)} className="px-6 py-2.5 rounded-full font-bold bg-muted hover:bg-muted/80">取消</button>
+                  <button type="button" onClick={() => setIsDialogOpen(false)} className="px-6 py-2.5 rounded-full font-bold bg-muted hover:bg-muted/80">{tx("取消")}</button>
                   <button type="submit" disabled={createMutation.isPending || updateMutation.isPending || isUploading} className="px-8 py-2.5 rounded-full font-bold bg-primary text-white hover:bg-primary/90">
-                    {createMutation.isPending || updateMutation.isPending ? "儲存中..." : "儲存"}
+                    {createMutation.isPending || updateMutation.isPending ? tx("儲存中...") : tx("儲存")}
                   </button>
                 </div>
               </form>

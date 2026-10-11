@@ -1,3 +1,4 @@
+import { tx, useI18n, txContent } from "@/lib/i18n";
 import { useListNews, useGetRegistrationAvailability } from "@workspace/api-client-react";
 import { Calendar, MapPin, Clock, ArrowRight, Ticket, Sparkles, ChevronRight, PartyPopper, Baby, Eye, Cpu, ShieldCheck, Star, ZoomIn, X, Gift, Mail } from "lucide-react";
 import { Link } from "wouter";
@@ -8,6 +9,7 @@ import { AnimatedNumber } from "@/components/EventCountdown";
 import { TICKET_SALES_OPEN } from "@/lib/ticketSales";
 
 export default function HomePage() {
+  useI18n();
   const { data: news } = useListNews();
   const { data: availability } = useGetRegistrationAvailability({
     query: { queryKey: ["getRegistrationAvailability"], refetchInterval: 30000 },
@@ -36,29 +38,29 @@ export default function HomePage() {
   const highlights = [
     {
       icon: Eye,
-      title: "巨型氣球展覽",
-      desc: "近距離欣賞中型氣球雕塑、氣球人偶、外送花束等業界精品作品。",
+      title: tx("巨型氣球展覽"),
+      desc: tx("近距離欣賞中型氣球雕塑、氣球人偶、外送花束等業界精品作品。"),
       color: "text-blue-600",
       bg: "bg-blue-50",
     },
     {
       icon: Sparkles,
-      title: "舞臺氣球秀",
-      desc: "專業表演團隊帶來的精彩氣球藝術表演，全家共賞氣球的無限可能。",
+      title: tx("舞臺氣球秀"),
+      desc: tx("專業表演團隊帶來的精彩氣球藝術表演，全家共賞氣球的無限可能。"),
       color: "text-purple-600",
       bg: "bg-purple-50",
     },
     {
       icon: Baby,
-      title: "親子手作坊",
-      desc: "專業老師帶領親子一起做氣球造型，每組 150 元，老少咸宜。",
+      title: tx("親子手作坊"),
+      desc: tx("專業老師帶領親子一起做氣球造型，每組 150 元，老少咸宜。"),
       color: "text-green-600",
       bg: "bg-green-50",
     },
     {
       icon: Cpu,
-      title: "AI 教育科技",
-      desc: "結合 AI 與氣球藝術的互動裝置，為傳統技藝注入科技新生命。",
+      title: tx("AI 教育科技"),
+      desc: tx("結合 AI 與氣球藝術的互動裝置，為傳統技藝注入科技新生命。"),
       color: "text-rose-600",
       bg: "bg-rose-50",
     },
@@ -67,30 +69,30 @@ export default function HomePage() {
   const dayPrograms = [
     {
       date: "7/25",
-      weekday: "六",
-      label: "嘉年華表演日",
+      weekday: tx("六"),
+      label: tx("嘉年華表演日"),
       accent: "from-amber-400 to-orange-500",
       tint: "bg-amber-50/70 border-amber-200",
       chip: "bg-amber-100 text-amber-700",
       items: [
-        { time: "11:00", title: "12 分鐘氣球快手表演", hl: true },
-        { time: "13:00", title: "嘉年華親子表演（魔術・個人技）" },
-        { time: "15:00", title: "藝術服裝遊行", hl: true },
-        { time: "16:00", title: "親子表演與頒獎" },
-        { time: "18:00", title: "波波繪本親子劇場", note: "另需報名" },
+        { time: "11:00", title: tx("12 分鐘氣球快手表演"), hl: true },
+        { time: "13:00", title: tx("嘉年華親子表演（魔術・個人技）") },
+        { time: "15:00", title: tx("藝術服裝遊行"), hl: true },
+        { time: "16:00", title: tx("親子表演與頒獎") },
+        { time: "18:00", title: tx("波波繪本親子劇場"), note: tx("另需報名") },
       ],
     },
     {
       date: "7/26",
-      weekday: "日",
-      label: "全國氣球比賽日",
+      weekday: tx("日"),
+      label: tx("全國氣球比賽日"),
       accent: "from-rose-400 to-pink-500",
       tint: "bg-rose-50/70 border-rose-200",
       chip: "bg-rose-100 text-rose-700",
       items: [
-        { time: "11:00", title: "嘉年華親子劇場" },
-        { time: "13:00", title: "兒童組比賽（32 人）", hl: true },
-        { time: "15:00", title: "成人組比賽（64 人）", hl: true },
+        { time: "11:00", title: tx("嘉年華親子劇場") },
+        { time: "13:00", title: tx("兒童組比賽（32 人）"), hl: true },
+        { time: "15:00", title: tx("成人組比賽（64 人）"), hl: true },
       ],
     },
   ];
@@ -103,7 +105,7 @@ export default function HomePage() {
           <div className="relative md:rounded-3xl overflow-hidden md:shadow-xl md:shadow-primary/10 md:border md:border-white/60 bg-white">
             <img
               src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
-              alt="2026 臺灣氣球嘉年華 ・ 夢想升空・氣球無限"
+              alt={tx("2026 臺灣氣球嘉年華 ・ 夢想升空・氣球無限")}
               className="w-full h-auto block"
             />
             <div className="hidden md:block absolute inset-x-0 bottom-0 pointer-events-none bg-gradient-to-t from-black/45 via-black/15 to-transparent pt-16 pb-8 px-4">
@@ -113,13 +115,13 @@ export default function HomePage() {
                   className="px-8 py-4 rounded-full font-bold text-lg bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-black/30 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
                   data-testid="hero-cta-buy-desktop"
                 >
-                  <Ticket size={20} /> 立即購票入場
+                  <Ticket size={20} /> {tx("立即購票入場")}
                 </Link>
                 <Link
                   href="/carnival"
                   className="px-6 py-3.5 rounded-full font-medium text-base text-foreground bg-white/95 backdrop-blur border border-white hover:bg-white transition-all flex items-center gap-2"
                 >
-                  查看活動詳情 <ArrowRight size={16} />
+                  {tx("查看活動詳情")} <ArrowRight size={16} />
                 </Link>
               </div>
             </div>
@@ -131,7 +133,7 @@ export default function HomePage() {
               className="px-6 py-4 rounded-full font-bold text-base bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2"
               data-testid="hero-cta-buy"
             >
-              <Ticket size={20} /> 立即購票入場
+              <Ticket size={20} /> {tx("立即購票入場")}
             </Link>
           </div>
         </div>
@@ -145,8 +147,8 @@ export default function HomePage() {
               <Calendar className="text-primary w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">公開場次</div>
-              <div className="font-bold text-foreground text-sm">7/25 (六) – 7/26 (日)</div>
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">{tx("公開場次")}</div>
+              <div className="font-bold text-foreground text-sm">{tx("7/25 (六) – 7/26 (日)")}</div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -154,8 +156,8 @@ export default function HomePage() {
               <MapPin className="text-secondary w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">活動地點</div>
-              <div className="font-bold text-foreground text-sm">臺北瓶蓋工廠 (南港)</div>
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">{tx("活動地點")}</div>
+              <div className="font-bold text-foreground text-sm">{tx("臺北瓶蓋工廠 (南港)")}</div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -163,7 +165,7 @@ export default function HomePage() {
               <Clock className="text-accent-foreground w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">開放時間</div>
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">{tx("開放時間")}</div>
               <div className="font-bold text-foreground text-sm">10:00 – 18:00</div>
             </div>
           </div>
@@ -172,7 +174,7 @@ export default function HomePage() {
               <PartyPopper className="text-rose-500 w-5 h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">即時剩餘名額</div>
+              <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">{tx("即時剩餘名額")}</div>
               <div className="flex flex-wrap gap-x-3 gap-y-1 mt-0.5">
                 {publicAvailability?.map(day => (
                   <span key={day.date} className="text-sm" data-testid={`home-remaining-${day.date}`}>
@@ -182,8 +184,8 @@ export default function HomePage() {
                       !TICKET_SALES_OPEN || day.remaining <= 0 ? "text-amber-600" : day.remaining < 50 ? "text-amber-600" : "text-emerald-600"
                     )}>
                       {!TICKET_SALES_OPEN
-                        ? "已售清"
-                        : day.remaining <= 0 ? "名額有限" : <>剩 <AnimatedNumber value={day.remaining} /></>}
+                        ? tx("已售清")
+                        : day.remaining <= 0 ? tx("名額有限") : <>{tx("剩")} <AnimatedNumber value={day.remaining} /></>}
                     </span>
                   </span>
                 ))}
@@ -198,15 +200,15 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8 md:mb-10">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-4">
-              <Sparkles size={16} /> 活動亮點
+              <Sparkles size={16} /> {tx("活動亮點")}
             </div>
-            <h2 className="font-display text-3xl md:text-5xl">嘉年華精彩內容</h2>
+            <h2 className="font-display text-3xl md:text-5xl">{tx("嘉年華精彩內容")}</h2>
           </div>
 
           <div className="rounded-3xl overflow-hidden shadow-xl shadow-primary/10 border border-white/60 bg-white">
             <img
               src={`${import.meta.env.BASE_URL}images/highlights.png`}
-              alt="2026 臺灣氣球嘉年華精彩內容"
+              alt={tx("2026 臺灣氣球嘉年華精彩內容")}
               className="w-full h-auto block"
             />
           </div>
@@ -217,11 +219,11 @@ export default function HomePage() {
       <section className="py-16 md:py-20 px-4 max-w-5xl mx-auto w-full border-t">
         <div className="text-center mb-14">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-50 text-green-600 font-bold text-sm mb-4">
-            <Ticket size={16} /> 票價方案
+            <Ticket size={16} /> {tx("票價方案")}
           </div>
-          <h2 className="font-display text-4xl mb-4">選擇你的票種</h2>
+          <h2 className="font-display text-4xl mb-4">{tx("選擇你的票種")}</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            選擇最適合的票種，提前線上預約以確保入場名額
+            {tx("選擇最適合的票種，提前線上預約以確保入場名額")}
           </p>
         </div>
 
@@ -229,15 +231,15 @@ export default function HomePage() {
           type="button"
           onClick={() => setZoomedImage(`${import.meta.env.BASE_URL}images/tickets-banner.png`)}
           className="hidden md:block group w-full max-w-5xl mx-auto mb-10 rounded-3xl overflow-hidden shadow-2xl shadow-primary/15 border border-white/60 bg-white relative cursor-zoom-in focus:outline-none focus:ring-4 focus:ring-primary/30"
-          aria-label="放大查看購票圖片"
+          aria-label={tx("放大查看購票圖片")}
         >
           <img
             src={`${import.meta.env.BASE_URL}images/tickets-banner.png`}
-            alt="2026 臺灣氣球嘉年華購票"
+            alt={tx("2026 臺灣氣球嘉年華購票")}
             className="w-full h-auto block transition-transform duration-300 group-hover:scale-[1.02]"
           />
           <span className="absolute top-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 text-white text-xs font-bold backdrop-blur opacity-0 group-hover:opacity-100 transition-opacity">
-            <ZoomIn size={14} /> 點擊放大
+            <ZoomIn size={14} /> {tx("點擊放大")}
           </span>
         </button>
 
@@ -247,46 +249,46 @@ export default function HomePage() {
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
                 <Ticket size={28} className="text-primary" />
               </div>
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">彈性選擇</span>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">{tx("彈性選擇")}</span>
             </div>
-            <h3 className="text-2xl font-bold mb-1">單日票</h3>
-            <p className="text-sm text-muted-foreground mb-5">7/25（六）或 7/26（日）擇一日入場</p>
+            <h3 className="text-2xl font-bold mb-1">{tx("單日票")}</h3>
+            <p className="text-sm text-muted-foreground mb-5">{tx("7/25（六）或 7/26（日）擇一日入場")}</p>
             <div className="flex items-baseline gap-1 mb-6">
               <span className="text-5xl font-bold text-primary">300</span>
-              <span className="text-lg text-muted-foreground">元 / 人</span>
+              <span className="text-lg text-muted-foreground">{tx("元 / 人")}</span>
             </div>
             <div className="space-y-2 text-sm text-muted-foreground mb-6">
-              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 全展區 ・ 舞臺表演 ・ 比賽展件</p>
-              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 兒童與大人同票價 300 元 / 人，1 歲以下免費</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> {tx("全展區 ・ 舞臺表演 ・ 比賽展件")}</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> {tx("兒童與大人同票價 300 元 / 人，1 歲以下免費")}</p>
             </div>
             <span className="inline-flex items-center gap-2 text-primary font-bold text-sm group-hover:gap-3 transition-all">
-              選擇單日票 <ArrowRight size={16} />
+              {tx("選擇單日票")} <ArrowRight size={16} />
             </span>
           </Link>
 
           <Link href="/carnival#register" className="group glass-card rounded-3xl p-6 pt-10 md:p-8 md:pt-10 hover-lift border-2 border-primary shadow-xl shadow-primary/10 transition-all relative block">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap">
-              最划算 ・ 省 100 元
+              {tx("最划算 ・ 省 100 元")}
             </div>
             <div className="flex items-start justify-between mb-4 gap-3">
               <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center shrink-0">
                 <Star size={28} className="text-secondary" />
               </div>
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-secondary/15 text-secondary whitespace-nowrap">人氣推薦</span>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-secondary/15 text-secondary whitespace-nowrap">{tx("人氣推薦")}</span>
             </div>
-            <h3 className="text-2xl font-bold mb-1">兩日套票</h3>
-            <p className="text-sm text-muted-foreground mb-5">7/25 + 7/26 兩日完整體驗</p>
+            <h3 className="text-2xl font-bold mb-1">{tx("兩日套票")}</h3>
+            <p className="text-sm text-muted-foreground mb-5">{tx("7/25 + 7/26 兩日完整體驗")}</p>
             <div className="flex items-baseline gap-1 mb-6 flex-wrap">
               <span className="text-5xl font-bold text-secondary">500</span>
-              <span className="text-lg text-muted-foreground">元 / 人</span>
-              <span className="text-sm text-muted-foreground line-through ml-2">原價 600</span>
+              <span className="text-lg text-muted-foreground">{tx("元 / 人")}</span>
+              <span className="text-sm text-muted-foreground line-through ml-2">{tx("原價 600")}</span>
             </div>
             <div className="space-y-2 text-sm text-muted-foreground mb-6">
-              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 兩日無限暢遊・所有節目通通看</p>
-              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> 完整參與 7/25、7/26 兩日精彩活動</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> {tx("兩日無限暢遊・所有節目通通看")}</p>
+              <p className="flex items-center gap-2"><ShieldCheck size={14} className="text-green-500" /> {tx("完整參與 7/25、7/26 兩日精彩活動")}</p>
             </div>
             <span className="inline-flex items-center gap-2 text-secondary font-bold text-sm group-hover:gap-3 transition-all">
-              選擇兩日套票 <ArrowRight size={16} />
+              {tx("選擇兩日套票")} <ArrowRight size={16} />
             </span>
           </Link>
         </div>
@@ -296,7 +298,7 @@ export default function HomePage() {
           <div className="rounded-3xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50/60 p-6 md:p-8">
             <div className="flex items-center justify-center gap-2 mb-6">
               <Gift size={20} className="text-amber-600" />
-              <h3 className="text-lg md:text-xl font-bold text-foreground">每張門票皆包含</h3>
+              <h3 className="text-lg md:text-xl font-bold text-foreground">{tx("每張門票皆包含")}</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex items-start gap-3 rounded-2xl bg-white/70 p-4 border border-amber-100">
@@ -304,9 +306,9 @@ export default function HomePage() {
                   <Gift size={22} className="text-amber-600" />
                 </div>
                 <div>
-                  <p className="font-bold text-foreground leading-snug">報到即送精美小禮物</p>
+                  <p className="font-bold text-foreground leading-snug">{tx("報到即送精美小禮物")}</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    價值 <span className="font-bold text-amber-600">50 元</span>，一張票於現場報到兌換一組。
+                    {tx("價值")} <span className="font-bold text-amber-600">{tx("50 元")}</span>{tx("，一張票於現場報到兌換一組。")}
                   </p>
                 </div>
               </div>
@@ -315,9 +317,9 @@ export default function HomePage() {
                   <Mail size={22} className="text-amber-600" />
                 </div>
                 <div>
-                  <p className="font-bold text-foreground leading-snug">商城優惠套裝折扣碼</p>
+                  <p className="font-bold text-foreground leading-snug">{tx("商城優惠套裝折扣碼")}</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    價值 <span className="font-bold text-amber-600">500 元</span>，購票後以 Email 寄送。
+                    {tx("價值")} <span className="font-bold text-amber-600">{tx("500 元")}</span>{tx("，購票後以 Email 寄送。")}
                   </p>
                 </div>
               </div>
@@ -327,7 +329,7 @@ export default function HomePage() {
 
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground">
-            親子手作坊另需現場購票 <span className="font-bold text-foreground">150 元/組</span>　・　兒童與大人同票價（單日 300 元 / 兩日套票 500 元），1 歲以下免費
+            {tx("親子手作坊另需現場購票")} <span className="font-bold text-foreground">{tx("150 元/組")}</span>　{tx("・　兒童與大人同票價（單日 300 元 / 兩日套票 500 元），1 歲以下免費")}
           </p>
         </div>
       </section>
@@ -339,13 +341,13 @@ export default function HomePage() {
             <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12 gap-4">
               <div>
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 font-bold text-sm mb-4">
-                  <Sparkles size={16} /> 最新動態
+                  <Sparkles size={16} /> {tx("最新動態")}
                 </div>
-                <h2 className="font-display text-4xl mb-2">最新消息</h2>
-                <p className="text-muted-foreground text-lg">掌握嘉年華的最新公告與活動資訊</p>
+                <h2 className="font-display text-4xl mb-2">{tx("最新消息")}</h2>
+                <p className="text-muted-foreground text-lg">{tx("掌握嘉年華的最新公告與活動資訊")}</p>
               </div>
               <Link href="/news" className="flex items-center gap-2 text-primary font-bold hover:underline">
-                查看全部消息 <ChevronRight size={18} />
+                {tx("查看全部消息")} <ChevronRight size={18} />
               </Link>
             </div>
 
@@ -354,21 +356,21 @@ export default function HomePage() {
                 <Link key={article.id} href={`/news/${article.id}`} className="glass-card rounded-2xl p-6 hover-lift group block">
                   {article.imageUrl && (
                     <div className="-mx-6 -mt-6 mb-4 h-40 overflow-hidden rounded-t-2xl">
-                      <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={e => (e.currentTarget.parentElement!.style.display = "none")} />
+                      <img src={article.imageUrl} alt={txContent(article.title)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={e => (e.currentTarget.parentElement!.style.display = "none")} />
                     </div>
                   )}
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
                     <Calendar size={12} />
-                    {article.createdAt ? formatDate(String(article.createdAt)) : '最新'}
+                    {article.createdAt ? formatDate(String(article.createdAt)) : tx("最新")}
                   </div>
                   <h3 className="text-lg font-bold mb-3 group-hover:text-primary transition-colors line-clamp-2">
-                    {article.title}
+                    {txContent(article.title)}
                   </h3>
                   <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
-                    {article.summary || article.content?.substring(0, 100)}
+                    {txContent(article.summary) || txContent(article.content)?.substring(0, 100)}
                   </p>
                   <span className="text-primary text-sm font-medium flex items-center gap-1">
-                    閱讀全文 <ArrowRight size={14} />
+                    {tx("閱讀全文")} <ArrowRight size={14} />
                   </span>
                 </Link>
               ))}
@@ -385,26 +387,26 @@ export default function HomePage() {
                   >
                     {article.imageUrl && (
                       <div className="-mx-5 -mt-5 mb-3 h-36 overflow-hidden rounded-t-2xl">
-                        <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" onError={e => (e.currentTarget.parentElement!.style.display = "none")} />
+                        <img src={article.imageUrl} alt={txContent(article.title)} className="w-full h-full object-cover" onError={e => (e.currentTarget.parentElement!.style.display = "none")} />
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
                       <Calendar size={12} />
-                      {article.createdAt ? formatDate(String(article.createdAt)) : '最新'}
+                      {article.createdAt ? formatDate(String(article.createdAt)) : tx("最新")}
                     </div>
-                    <h3 className="text-base font-bold mb-2 line-clamp-2">{article.title}</h3>
+                    <h3 className="text-base font-bold mb-2 line-clamp-2">{txContent(article.title)}</h3>
                     <p className="text-muted-foreground text-sm line-clamp-3 mb-3">
-                      {article.summary || article.content?.substring(0, 100)}
+                      {txContent(article.summary) || txContent(article.content)?.substring(0, 100)}
                     </p>
                     <span className="text-primary text-sm font-medium flex items-center gap-1">
-                      閱讀全文 <ArrowRight size={14} />
+                      {tx("閱讀全文")} <ArrowRight size={14} />
                     </span>
                   </Link>
                 ))}
                 <div className="shrink-0 w-1" aria-hidden="true" />
               </div>
               <p className="text-center text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
-                <ArrowRight size={12} /> 左右滑動查看更多
+                <ArrowRight size={12} /> {tx("左右滑動查看更多")}
               </p>
             </div>
           </div>
@@ -416,21 +418,21 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">Organizers</h3>
-            <h2 className="font-display text-4xl">主辦・協辦單位</h2>
+            <h2 className="font-display text-4xl">{tx("主辦・協辦單位")}</h2>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
             {[
-              { role: "主辦單位", name: "摸氣球的毛", logo: "images/sponsors/organizer.png", url: "https://www.facebook.com/Momoballoon/", accent: "from-primary/15 to-primary/5", badge: "bg-primary/15 text-primary" },
-              { role: "協辦單位", name: "ICTA 社團法人國際兒童才藝協會", logo: "images/sponsors/coorganizer.png", url: "http://www.ictaorg.org/", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
-              { role: "協辦單位", name: "育邦文化教育科技股份有限公司", logo: "images/sponsors/coorganizer2.png", url: "https://cmsedu-life.com/", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
-              { role: "協辦單位", name: "波波繪本屋", logo: "images/sponsors/coorganizer3.jpg", url: "https://www.instagram.com/bobo.storyhouse/", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
+              { role: tx("主辦單位"), name: tx("摸氣球的毛"), logo: "images/sponsors/organizer.png", url: "https://www.facebook.com/Momoballoon/", accent: "from-primary/15 to-primary/5", badge: "bg-primary/15 text-primary" },
+              { role: tx("協辦單位"), name: tx("ICTA 社團法人國際兒童才藝協會"), logo: "images/sponsors/coorganizer.png", url: "http://www.ictaorg.org/", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
+              { role: tx("協辦單位"), name: tx("育邦文化教育科技股份有限公司"), logo: "images/sponsors/coorganizer2.png", url: "https://cmsedu-life.com/", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
+              { role: tx("協辦單位"), name: tx("波波繪本屋"), logo: "images/sponsors/coorganizer3.jpg", url: "https://www.instagram.com/bobo.storyhouse/", accent: "from-secondary/15 to-secondary/5", badge: "bg-secondary/15 text-secondary" },
             ].map(o => (
               <a
                 key={o.name}
                 href={o.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`${o.role}：${o.name}（開新分頁）`}
+                aria-label={tx("{0}：{1}（開新分頁）", [o.role, o.name])}
                 className="group relative glass-card rounded-2xl overflow-hidden hover-lift transition-all block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 <div className={cn("absolute inset-0 bg-gradient-to-br opacity-50 pointer-events-none", o.accent)} />
@@ -457,16 +459,16 @@ export default function HomePage() {
       <section className="py-16 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-10">
-            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">感謝贊助</h3>
-            <h2 className="font-display text-3xl">合作夥伴</h2>
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-2">{tx("感謝贊助")}</h3>
+            <h2 className="font-display text-3xl">{tx("合作夥伴")}</h2>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6 max-w-6xl mx-auto">
             {[
-              { name: "台北氣球派對", logo: "images/sponsors/taipei-balloon.jpg" },
-              { name: "曄達氣球", logo: "images/sponsors/yeda.jpg" },
-              { name: "彩飛屋", logo: "images/sponsors/caifeiwu.svg" },
-              { name: "藝仁有限公司", logo: null },
-              { name: "氣球屋", logo: "images/sponsors/balloon-house.png" },
+              { name: tx("台北氣球派對"), logo: "images/sponsors/taipei-balloon.jpg" },
+              { name: tx("曄達氣球"), logo: "images/sponsors/yeda.jpg" },
+              { name: tx("彩飛屋"), logo: "images/sponsors/caifeiwu.svg" },
+              { name: tx("藝仁有限公司"), logo: null },
+              { name: tx("氣球屋"), logo: "images/sponsors/balloon-house.png" },
             ].map(s => (
               <div
                 key={s.name}
@@ -498,15 +500,15 @@ export default function HomePage() {
       <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10">
-            <h2 className="font-display text-3xl mb-4">常見問題</h2>
+            <h2 className="font-display text-3xl mb-4">{tx("常見問題")}</h2>
           </div>
           <div className="space-y-4">
             {[
-              { q: "需要購買門票嗎？", a: "活動日（7/25、7/26）單日票 300 元、兩日套票 500 元，請提前在官網預約購票。名額有限，建議儘早預約。" },
-              { q: "活動地點在哪裡？怎麼去？", a: "活動地點為臺北瓶蓋工廠（台北市南港區南港路二段13號）。可搭乘捷運至南港站1號出口，步行約5分鐘即可到達。" },
-              { q: "小朋友適合參加嗎？", a: "非常適合！嘉年華特別設有親子區、DIY 工作坊和兒童遊戲區。兒童與大人同票價（單日 300 元 / 兩日套票 500 元），每位兒童佔 1 個入場名額；1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code。" },
-              { q: "可以現場報名嗎？", a: "建議提前線上預約，確保有入場名額。若當日尚有餘額，也可現場排隊候補入場。" },
-              { q: "活動有提供停車場嗎？", a: "臺北瓶蓋工廠設有地下停車場，也可利用南港車站周邊停車場。建議搭乘大眾交通工具前往。" },
+              { q: tx("需要購買門票嗎？"), a: tx("活動日（7/25、7/26）單日票 300 元、兩日套票 500 元，請提前在官網預約購票。名額有限，建議儘早預約。") },
+              { q: tx("活動地點在哪裡？怎麼去？"), a: tx("活動地點為臺北瓶蓋工廠（台北市南港區南港路二段13號）。可搭乘捷運至南港站1號出口，步行約5分鐘即可到達。") },
+              { q: tx("小朋友適合參加嗎？"), a: tx("非常適合！嘉年華特別設有親子區、DIY 工作坊和兒童遊戲區。兒童與大人同票價（單日 300 元 / 兩日套票 500 元），每位兒童佔 1 個入場名額；1 歲以下嬰兒免費入場，但仍佔 1 個入場名額並會收到報到 QR Code。") },
+              { q: tx("可以現場報名嗎？"), a: tx("建議提前線上預約，確保有入場名額。若當日尚有餘額，也可現場排隊候補入場。") },
+              { q: tx("活動有提供停車場嗎？"), a: tx("臺北瓶蓋工廠設有地下停車場，也可利用南港車站周邊停車場。建議搭乘大眾交通工具前往。") },
             ].map((item, idx) => (
               <details key={idx} className="glass-card rounded-2xl group">
                 <summary className="p-5 font-bold cursor-pointer flex items-center justify-between hover:text-primary transition-colors list-none">
@@ -528,17 +530,17 @@ export default function HomePage() {
           <div className="absolute top-0 left-0 w-40 h-40 bg-primary/5 rounded-br-full"></div>
           <div className="absolute bottom-0 right-0 w-40 h-40 bg-secondary/5 rounded-tl-full"></div>
           <div className="relative z-10">
-            <h2 className="font-display text-3xl md:text-4xl mb-4">準備好了嗎？</h2>
+            <h2 className="font-display text-3xl md:text-4xl mb-4">{tx("準備好了嗎？")}</h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-              7/25-26 兩日限定的氣球奇幻旅程，現在就預約你的入場名額，和家人朋友一起創造美好回憶！
+              {tx("7/25-26 兩日限定的氣球奇幻旅程，現在就預約你的入場名額，和家人朋友一起創造美好回憶！")}
             </p>
             <Link
               href="/carnival#register"
               className="inline-flex items-center gap-2 px-10 py-5 rounded-full font-bold text-xl bg-gradient-to-r from-primary to-secondary text-white shadow-xl shadow-primary/40 hover:shadow-2xl hover:-translate-y-1 transition-all"
             >
-              <Ticket size={22} /> 立即購票入場
+              <Ticket size={22} /> {tx("立即購票入場")}
             </Link>
-            <p className="text-sm text-muted-foreground mt-4">名額有限・建議儘早購票</p>
+            <p className="text-sm text-muted-foreground mt-4">{tx("名額有限・建議儘早購票")}</p>
           </div>
         </div>
       </section>
@@ -550,19 +552,19 @@ export default function HomePage() {
           onClick={() => setZoomedImage(null)}
           role="dialog"
           aria-modal="true"
-          aria-label="放大檢視圖片"
+          aria-label={tx("放大檢視圖片")}
         >
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }}
             className="absolute top-4 right-4 md:top-6 md:right-6 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur text-white flex items-center justify-center transition-colors"
-            aria-label="關閉"
+            aria-label={tx("關閉")}
           >
             <X size={22} />
           </button>
           <img
             src={zoomedImage}
-            alt="放大檢視"
+            alt={tx("放大檢視")}
             className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />

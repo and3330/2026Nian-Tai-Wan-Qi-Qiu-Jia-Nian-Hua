@@ -18,3 +18,4 @@
 - [POS cart orders](pos-cart-orders.md) — checkout totals recomputed server-side from DB prices; vendor mutations must go through resolvePosVendor; invoices issue from pos_orders with dup guard.
 - [Vendor role isolation](vendor-role-isolation.md) — vendor role is session-bound to one vendor; "any authenticated admin" endpoints are no longer safe, list explicit roles.
 - [Stale chunk after redeploy](stale-chunk-reload.md) — deploys break lazy import() on stale pages; keep the vite:preloadError one-shot reload listener in the web entry.
+- [Bilingual scope](bilingual-scope.md) — Chinese/English across public, admin and buyer notifications; preserve banner images and user-entered data.

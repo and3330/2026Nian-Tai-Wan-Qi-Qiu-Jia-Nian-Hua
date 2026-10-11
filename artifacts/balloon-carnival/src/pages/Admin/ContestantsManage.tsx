@@ -1,3 +1,4 @@
+import { tx, useI18n } from "@/lib/i18n";
 import { useState } from "react";
 import { useListContestants, useAdminCreateContestant, useAdminUpdateContestant, useAdminDeleteContestant } from "@workspace/api-client-react";
 import { Plus, Edit2, Trash2, X, Image as ImageIcon } from "lucide-react";
@@ -5,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getListContestantsQueryKey } from "@workspace/api-client-react";
 
 export default function AdminContestantsManage() {
+  useI18n();
   const { data: members, isLoading } = useListContestants();
   const queryClient = useQueryClient();
   
@@ -29,7 +31,7 @@ export default function AdminContestantsManage() {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm("確定要移除這位選手嗎？")) {
+    if (confirm(tx("確定要移除這位選手嗎？"))) {
       deleteMutation.mutate({ id }, {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: getListContestantsQueryKey() })
       });
@@ -61,24 +63,24 @@ export default function AdminContestantsManage() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-display">選手管理</h1>
-          <p className="text-muted-foreground mt-1">管理本屆參展氣球藝術家資訊（首頁人氣投票來源）</p>
+          <h1 className="text-3xl font-display">{tx("選手管理")}</h1>
+          <p className="text-muted-foreground mt-1">{tx("管理本屆參展氣球藝術家資訊（首頁人氣投票來源）")}</p>
         </div>
         <button
           onClick={openCreate}
           className="bg-accent text-accent-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:bg-accent/90 transition-all shadow-md"
         >
-          <Plus size={18} /> 新增選手
+          <Plus size={18} /> {tx("新增選手")}
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
-          <div className="col-span-full text-center py-10">載入中...</div>
+          <div className="col-span-full text-center py-10">{tx("載入中...")}</div>
         ) : members?.length === 0 ? (
           <div className="col-span-full text-center py-16 bg-white rounded-3xl border">
-            <p className="text-muted-foreground text-lg">尚無選手資料</p>
-            <p className="text-muted-foreground text-sm mt-1">點擊「新增選手」開始新增</p>
+            <p className="text-muted-foreground text-lg">{tx("尚無選手資料")}</p>
+            <p className="text-muted-foreground text-sm mt-1">{tx("點擊「新增選手」開始新增")}</p>
           </div>
         ) : members?.map((c) => (
           <div key={c.id} className="bg-white rounded-3xl border shadow-sm overflow-hidden flex flex-col">
@@ -94,7 +96,7 @@ export default function AdminContestantsManage() {
               <p className="text-muted-foreground text-sm line-clamp-3 mb-4 flex-1">{c.description}</p>
               <div className="flex gap-2 border-t pt-4 mt-auto">
                 <button onClick={() => openEdit(c)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
-                  <Edit2 size={16} /> 編輯
+                  <Edit2 size={16} /> {tx("編輯")}
                 </button>
                 <button onClick={() => handleDelete(c.id)} className="px-4 py-2 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors flex items-center justify-center">
                   <Trash2 size={16} />
@@ -116,23 +118,23 @@ export default function AdminContestantsManage() {
             </button>
             
             <div className="p-8">
-              <h2 className="text-2xl font-bold mb-6">{editingId ? "編輯選手資訊" : "新增選手"}</h2>
+              <h2 className="text-2xl font-bold mb-6">{editingId ? tx("編輯選手資訊") : tx("新增選手")}</h2>
               
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-bold mb-2">姓名 / 暱稱</label>
+                  <label className="block text-sm font-bold mb-2">{tx("姓名 / 暱稱")}</label>
                   <input
                     required
                     type="text"
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})}
                     className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none"
-                    placeholder="例：王小明 / 氣球達人"
+                    placeholder={tx("例：王小明 / 氣球達人")}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold mb-2">個人照片 URL</label>
+                  <label className="block text-sm font-bold mb-2">{tx("個人照片 URL")}</label>
                   <input
                     type="url"
                     value={formData.imageUrl}
@@ -143,20 +145,20 @@ export default function AdminContestantsManage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold mb-2">自我介紹 / 經歷</label>
+                  <label className="block text-sm font-bold mb-2">{tx("自我介紹 / 經歷")}</label>
                   <textarea
                     required
                     value={formData.description}
                     onChange={e => setFormData({...formData, description: e.target.value})}
                     className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none h-36 resize-none"
-                    placeholder="介紹專長、從業經歷、想交流的方向等..."
+                    placeholder={tx("介紹專長、從業經歷、想交流的方向等...")}
                   />
                 </div>
                 
                 <div className="pt-4 flex justify-end gap-3 border-t">
-                  <button type="button" onClick={() => setIsDialogOpen(false)} className="px-6 py-2.5 rounded-full font-bold bg-muted hover:bg-muted/80">取消</button>
+                  <button type="button" onClick={() => setIsDialogOpen(false)} className="px-6 py-2.5 rounded-full font-bold bg-muted hover:bg-muted/80">{tx("取消")}</button>
                   <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="px-8 py-2.5 rounded-full font-bold bg-primary text-white hover:bg-primary/90">
-                    {createMutation.isPending || updateMutation.isPending ? "儲存中..." : "儲存"}
+                    {createMutation.isPending || updateMutation.isPending ? tx("儲存中...") : tx("儲存")}
                   </button>
                 </div>
               </form>

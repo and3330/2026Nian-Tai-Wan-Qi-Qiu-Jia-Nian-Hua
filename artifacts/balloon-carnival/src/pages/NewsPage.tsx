@@ -1,9 +1,11 @@
+import { tx, useI18n, txContent } from "@/lib/i18n";
 import { useListNews } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Calendar, ArrowRight, Newspaper } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export default function NewsPage() {
+  useI18n();
   const { data: news, isLoading } = useListNews();
 
   return (
@@ -13,8 +15,8 @@ export default function NewsPage() {
           <Newspaper size={32} />
         </div>
         <div>
-          <h1 className="font-display text-4xl md:text-5xl text-foreground">大會公告與最新消息</h1>
-          <p className="text-muted-foreground mt-2">隨時掌握嘉年華的最新動態、天氣異動與每日亮點</p>
+          <h1 className="font-display text-4xl md:text-5xl text-foreground">{tx("大會公告與最新消息")}</h1>
+          <p className="text-muted-foreground mt-2">{tx("隨時掌握嘉年華的最新動態、天氣異動與每日亮點")}</p>
         </div>
       </div>
 
@@ -41,7 +43,7 @@ export default function NewsPage() {
                   <div className="shrink-0 w-full md:w-48 h-32 rounded-2xl overflow-hidden border">
                     <img
                       src={article.imageUrl}
-                      alt={article.title}
+                      alt={txContent(article.title)}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={e => (e.currentTarget.parentElement!.style.display = "none")}
                     />
@@ -65,10 +67,10 @@ export default function NewsPage() {
                     {formatDate(article.createdAt)}
                   </div>
                   <h2 className="text-2xl font-bold text-foreground mb-3 group-hover:text-secondary transition-colors">
-                    {article.title}
+                    {txContent(article.title)}
                   </h2>
                   <p className="text-muted-foreground line-clamp-2">
-                    {article.summary || article.content.substring(0, 150) + "..."}
+                    {txContent(article.summary) || txContent(article.content).substring(0, 150) + "..."}
                   </p>
                 </div>
 
@@ -83,7 +85,7 @@ export default function NewsPage() {
       ) : (
         <div className="text-center py-32 bg-muted/30 rounded-3xl border-2 border-dashed">
           <Newspaper className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-          <p className="text-xl text-muted-foreground">目前沒有最新消息</p>
+          <p className="text-xl text-muted-foreground">{tx("目前沒有最新消息")}</p>
         </div>
       )}
     </div>

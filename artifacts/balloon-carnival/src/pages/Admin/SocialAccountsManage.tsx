@@ -1,3 +1,4 @@
+import { tx, useI18n, txApi } from "@/lib/i18n";
 import { useState, useEffect, useCallback } from "react";
 import { Facebook, Instagram, MessageCircle, Trash2, ToggleLeft, ToggleRight, ExternalLink, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ const PLATFORM_INFO: Record<string, { label: string; icon: typeof Facebook; colo
 };
 
 export default function SocialAccountsManage() {
+  useI18n();
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export default function SocialAccountsManage() {
       const { url } = await res.json();
       window.open(url, "oauth", "width=600,height=700,scrollbars=yes");
     } catch (err) {
-      alert(`連結失敗：${(err as Error).message}`);
+      alert(tx("連結失敗：{0}", [txApi((err as Error).message)]));
       setConnecting(null);
     }
   };
@@ -66,7 +68,7 @@ export default function SocialAccountsManage() {
   };
 
   const deleteAccount = async (id: string) => {
-    if (!confirm("確定要刪除此帳號？")) return;
+    if (!confirm(tx("確定要刪除此帳號？"))) return;
     const res = await fetch(`/api/admin/social-accounts/${id}`, {
       method: "DELETE", credentials: "include",
     });
@@ -74,21 +76,21 @@ export default function SocialAccountsManage() {
   };
 
   const getTokenStatus = (expiresAt?: string) => {
-    if (!expiresAt) return { label: "永久", color: "text-green-600" };
+    if (!expiresAt) return { label: tx("永久"), color: "text-green-600" };
     const diff = new Date(expiresAt).getTime() - Date.now();
-    if (diff < 0) return { label: "已過期", color: "text-red-600" };
-    if (diff < 7 * 86400000) return { label: `${Math.ceil(diff / 86400000)} 天後過期`, color: "text-amber-600" };
-    return { label: `${Math.ceil(diff / 86400000)} 天有效`, color: "text-green-600" };
+    if (diff < 0) return { label: tx("已過期"), color: "text-red-600" };
+    if (diff < 7 * 86400000) return { label: tx("{0} 天後過期", [Math.ceil(diff / 86400000)]), color: "text-amber-600" };
+    return { label: tx("{0} 天有效", [Math.ceil(diff / 86400000)]), color: "text-green-600" };
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20 text-muted-foreground">載入中...</div>;
+  if (loading) return <div className="flex items-center justify-center py-20 text-muted-foreground">{tx("載入中...")}</div>;
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-display">社群帳號管理</h1>
-          <p className="text-muted-foreground mt-1">連結 Facebook、Instagram、Threads 帳號</p>
+          <h1 className="text-3xl font-display">{tx("社群帳號管理")}</h1>
+          <p className="text-muted-foreground mt-1">{tx("連結 Facebook、Instagram、Threads 帳號")}</p>
         </div>
         <button onClick={() => fetchAccounts()} className="p-2 rounded-lg hover:bg-muted transition-colors">
           <RefreshCw size={20} />
@@ -112,9 +114,9 @@ export default function SocialAccountsManage() {
                 <div>
                   <h3 className="font-bold">{info.label}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {platform === "facebook" && "粉絲專頁授權"}
-                    {platform === "instagram" && "透過 Facebook 自動連結"}
-                    {platform === "threads" && "獨立授權"}
+                    {platform === "facebook" && tx("粉絲專頁授權")}
+                    {platform === "instagram" && tx("透過 Facebook 自動連結")}
+                    {platform === "threads" && tx("獨立授權")}
                   </p>
                 </div>
               </div>
@@ -137,10 +139,10 @@ export default function SocialAccountsManage() {
                           <p className={cn("text-xs", tokenStatus.color)}>{tokenStatus.label}</p>
                         </div>
                         <div className="flex items-center gap-1">
-                          <button onClick={() => toggleAccount(account.id)} className="p-1.5 rounded-lg hover:bg-muted transition-colors" title={account.isActive ? "停用" : "啟用"}>
+                          <button onClick={() => toggleAccount(account.id)} className="p-1.5 rounded-lg hover:bg-muted transition-colors" title={account.isActive ? tx("停用") : tx("啟用")}>
                             {account.isActive ? <ToggleRight size={18} className="text-green-600" /> : <ToggleLeft size={18} className="text-muted-foreground" />}
                           </button>
-                          <button onClick={() => deleteAccount(account.id)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-red-500" title="刪除">
+                          <button onClick={() => deleteAccount(account.id)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-red-500" title={tx("刪除")}>
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -150,7 +152,7 @@ export default function SocialAccountsManage() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground mb-4">
-                  {isAutoLinked ? "連結 Facebook 後自動偵測" : "尚未連結"}
+                  {isAutoLinked ? tx("連結 Facebook 後自動偵測") : tx("尚未連結")}
                 </p>
               )}
 
@@ -165,7 +167,7 @@ export default function SocialAccountsManage() {
                   )}
                 >
                   <Facebook size={16} className="text-blue-600" />
-                  {isConnecting ? "連結中..." : linked.length > 0 ? "重新授權 Facebook" : "透過 Facebook 連結"}
+                  {isConnecting ? tx("連結中...") : linked.length > 0 ? tx("重新授權 Facebook") : tx("透過 Facebook 連結")}
                 </button>
               ) : (
                 <button
@@ -178,7 +180,7 @@ export default function SocialAccountsManage() {
                   )}
                 >
                   <ExternalLink size={16} />
-                  {isConnecting ? "連結中..." : linked.length > 0 ? "重新授權" : "連結帳號"}
+                  {isConnecting ? tx("連結中...") : linked.length > 0 ? tx("重新授權") : tx("連結帳號")}
                 </button>
               )}
             </div>
@@ -188,16 +190,16 @@ export default function SocialAccountsManage() {
 
       {accounts.length > 0 && (
         <div className="rounded-2xl border bg-white p-6">
-          <h3 className="font-bold mb-4">已連結帳號總覽</h3>
+          <h3 className="font-bold mb-4">{tx("已連結帳號總覽")}</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b">
-                  <th className="pb-3 font-medium">平台</th>
-                  <th className="pb-3 font-medium">帳號名稱</th>
-                  <th className="pb-3 font-medium">類型</th>
-                  <th className="pb-3 font-medium">狀態</th>
-                  <th className="pb-3 font-medium">Token 狀態</th>
+                  <th className="pb-3 font-medium">{tx("平台")}</th>
+                  <th className="pb-3 font-medium">{tx("帳號名稱")}</th>
+                  <th className="pb-3 font-medium">{tx("類型")}</th>
+                  <th className="pb-3 font-medium">{tx("狀態")}</th>
+                  <th className="pb-3 font-medium">{tx("Token 狀態")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -216,7 +218,7 @@ export default function SocialAccountsManage() {
                       <td className="py-3 text-muted-foreground">{account.accountType}</td>
                       <td className="py-3">
                         <span className={cn("inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full", account.isActive ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500")}>
-                          {account.isActive ? "啟用" : "停用"}
+                          {account.isActive ? tx("啟用") : tx("停用")}
                         </span>
                       </td>
                       <td className={cn("py-3 text-xs", tokenStatus.color)}>{tokenStatus.label}</td>

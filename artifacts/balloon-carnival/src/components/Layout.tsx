@@ -1,3 +1,4 @@
+import { tx } from "@/lib/i18n";
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -5,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Ticket, Tent, MapPin, Info, Crown, LogOut, LayoutDashboard, Menu, X, Shield, Calendar, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { useI18n } from "@/lib/i18n";
 import { LineChatBubble } from "@/components/LineChatBubble";
 
 interface LayoutProps {
@@ -16,16 +19,17 @@ export function Layout({ children }: LayoutProps) {
   const isTor = location.toLowerCase() === "/tor";
   const { isAuthenticated, logout, isLoading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  useI18n();
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location]);
 
   const navItems = [
-    { href: "/", label: "首頁", icon: Tent },
-    { href: "/carnival", label: "購票入場", icon: Ticket },
-    { href: "/news", label: "最新消息", icon: Info },
-    { href: "/sponsors", label: "贊助夥伴", icon: Crown },
+    { href: "/", label: tx("首頁"), icon: Tent },
+    { href: "/carnival", label: tx("購票入場"), icon: Ticket },
+    { href: "/news", label: tx("最新消息"), icon: Info },
+    { href: "/sponsors", label: tx("贊助夥伴"), icon: Crown },
   ];
 
   return (
@@ -37,13 +41,13 @@ export function Layout({ children }: LayoutProps) {
             <div className="w-11 h-11 rounded-xl overflow-hidden bg-white shadow-md group-hover:scale-110 transition-transform">
               <img
                 src={`${import.meta.env.BASE_URL}images/logo.png`}
-                alt="2026 臺灣氣球嘉年華 Logo"
+                alt={tx("2026 臺灣氣球嘉年華 Logo")}
                 className="w-full h-full object-cover"
               />
             </div>
             <div>
               <h1 className="font-display text-xl sm:text-2xl text-foreground group-hover:text-primary transition-colors">
-                2026 臺灣氣球嘉年華
+                {tx("2026 臺灣氣球嘉年華")}
               </h1>
               <p className="text-xs text-muted-foreground font-medium tracking-wider uppercase hidden sm:block">
                 Taiwan Balloon Carnival
@@ -90,12 +94,12 @@ export function Layout({ children }: LayoutProps) {
                   )}
                 >
                   <LayoutDashboard size={16} />
-                  管理後臺
+                  {tx("管理後臺")}
                 </Link>
                 <button
                   onClick={() => logout()}
                   className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors ml-1"
-                  title="登出"
+                  title={tx("登出")}
                 >
                   <LogOut size={18} />
                 </button>
@@ -108,17 +112,24 @@ export function Layout({ children }: LayoutProps) {
                 className="ml-1 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-black/5 rounded-full transition-all flex items-center gap-1.5 font-medium"
               >
                 <Shield size={14} />
-                管理員
+                {tx("管理員")}
               </Link>
             )}
+            <LanguageSwitch className="ml-2" testId="switch-language-desktop" />
           </nav>
 
+          <div className="lg:hidden flex items-center gap-2">
+          <LanguageSwitch compact testId="switch-language-mobile" />
           <button
-            className="lg:hidden p-2 text-foreground"
+            className="p-2 text-foreground"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={isMobileMenuOpen ? tx("關閉選單") : tx("開啟選單")}
+            aria-expanded={isMobileMenuOpen}
+            data-testid="button-mobile-nav"
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
+          </div>
         </div>
       </header>
       <AnimatePresence>
@@ -161,7 +172,7 @@ export function Layout({ children }: LayoutProps) {
                   )}
                 >
                   <LayoutDashboard size={20} />
-                  管理後臺
+                  {tx("管理後臺")}
                 </Link>
               )}
 
@@ -174,7 +185,7 @@ export function Layout({ children }: LayoutProps) {
                     className="p-4 rounded-xl font-medium flex items-center justify-center gap-3 text-lg text-destructive bg-destructive/5"
                   >
                     <LogOut size={20} />
-                    管理員登出
+                    {tx("管理員登出")}
                   </button>
                 ) : (
                   <Link
@@ -182,7 +193,7 @@ export function Layout({ children }: LayoutProps) {
                     className="p-4 rounded-xl font-medium flex items-center justify-center gap-3 text-sm text-muted-foreground hover:bg-black/5"
                   >
                     <Shield size={16} />
-                    管理員登入
+                    {tx("管理員登入")}
                   </Link>
                 )
               )}
@@ -214,10 +225,10 @@ export function Layout({ children }: LayoutProps) {
               </div>
               <div className="min-w-0">
                 <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide leading-tight">
-                  {isTor ? "戰鬥陀螺賽" : "公開場次"}
+                  {isTor ? tx("戰鬥陀螺賽") : tx("公開場次")}
                 </div>
                 <div className="font-bold text-foreground text-sm leading-tight">
-                  {isTor ? "7/26（日）" : "7/25 – 7/26"}
+                  {isTor ? tx("7/26（日）") : "7/25 – 7/26"}
                 </div>
               </div>
             </div>
@@ -227,7 +238,7 @@ export function Layout({ children }: LayoutProps) {
                 className="shrink-0 px-5 py-3 rounded-full font-bold text-sm text-white bg-gradient-to-r from-primary to-secondary shadow-md shadow-primary/30 flex items-center gap-1.5 active:scale-95 transition-transform"
                 data-testid="mobile-bottom-cta-tor"
               >
-                <Ticket size={16} /> 我要報名參賽 <ArrowRight size={14} />
+                <Ticket size={16} /> {tx("我要報名參賽")} <ArrowRight size={14} />
               </a>
             ) : (
               <Link
@@ -235,7 +246,7 @@ export function Layout({ children }: LayoutProps) {
                 className="shrink-0 px-5 py-3 rounded-full font-bold text-sm text-white bg-gradient-to-r from-primary to-secondary shadow-md shadow-primary/30 flex items-center gap-1.5 active:scale-95 transition-transform"
                 data-testid="mobile-bottom-cta-buy"
               >
-                <Ticket size={16} /> 前往搶票 <ArrowRight size={14} />
+                <Ticket size={16} /> {tx("前往搶票")} <ArrowRight size={14} />
               </Link>
             )}
           </div>
@@ -249,36 +260,36 @@ export function Layout({ children }: LayoutProps) {
         />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
           <div>
-            <h2 className="font-display text-2xl text-white mb-4">2026 臺灣氣球嘉年華</h2>
-            <p className="mb-2 flex items-center gap-2"><Calendar size={16} className="text-primary" /> 2026 年 7 月 25 日 - 7 月 26 日</p>
-            <p className="flex items-center gap-2"><MapPin size={16} className="text-secondary" /> 臺北瓶蓋工廠 (台北市南港區)</p>
+            <h2 className="font-display text-2xl text-white mb-4">{tx("2026 臺灣氣球嘉年華")}</h2>
+            <p className="mb-2 flex items-center gap-2"><Calendar size={16} className="text-primary" /> {tx("2026 年 7 月 25 日 - 7 月 26 日")}</p>
+            <p className="flex items-center gap-2"><MapPin size={16} className="text-secondary" /> {tx("臺北瓶蓋工廠 (台北市南港區)")}</p>
           </div>
           <div>
-            <h3 className="font-bold text-white mb-4">活動連結</h3>
+            <h3 className="font-bold text-white mb-4">{tx("活動連結")}</h3>
             <ul className="space-y-2">
-              <li><Link href="/carnival" className="hover:text-primary transition-colors">嘉年華購票</Link></li>
-              <li><Link href="/news" className="hover:text-primary transition-colors">大會公告</Link></li>
-              <li><Link href="/sponsors" className="hover:text-primary transition-colors">贊助夥伴</Link></li>
-              <li><Link href="/lookup" className="hover:text-primary transition-colors">查詢我的訂單</Link></li>
+              <li><Link href="/carnival" className="hover:text-primary transition-colors">{tx("嘉年華購票")}</Link></li>
+              <li><Link href="/news" className="hover:text-primary transition-colors">{tx("大會公告")}</Link></li>
+              <li><Link href="/sponsors" className="hover:text-primary transition-colors">{tx("贊助夥伴")}</Link></li>
+              <li><Link href="/lookup" className="hover:text-primary transition-colors">{tx("查詢我的訂單")}</Link></li>
             </ul>
           </div>
           <div>
-            <h3 className="font-bold text-white mb-4">聯絡我們</h3>
-            <p className="mb-2">服務專線：02-23680623 分機4</p>
-            <p>Email：service@cms-edu.com</p>
+            <h3 className="font-bold text-white mb-4">{tx("聯絡我們")}</h3>
+            <p className="mb-2">{tx("服務專線：02-23680623 分機4")}</p>
+            <p>{tx("Email：service@cms-edu.com")}</p>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-white/10 relative z-10">
-          <h3 className="font-bold text-white mb-4">公司資料</h3>
+          <h3 className="font-bold text-white mb-4">{tx("公司資料")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
-            <p>公司名稱：摸氣球企業有限公司</p>
-            <p>統一編號：53451453</p>
-            <p>代表人：孫宇立</p>
-            <p>公司登記地址：新北市新店區平等街 50 號 1 樓</p>
+            <p>{tx("公司名稱：摸氣球企業有限公司")}</p>
+            <p>{tx("統一編號：53451453")}</p>
+            <p>{tx("代表人：孫宇立")}</p>
+            <p>{tx("公司登記地址：新北市新店區平等街 50 號 1 樓")}</p>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 mt-8 pt-8 border-t border-white/10 text-sm text-center relative z-10">
-          &copy; 2026 臺灣氣球嘉年華 Taiwan Balloon Carnival. All rights reserved.
+          {tx("&copy; 2026 臺灣氣球嘉年華 Taiwan Balloon Carnival. All rights reserved.")}
         </div>
       </footer>
       <LineChatBubble />

@@ -1,3 +1,4 @@
+import { tx, getLocale, useI18n, txApi } from "@/lib/i18n";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Facebook, Instagram, MessageCircle, Send, Clock, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, CalendarDays, List, Eye, Upload, X, Link, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,14 +24,15 @@ const PLATFORM_ICONS: Record<string, { icon: typeof Facebook; color: string; lab
   threads: { icon: MessageCircle, color: "text-gray-800", label: "Threads" },
 };
 
-const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  draft: { label: "草稿", color: "text-gray-600", bg: "bg-gray-100" },
-  scheduled: { label: "已排程", color: "text-blue-600", bg: "bg-blue-50" },
-  published: { label: "已發布", color: "text-green-600", bg: "bg-green-50" },
-  failed: { label: "發布失敗", color: "text-red-600", bg: "bg-red-50" },
-};
+const STATUS_LABELS = (): Record<string, { label: string; color: string; bg: string }> => ({
+  draft: { label: tx("草稿"), color: "text-gray-600", bg: "bg-gray-100" },
+  scheduled: { label: tx("已排程"), color: "text-blue-600", bg: "bg-blue-50" },
+  published: { label: tx("已發布"), color: "text-green-600", bg: "bg-green-50" },
+  failed: { label: tx("發布失敗"), color: "text-red-600", bg: "bg-red-50" },
+});
 
 export default function SocialPostsManage() {
+  useI18n();
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"list" | "calendar">("list");
@@ -61,11 +63,11 @@ export default function SocialPostsManage() {
 
   const handleFileSelect = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      alert("請選擇圖片檔案");
+      alert(tx("請選擇圖片檔案"));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      alert("圖片大小不可超過 10MB");
+      alert(tx("圖片大小不可超過 10MB"));
       return;
     }
     await uploadFile(file);
@@ -131,25 +133,25 @@ export default function SocialPostsManage() {
         resetForm();
       } else {
         const data = await res.json();
-        alert(data.error || "儲存失敗");
+        alert(txApi(data.error) || tx("儲存失敗"));
       }
-    } catch { alert("儲存失敗"); } finally { setSubmitting(false); }
+    } catch { alert(tx("儲存失敗")); } finally { setSubmitting(false); }
   };
 
   const handlePublish = async (id: string) => {
-    if (!confirm("確定要立即發布此貼文？")) return;
+    if (!confirm(tx("確定要立即發布此貼文？"))) return;
     try {
       const res = await fetch(`/api/admin/social-posts/${id}/publish`, {
         method: "POST", credentials: "include",
       });
       const data = await res.json();
-      if (data.errors?.length) alert(`部分發布失敗：${data.errors.join(", ")}`);
+      if (data.errors?.length) alert(tx("部分發布失敗：{0}", [data.errors.join(", ")]));
       fetchPosts();
-    } catch { alert("發布失敗"); }
+    } catch { alert(tx("發布失敗")); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("確定要刪除此貼文？")) return;
+    if (!confirm(tx("確定要刪除此貼文？"))) return;
     await fetch(`/api/admin/social-posts/${id}`, { method: "DELETE", credentials: "include" });
     fetchPosts();
   };
@@ -193,26 +195,26 @@ export default function SocialPostsManage() {
   for (let i = 0; i < calInfo.firstDay; i++) calDays.push(null);
   for (let i = 1; i <= calInfo.daysInMonth; i++) calDays.push(i);
 
-  if (loading) return <div className="flex items-center justify-center py-20 text-muted-foreground">載入中...</div>;
+  if (loading) return <div className="flex items-center justify-center py-20 text-muted-foreground">{tx("載入中...")}</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-display">社群貼文管理</h1>
-          <p className="text-muted-foreground mt-1">建立、排程與發布社群貼文</p>
+          <h1 className="text-3xl font-display">{tx("社群貼文管理")}</h1>
+          <p className="text-muted-foreground mt-1">{tx("建立、排程與發布社群貼文")}</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex bg-muted rounded-xl p-1">
             <button onClick={() => setView("list")} className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition-all", view === "list" ? "bg-white shadow-sm" : "text-muted-foreground")}>
-              <List size={16} className="inline mr-1" /> 列表
+              <List size={16} className="inline mr-1" /> {tx("列表")}
             </button>
             <button onClick={() => setView("calendar")} className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition-all", view === "calendar" ? "bg-white shadow-sm" : "text-muted-foreground")}>
-              <CalendarDays size={16} className="inline mr-1" /> 日曆
+              <CalendarDays size={16} className="inline mr-1" /> {tx("日曆")}
             </button>
           </div>
           <button onClick={openCreate} className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-md">
-            <Plus size={18} /> 新增貼文
+            <Plus size={18} /> {tx("新增貼文")}
           </button>
         </div>
       </div>
@@ -224,7 +226,7 @@ export default function SocialPostsManage() {
               <ChevronLeft size={20} />
             </button>
             <h3 className="text-lg font-bold">
-              {calMonth.toLocaleDateString("zh-TW", { year: "numeric", month: "long" })}
+              {calMonth.toLocaleDateString(getLocale(), { year: "numeric", month: "long" })}
             </h3>
             <button onClick={() => setCalMonth(new Date(calInfo.year, calInfo.month + 1))} className="p-2 hover:bg-muted rounded-lg">
               <ChevronRight size={20} />
@@ -232,7 +234,7 @@ export default function SocialPostsManage() {
           </div>
 
           <div className="grid grid-cols-7 gap-px bg-muted rounded-xl overflow-hidden">
-            {["日", "一", "二", "三", "四", "五", "六"].map(d => (
+            {[tx("日"), tx("一"), tx("二"), tx("三"), tx("四"), tx("五"), tx("六")].map(d => (
               <div key={d} className="bg-white p-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
             ))}
             {calDays.map((day, i) => {
@@ -245,14 +247,14 @@ export default function SocialPostsManage() {
                   <span className={cn("text-xs font-medium", isToday ? "text-primary font-bold" : "text-muted-foreground")}>{day}</span>
                   <div className="mt-1 space-y-0.5">
                     {dayPosts.slice(0, 3).map(p => {
-                      const st = STATUS_LABELS[p.status] || STATUS_LABELS.draft;
+                      const st = STATUS_LABELS()[p.status] || STATUS_LABELS().draft;
                       return (
                         <div key={p.id} onClick={() => openEdit(p)} className={cn("text-[10px] px-1 py-0.5 rounded truncate cursor-pointer", st.bg, st.color)}>
                           {p.content.slice(0, 15)}...
                         </div>
                       );
                     })}
-                    {dayPosts.length > 3 && <p className="text-[10px] text-muted-foreground">+{dayPosts.length - 3} 更多</p>}
+                    {dayPosts.length > 3 && <p className="text-[10px] text-muted-foreground">+{dayPosts.length - 3} {tx("更多")}</p>}
                   </div>
                 </div>
               );
@@ -266,10 +268,10 @@ export default function SocialPostsManage() {
           {posts.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border">
               <CalendarDays size={48} className="mx-auto text-muted-foreground/30 mb-4" />
-              <p className="text-muted-foreground">尚無貼文，點擊「新增貼文」開始建立</p>
+              <p className="text-muted-foreground">{tx("尚無貼文，點擊「新增貼文」開始建立")}</p>
             </div>
           ) : posts.map(post => {
-            const st = STATUS_LABELS[post.status] || STATUS_LABELS.draft;
+            const st = STATUS_LABELS()[post.status] || STATUS_LABELS().draft;
             return (
               <div key={post.id} className="bg-white rounded-2xl border p-5 hover:shadow-sm transition-all">
                 <div className="flex items-start gap-4">
@@ -283,7 +285,7 @@ export default function SocialPostsManage() {
                       })}
                       {post.scheduledAt && (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock size={12} /> {new Date(post.scheduledAt).toLocaleString("zh-TW")}
+                          <Clock size={12} /> {new Date(post.scheduledAt).toLocaleString(getLocale())}
                         </span>
                       )}
                     </div>
@@ -293,16 +295,16 @@ export default function SocialPostsManage() {
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {(post.status === "draft" || post.status === "scheduled") && (
-                      <button onClick={() => handlePublish(post.id)} className="p-2 rounded-lg hover:bg-green-50 text-green-600 transition-colors" title="立即發布">
+                      <button onClick={() => handlePublish(post.id)} className="p-2 rounded-lg hover:bg-green-50 text-green-600 transition-colors" title={tx("立即發布")}>
                         <Send size={16} />
                       </button>
                     )}
                     {post.status !== "published" && (
-                      <button onClick={() => openEdit(post)} className="p-2 rounded-lg hover:bg-muted transition-colors" title="編輯">
+                      <button onClick={() => openEdit(post)} className="p-2 rounded-lg hover:bg-muted transition-colors" title={tx("編輯")}>
                         <Edit2 size={16} />
                       </button>
                     )}
-                    <button onClick={() => handleDelete(post.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="刪除">
+                    <button onClick={() => handleDelete(post.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title={tx("刪除")}>
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -317,12 +319,12 @@ export default function SocialPostsManage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setShowEditor(false); resetForm(); }}>
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b">
-              <h2 className="text-xl font-bold">{editingPost ? "編輯貼文" : "新增貼文"}</h2>
+              <h2 className="text-xl font-bold">{editingPost ? tx("編輯貼文") : tx("新增貼文")}</h2>
             </div>
 
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-medium mb-2">發布平台</label>
+                <label className="block text-sm font-medium mb-2">{tx("發布平台")}</label>
                 <div className="flex gap-2">
                   {Object.entries(PLATFORM_ICONS).map(([key, info]) => (
                     <button key={key} onClick={() => togglePlatform(key)} className={cn(
@@ -336,39 +338,39 @@ export default function SocialPostsManage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">貼文內容</label>
+                <label className="block text-sm font-medium mb-2">{tx("貼文內容")}</label>
                 <textarea
                   value={content}
                   onChange={e => setContent(e.target.value)}
                   rows={6}
                   className="w-full border rounded-xl px-4 py-3 text-sm resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                  placeholder="輸入貼文內容..."
+                  placeholder={tx("輸入貼文內容...")}
                 />
-                <p className="text-xs text-muted-foreground mt-1">{content.length} 字</p>
+                <p className="text-xs text-muted-foreground mt-1">{content.length} {tx("字")}</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Hashtags（逗號分隔）</label>
+                <label className="block text-sm font-medium mb-2">{tx("Hashtags（逗號分隔）")}</label>
                 <input
                   value={hashtags}
                   onChange={e => setHashtags(e.target.value)}
                   className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                  placeholder="氣球嘉年華, 台灣氣球, 親子活動"
+                  placeholder={tx("氣球嘉年華, 台灣氣球, 親子活動")}
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium">
-                    圖片
-                    {platforms.includes("instagram") && <span className="text-red-500 ml-1">（Instagram 必填）</span>}
+                    {tx("圖片")}
+                    {platforms.includes("instagram") && <span className="text-red-500 ml-1">{tx("（Instagram 必填）")}</span>}
                   </label>
                   <div className="flex bg-muted rounded-lg p-0.5">
                     <button type="button" onClick={() => setImageMode("upload")} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1", imageMode === "upload" ? "bg-white shadow-sm" : "text-muted-foreground")}>
-                      <Upload size={12} /> 上傳
+                      <Upload size={12} /> {tx("上傳")}
                     </button>
                     <button type="button" onClick={() => setImageMode("url")} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1", imageMode === "url" ? "bg-white shadow-sm" : "text-muted-foreground")}>
-                      <Link size={12} /> 網址
+                      <Link size={12} /> {tx("網址")}
                     </button>
                   </div>
                 </div>
@@ -396,7 +398,7 @@ export default function SocialPostsManage() {
                     {isUploading ? (
                       <div className="space-y-2">
                         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-                        <p className="text-sm text-muted-foreground">上傳中... {progress}%</p>
+                        <p className="text-sm text-muted-foreground">{tx("上傳中...")} {progress}%</p>
                         <div className="w-full bg-muted rounded-full h-1.5 max-w-[200px] mx-auto">
                           <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
                         </div>
@@ -404,11 +406,11 @@ export default function SocialPostsManage() {
                     ) : (
                       <>
                         <Image size={32} className="mx-auto text-muted-foreground/40 mb-2" />
-                        <p className="text-sm text-muted-foreground">拖放圖片或點擊選擇</p>
-                        <p className="text-xs text-muted-foreground/60 mt-1">支援 JPG、PNG、WebP，最大 10MB</p>
+                        <p className="text-sm text-muted-foreground">{tx("拖放圖片或點擊選擇")}</p>
+                        <p className="text-xs text-muted-foreground/60 mt-1">{tx("支援 JPG、PNG、WebP，最大 10MB")}</p>
                       </>
                     )}
-                    {uploadError && <p className="text-xs text-red-500 mt-2">{uploadError.message}</p>}
+                    {uploadError && <p className="text-xs text-red-500 mt-2">{txApi(uploadError.message)}</p>}
                   </div>
                 ) : (
                   <input
@@ -421,7 +423,7 @@ export default function SocialPostsManage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">排程時間（留空為草稿）</label>
+                <label className="block text-sm font-medium mb-2">{tx("排程時間（留空為草稿）")}</label>
                 <input
                   type="datetime-local"
                   value={scheduledAt}
@@ -432,7 +434,7 @@ export default function SocialPostsManage() {
 
               {showPreview && previewData && (
                 <div className="border rounded-xl p-4 space-y-3">
-                  <h4 className="font-medium text-sm">各平台預覽</h4>
+                  <h4 className="font-medium text-sm">{tx("各平台預覽")}</h4>
                   {Object.entries(previewData).map(([platform, data]: [string, any]) => {
                     const info = PLATFORM_ICONS[platform];
                     return (
@@ -440,7 +442,7 @@ export default function SocialPostsManage() {
                         <div className="flex items-center gap-2 mb-1">
                           {info && <info.icon size={14} className={info.color} />}
                           <span className="text-xs font-medium">{info?.label || platform}</span>
-                          <span className="text-xs text-muted-foreground">{data.charCount}/{data.limit} 字</span>
+                          <span className="text-xs text-muted-foreground">{data.charCount}/{data.limit} {tx("字")}</span>
                         </div>
                         <p className="text-xs whitespace-pre-wrap">{data.text}</p>
                       </div>
@@ -452,14 +454,14 @@ export default function SocialPostsManage() {
 
             <div className="p-6 border-t flex items-center justify-between">
               <button onClick={handlePreview} className="px-4 py-2 rounded-xl border text-sm font-medium hover:bg-muted transition-all flex items-center gap-2">
-                <Eye size={16} /> 預覽
+                <Eye size={16} /> {tx("預覽")}
               </button>
               <div className="flex items-center gap-3">
                 <button onClick={() => { setShowEditor(false); resetForm(); }} className="px-5 py-2.5 rounded-xl border text-sm font-medium hover:bg-muted transition-all">
-                  取消
+                  {tx("取消")}
                 </button>
                 <button onClick={handleSubmit} disabled={submitting || !content.trim() || platforms.length === 0} className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all disabled:opacity-50">
-                  {submitting ? "儲存中..." : scheduledAt ? "排程發布" : "儲存草稿"}
+                  {submitting ? tx("儲存中...") : scheduledAt ? tx("排程發布") : tx("儲存草稿")}
                 </button>
               </div>
             </div>
