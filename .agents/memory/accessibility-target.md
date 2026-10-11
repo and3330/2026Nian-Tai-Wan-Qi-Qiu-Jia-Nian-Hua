@@ -14,3 +14,9 @@ The user explicitly chose 「保留原圖，先記錄這項無障礙限制」 on
 **Why:** Original banner preservation takes precedence over replacing their embedded text in this work. This is an acknowledged unresolved limitation, not a WCAG exception or acceptance of a conformance claim.
 
 **How to apply:** Do not rebuild or replace banners without new authorization. Keep their text equivalents and record the unresolved images-of-text assessment in accessibility reporting.
+
+Use the user's supplied “Meet an accessibility baseline” checklist for this project's UI work: semantic HTML, keyboard access, labels/alternatives, contrast, associated errors, accessible media/reduced motion, and correct ARIA/focus management.
+
+**Why:** The user supplied the intended Skill directly after stopping the unrelated GitHub toolkit audit. That toolkit is not a prerequisite for this checklist.
+
+**How to apply:** Apply these seven checks to UI changes and report specific verified passes and manual-review gaps. Do not lower the existing WCAG 2.2 A+AA target or treat checklist adoption as conformance.
