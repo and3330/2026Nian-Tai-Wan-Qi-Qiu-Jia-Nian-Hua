@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trackPageView } from "@/lib/fbPixel";
@@ -14,38 +14,38 @@ import { Layout } from "@/components/Layout";
 
 // Pages
 import HomePage from "@/pages/HomePage";
-import NewsPage from "@/pages/NewsPage";
-import NewsDetailPage from "@/pages/NewsDetailPage";
-import ContestantsPage from "@/pages/ContestantsPage";
-import CarnivalPage from "@/pages/CarnivalPage";
-import TORPage from "@/pages/TORPage";
-import SponsorsPage from "@/pages/SponsorsPage";
-import AdGuidePage from "@/pages/AdGuidePage";
-import PaymentResultPage from "@/pages/PaymentResultPage";
-import OrderLookupPage from "@/pages/OrderLookupPage";
-import RefundInfoPage from "@/pages/RefundInfoPage";
-import AccessibilityPage from "@/pages/AccessibilityPage";
+const NewsPage = lazy(() => import("@/pages/NewsPage"));
+const NewsDetailPage = lazy(() => import("@/pages/NewsDetailPage"));
+const ContestantsPage = lazy(() => import("@/pages/ContestantsPage"));
+const CarnivalPage = lazy(() => import("@/pages/CarnivalPage"));
+const TORPage = lazy(() => import("@/pages/TORPage"));
+const SponsorsPage = lazy(() => import("@/pages/SponsorsPage"));
+const AdGuidePage = lazy(() => import("@/pages/AdGuidePage"));
+const PaymentResultPage = lazy(() => import("@/pages/PaymentResultPage"));
+const OrderLookupPage = lazy(() => import("@/pages/OrderLookupPage"));
+const RefundInfoPage = lazy(() => import("@/pages/RefundInfoPage"));
+const AccessibilityPage = lazy(() => import("@/pages/AccessibilityPage"));
 
 // Admin Pages
-import AdminLayout from "@/pages/AdminLayout";
-import AdminLoginPage from "@/pages/AdminLoginPage";
-import AdminDashboard from "@/pages/Admin/Dashboard";
-import AdminOrdersManage from "@/pages/Admin/OrdersManage";
-import AdminInvoicesManage from "@/pages/Admin/InvoicesManage";
-import AdminTournamentManage from "@/pages/Admin/TournamentManage";
-import AdminNewsManage from "@/pages/Admin/NewsManage";
-import AdminContestantsManage from "@/pages/Admin/ContestantsManage";
-import AdminSponsorsManage from "@/pages/Admin/SponsorsManage";
-import AdminSocialAccounts from "@/pages/Admin/SocialAccountsManage";
-import AdminSocialPosts from "@/pages/Admin/SocialPostsManage";
-import AdminAutomation from "@/pages/Admin/AutomationSettings";
-import AdminCheckin from "@/pages/Admin/CheckinPage";
-import AdminPOS from "@/pages/Admin/POSPage";
-import AdminEmailTemplates from "@/pages/Admin/EmailTemplatesPage";
-import AdminUsersManage from "@/pages/Admin/UsersManage";
-import AdminPromoCodesManage from "@/pages/Admin/PromoCodesManage";
-import AdminRefundRequestsManage from "@/pages/Admin/RefundRequestsManage";
-import AdminVendorsManage from "@/pages/Admin/VendorsManage";
+const AdminLayout = lazy(() => import("@/pages/AdminLayout"));
+const AdminLoginPage = lazy(() => import("@/pages/AdminLoginPage"));
+const AdminDashboard = lazy(() => import("@/pages/Admin/Dashboard"));
+const AdminOrdersManage = lazy(() => import("@/pages/Admin/OrdersManage"));
+const AdminInvoicesManage = lazy(() => import("@/pages/Admin/InvoicesManage"));
+const AdminTournamentManage = lazy(() => import("@/pages/Admin/TournamentManage"));
+const AdminNewsManage = lazy(() => import("@/pages/Admin/NewsManage"));
+const AdminContestantsManage = lazy(() => import("@/pages/Admin/ContestantsManage"));
+const AdminSponsorsManage = lazy(() => import("@/pages/Admin/SponsorsManage"));
+const AdminSocialAccounts = lazy(() => import("@/pages/Admin/SocialAccountsManage"));
+const AdminSocialPosts = lazy(() => import("@/pages/Admin/SocialPostsManage"));
+const AdminAutomation = lazy(() => import("@/pages/Admin/AutomationSettings"));
+const AdminCheckin = lazy(() => import("@/pages/Admin/CheckinPage"));
+const AdminPOS = lazy(() => import("@/pages/Admin/POSPage"));
+const AdminEmailTemplates = lazy(() => import("@/pages/Admin/EmailTemplatesPage"));
+const AdminUsersManage = lazy(() => import("@/pages/Admin/UsersManage"));
+const AdminPromoCodesManage = lazy(() => import("@/pages/Admin/PromoCodesManage"));
+const AdminRefundRequestsManage = lazy(() => import("@/pages/Admin/RefundRequestsManage"));
+const AdminVendorsManage = lazy(() => import("@/pages/Admin/VendorsManage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,7 +72,7 @@ function PixelPageViewTracker() {
 }
 
 function Router() {
-  useI18n();
+  const { lang } = useI18n();
   return (
     <>
     {/* Must live OUTSIDE <Layout>: Layout wraps children in a motion.div keyed
@@ -80,6 +80,7 @@ function Router() {
     <RouteA11y />
     <Layout>
       <PixelPageViewTracker />
+      <Suspense fallback={<div role="status" aria-live="polite" className="min-h-[50vh] flex items-center justify-center p-8">{lang === "en" ? "Loading page…" : "頁面載入中…"}</div>}>
       <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/news" component={NewsPage} />
@@ -151,6 +152,7 @@ function Router() {
 
         <Route component={NotFound} />
       </Switch>
+      </Suspense>
     </Layout>
     </>
   );

@@ -20,3 +20,9 @@ Use the user's supplied “Meet an accessibility baseline” checklist for this 
 **Why:** The user supplied the intended Skill directly after stopping the unrelated GitHub toolkit audit. That toolkit is not a prerequisite for this checklist.
 
 **How to apply:** Apply these seven checks to UI changes and report specific verified passes and manual-review gaps. Do not lower the existing WCAG 2.2 A+AA target or treat checklist adoption as conformance.
+
+For performance optimization, the user explicitly said 「不動圖片 修改其他的」 on 2026-10-11.
+
+**Why:** The performance audit identified large images, but the user authorized only non-image optimization.
+
+**How to apply:** Preserve all images, not just banners; do not resize, compress, replace, or adjust image loading without new permission. Optimize application code, styles and fonts instead, and be explicit that the remaining image payload can prevent LCP targets.
