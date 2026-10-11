@@ -1,3 +1,4 @@
+import { useAutoUpdatesPaused, usePrefersReducedMotion, AutoUpdateToggle } from "@/lib/a11y";
 import { tx, useI18n } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { Timer } from "lucide-react";
@@ -17,14 +18,18 @@ function compute(): Parts {
 export function EventCountdown({ className, compact = false }: { className?: string; compact?: boolean }) {
   useI18n();
   const [t, setT] = useState<Parts>(() => compute());
+  const paused = useAutoUpdatesPaused();
   useEffect(() => {
-    const id = setInterval(() => setT(compute()), 1000);
+    setT(compute());
+    if (paused) return;
+    // Seconds are only shown in compact mode; otherwise tick once a minute.
+    const id = setInterval(() => setT(compute()), compact ? 1000 : 30000);
     return () => clearInterval(id);
-  }, []);
+  }, [paused, compact]);
 
   if (t.over) {
     return (
-      <div className={cn("inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-700 font-bold text-sm", className)}>
+      <div className={cn("inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-700/20 text-emerald-700 font-bold text-sm", className)}>
         <Timer size={16} /> {tx("活動進行中")}
       </div>
     );
@@ -39,15 +44,16 @@ export function EventCountdown({ className, compact = false }: { className?: str
   if (compact) {
     return (
       <div className={cn("inline-flex items-center gap-1.5 text-sm font-bold tracking-wide", className)} data-testid="countdown-compact">
-        <Timer size={14} className="opacity-70" />
-        <span>{tx("距離開幕")} {t.d}{tx("天")} {String(t.h).padStart(2, "0")}:{String(t.m).padStart(2, "0")}:{String(t.s).padStart(2, "0")}</span>
+        <Timer size={14} className="opacity-70" aria-hidden="true" />
+        <span aria-live="off">{tx("距離開幕")} {t.d}{tx("天")} {String(t.h).padStart(2, "0")}:{String(t.m).padStart(2, "0")}:{String(t.s).padStart(2, "0")}</span>
       </div>
     );
   }
 
   return (
     <div className={cn("inline-flex flex-col items-center gap-2", className)} data-testid="countdown">
-      <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-foreground/60">
+      <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-foreground/80">
+        <AutoUpdateToggle className="order-last ml-2 normal-case tracking-normal" />
         <Timer size={12} /> {tx("距離開幕還有")}
       </div>
       <div className="flex items-stretch gap-2">
@@ -56,7 +62,7 @@ export function EventCountdown({ className, compact = false }: { className?: str
             <div className="min-w-[3.5rem] md:min-w-[4.5rem] px-2 py-3 rounded-xl bg-white/95 shadow-md border border-primary/10 font-display text-3xl md:text-4xl text-primary tabular-nums leading-none">
               {String(c.v).padStart(i === 0 ? 1 : 2, "0")}
             </div>
-            <div className="text-[10px] md:text-xs font-bold text-foreground/60">{c.label}</div>
+            <div className="text-[10px] md:text-xs font-bold text-foreground/80">{c.label}</div>
           </div>
         ))}
       </div>
@@ -66,6 +72,7 @@ export function EventCountdown({ className, compact = false }: { className?: str
 
 export function AnimatedNumber({ value, duration = 600, className }: { value: number; duration?: number; className?: string }) {
   useI18n();
+  const reduceMotion = usePrefersReducedMotion();
   const [display, setDisplay] = useState(value);
   const [flash, setFlash] = useState(false);
 
@@ -73,6 +80,7 @@ export function AnimatedNumber({ value, duration = 600, className }: { value: nu
     const start = display;
     const delta = value - start;
     if (delta === 0) return;
+    if (reduceMotion) { setDisplay(value); return; }
     setFlash(true);
     const flashTimer = setTimeout(() => setFlash(false), 700);
     const t0 = performance.now();

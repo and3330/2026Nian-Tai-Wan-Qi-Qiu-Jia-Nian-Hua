@@ -10,12 +10,12 @@ export default function NewsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 md:py-20">
-      <div className="flex items-center gap-4 mb-12">
-        <div className="w-16 h-16 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary">
-          <Newspaper size={32} />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-12">
+        <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary">
+          <Newspaper size={28} aria-hidden="true" />
         </div>
-        <div>
-          <h1 className="font-display text-4xl md:text-5xl text-foreground">{tx("大會公告與最新消息")}</h1>
+        <div className="min-w-0">
+          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl text-foreground break-words">{tx("大會公告與最新消息")}</h1>
           <p className="text-muted-foreground mt-2">{tx("隨時掌握嘉年華的最新動態、天氣異動與每日亮點")}</p>
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function NewsPage() {
         </div>
       ) : (
         <div className="text-center py-32 bg-muted/30 rounded-3xl border-2 border-dashed">
-          <Newspaper className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
+          <Newspaper className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
           <p className="text-xl text-muted-foreground">{tx("目前沒有最新消息")}</p>
         </div>
       )}

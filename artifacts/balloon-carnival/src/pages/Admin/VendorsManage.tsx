@@ -1,3 +1,4 @@
+import { ModalShell } from "@/lib/a11y";
 import { tx, getLocale, useI18n, getLang, txApi } from "@/lib/i18n";
 import { useState, useEffect, useCallback } from "react";
 import { Redirect } from "wouter";
@@ -210,7 +211,7 @@ export default function AdminVendorsManage() {
         ) : vendors.length === 0 ? (
           <p className="text-muted-foreground text-sm">{tx("尚未建立任何商家。")}</p>
         ) : (
-          <div className="overflow-x-auto -mx-2">
+          <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="overflow-x-auto -mx-2">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-muted-foreground border-b">
                 <tr>
@@ -243,7 +244,7 @@ export default function AdminVendorsManage() {
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <button
+                        <button aria-label={tx("收款明細")}
                           type="button"
                           onClick={() => openDetail(v)}
                           data-testid={`button-vendor-detail-${v.id}`}
@@ -252,7 +253,7 @@ export default function AdminVendorsManage() {
                         >
                           <ReceiptText size={16} />
                         </button>
-                        <button
+                        <button aria-label={tx("編輯")}
                           type="button"
                           onClick={() => startEdit(v)}
                           data-testid={`button-vendor-edit-${v.id}`}
@@ -280,11 +281,11 @@ export default function AdminVendorsManage() {
       </section>
 
       {editing && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
+        <ModalShell label={tx("編輯商家")} onClose={() => setEditing(null)} className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-lg">{tx("編輯商家")}</h3>
-              <button type="button" onClick={() => setEditing(null)} className="p-1 rounded hover:bg-muted"><X size={18} /></button>
+              <button aria-label={tx("關閉")} type="button" onClick={() => setEditing(null)} className="p-1 rounded hover:bg-muted"><X size={18} /></button>
             </div>
             <label className="text-sm block">
               <span className="block mb-1 font-medium">{tx("商家名稱 *")}</span>
@@ -305,22 +306,22 @@ export default function AdminVendorsManage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {detailVendor && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setDetailVendor(null)}>
+        <ModalShell label={tx("收款明細")} onClose={() => setDetailVendor(null)} className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-lg">{detailVendor.name} {tx("— 收款明細")}</h3>
-              <button type="button" onClick={() => setDetailVendor(null)} className="p-1 rounded hover:bg-muted"><X size={18} /></button>
+              <button aria-label={tx("關閉")} type="button" onClick={() => setDetailVendor(null)} className="p-1 rounded hover:bg-muted"><X size={18} /></button>
             </div>
             {detailLoading ? (
               <p className="text-sm text-muted-foreground">{tx("載入中…")}</p>
             ) : detailRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">{tx("此商家尚無收款紀錄。")}</p>
             ) : (
-              <table className="w-full text-sm">
+              <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="overflow-x-auto"><table className="w-full text-sm">
                 <thead className="text-left text-xs uppercase text-muted-foreground border-b">
                   <tr>
                     <th className="px-2 py-2">{tx("時間")}</th>
@@ -341,10 +342,10 @@ export default function AdminVendorsManage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import { ModalShell } from "@/lib/a11y";
 import { tx, useI18n, txApi } from "@/lib/i18n";
 import { useState, useRef } from "react";
 import { useListNews, useAdminCreateNews, useAdminUpdateNews, useAdminDeleteNews } from "@workspace/api-client-react";
@@ -104,7 +105,7 @@ export default function AdminNewsManage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
+      <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="bg-white rounded-3xl border shadow-sm overflow-x-auto">
         <table className="w-full text-left">
           <thead className="bg-muted/30">
             <tr>
@@ -123,7 +124,7 @@ export default function AdminNewsManage() {
                   {article.imageUrl ? (
                     <img src={article.imageUrl} alt="" className="w-12 h-12 object-cover rounded-lg border" />
                   ) : (
-                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-muted-foreground/40">
+                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
                       <ImageIcon size={18} />
                     </div>
                   )}
@@ -131,10 +132,10 @@ export default function AdminNewsManage() {
                 <td className="p-4 text-sm text-muted-foreground">{formatDate(article.createdAt)}</td>
                 <td className="p-4 font-medium">{article.title}</td>
                 <td className="p-4 flex items-center justify-end gap-2">
-                  <button onClick={() => openEdit(article)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                  <button aria-label={tx("編輯")} onClick={() => openEdit(article)} className="p-2 text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
                     <Edit2 size={18} />
                   </button>
-                  <button onClick={() => handleDelete(article.id)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors">
+                  <button aria-label={tx("刪除")} onClick={() => handleDelete(article.id)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors">
                     <Trash2 size={18} />
                   </button>
                 </td>
@@ -145,9 +146,9 @@ export default function AdminNewsManage() {
       </div>
 
       {isDialogOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <ModalShell label={tx("編輯消息")} onClose={() => setIsDialogOpen(false)} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
-            <button 
+            <button aria-label={tx("關閉")}
               onClick={() => setIsDialogOpen(false)}
               className="absolute top-6 right-6 p-2 bg-muted hover:bg-black/10 rounded-full transition-colors"
             >
@@ -159,8 +160,8 @@ export default function AdminNewsManage() {
               
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-bold mb-2">{tx("標題")}</label>
-                  <input
+                  <label htmlFor="f-newsmanage-1" className="block text-sm font-bold mb-2">{tx("標題")}</label>
+                  <input id="f-newsmanage-1"
                     required
                     type="text"
                     value={formData.title}
@@ -170,11 +171,11 @@ export default function AdminNewsManage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-2">{tx("封面圖片 (選填)")}</label>
+                  <p className="block text-sm font-bold mb-2">{tx("封面圖片 (選填)")}</p>
                   {formData.imageUrl ? (
                     <div className="relative inline-block">
                       <img src={formData.imageUrl} alt="preview" className="w-full max-h-56 object-cover rounded-xl border" onError={e => (e.currentTarget.style.display = "none")} />
-                      <button type="button" onClick={() => setFormData({...formData, imageUrl: ""})} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md">
+                      <button aria-label={tx("移除圖片")} type="button" onClick={() => setFormData({...formData, imageUrl: ""})} className="absolute -top-2 -right-2 bg-red-700 text-white rounded-full p-1 hover:bg-red-700 transition-colors shadow-md">
                         <X size={14} />
                       </button>
                     </div>
@@ -184,6 +185,10 @@ export default function AdminNewsManage() {
                       onDragLeave={() => setDragOver(false)}
                       onDrop={handleDrop}
                       onClick={() => fileInputRef.current?.click()}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={tx("上傳圖片")}
+                      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
                       className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50"} ${isUploading ? "pointer-events-none opacity-70" : ""}`}
                     >
                       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); e.target.value = ""; }} />
@@ -197,27 +202,27 @@ export default function AdminNewsManage() {
                         </div>
                       ) : (
                         <>
-                          <Upload size={28} className="mx-auto text-muted-foreground/40 mb-2" />
+                          <Upload size={28} className="mx-auto text-muted-foreground mb-2" />
                           <p className="text-sm text-muted-foreground">{tx("拖放圖片或點擊選擇")}</p>
-                          <p className="text-xs text-muted-foreground/60 mt-1">{tx("支援 JPG、PNG、WebP，最大 10MB")}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{tx("支援 JPG、PNG、WebP，最大 10MB")}</p>
                         </>
                       )}
-                      {uploadError && <p className="text-xs text-red-500 mt-2">{txApi(uploadError.message)}</p>}
+                      {uploadError && <p className="text-xs text-red-700 mt-2">{txApi(uploadError.message)}</p>}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-2">{tx("摘要 (選填，顯示於列表)")}</label>
-                  <textarea
+                  <label htmlFor="f-newsmanage-2" className="block text-sm font-bold mb-2">{tx("摘要 (選填，顯示於列表)")}</label>
+                  <textarea id="f-newsmanage-2"
                     value={formData.summary}
                     onChange={e => setFormData({...formData, summary: e.target.value})}
                     className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none h-20 resize-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold mb-2">{tx("詳細內容")}</label>
-                  <textarea
+                  <label htmlFor="f-newsmanage-3" className="block text-sm font-bold mb-2">{tx("詳細內容")}</label>
+                  <textarea id="f-newsmanage-3"
                     required
                     value={formData.content}
                     onChange={e => setFormData({...formData, content: e.target.value})}
@@ -234,7 +239,7 @@ export default function AdminNewsManage() {
               </form>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

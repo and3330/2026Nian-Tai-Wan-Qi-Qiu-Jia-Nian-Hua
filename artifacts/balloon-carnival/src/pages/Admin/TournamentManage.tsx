@@ -348,7 +348,7 @@ export default function TournamentManage() {
           <div className="flex items-center gap-2 text-muted-foreground text-xs font-bold mb-2">
             <Users size={15} /> {tx("參賽名額（已付款）")}
           </div>
-          <div className="text-2xl font-display font-bold text-green-600">
+          <div className="text-2xl font-display font-bold text-green-700">
             {stats.participantPaid} <span className="text-base text-muted-foreground">/ {CAPACITY}</span>
           </div>
           <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
@@ -362,7 +362,7 @@ export default function TournamentManage() {
           <div className="flex items-center gap-2 text-muted-foreground text-xs font-bold mb-2">
             <CheckCircle2 size={15} /> {tx("待付款（逾時自動釋出）")}
           </div>
-          <div className="text-2xl font-display font-bold text-amber-600">{stats.participantPending}</div>
+          <div className="text-2xl font-display font-bold text-amber-700">{stats.participantPending}</div>
         </div>
         <div className="rounded-2xl border bg-white p-5">
           <div className="flex items-center gap-2 text-muted-foreground text-xs font-bold mb-2">
@@ -417,7 +417,7 @@ export default function TournamentManage() {
           {legs.length === 0 ? tx("目前尚無戰鬥陀螺賽報名") : tx("沒有符合搜尋條件的報名")}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border bg-white">
+        <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="overflow-x-auto rounded-2xl border bg-white">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
               <tr>
@@ -457,7 +457,7 @@ export default function TournamentManage() {
                           (r.paymentStatus === "paid"
                             ? "bg-green-100 text-green-700"
                             : r.paymentStatus === "refunded"
-                              ? "bg-rose-100 text-rose-600"
+                              ? "bg-rose-100 text-rose-700"
                               : "bg-amber-100 text-amber-700")
                         }
                       >
@@ -466,7 +466,7 @@ export default function TournamentManage() {
                     </td>
                     <td className="px-4 py-3">
                       {r.checkedInAt ? (
-                        <span className="inline-flex items-center gap-1 text-green-600 text-xs font-bold">
+                        <span className="inline-flex items-center gap-1 text-green-700 text-xs font-bold">
                           <CheckCircle2 size={14} /> {formatDate(r.checkedInAt)}
                         </span>
                       ) : (

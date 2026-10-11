@@ -17,21 +17,39 @@ id = "YjHQf7qyFzJgxvs7y86tx"
 uri = "file://lib/docs/Meta廣告文案與投放教學指南.md"
 type = "text"
 title = "Meta 廣告文案與投放教學指南"
+logical_id = "f8d3beaa-2511-4294-97ab-5c7891782298"
 
 [[outputs]]
 id = "SQdENw72t2ci_JUKmt8wq"
 uri = "file://lib/docs/Meta開發者應用程式設定與社群帳號綁定教學.md"
 type = "text"
 title = "Meta 開發者應用程式設定與社群帳號綁定教學"
+logical_id = "4bf85472-8fc1-451c-8775-eab661c70f58"
 
 [[outputs]]
 id = "DIlvEhJcHw26rwcu2g3qy"
 uri = "file://attached_assets/generated_images/social_post_family_final.jpg"
 type = "image"
 title = "社群貼文圖 1：溫馨家庭風"
+logical_id = "68adec7d-dce9-4590-a9d0-14a481cfaa7c"
 
 [[outputs]]
 id = "IsI7BpKnP_mco7uythmjX"
 uri = "file://attached_assets/generated_images/social_post_urgency_final.jpg"
 type = "image"
 title = "社群貼文圖 2：限量緊迫風"
+logical_id = "fea8723d-4cfc-4676-a2b6-ce87eecb8209"
+
+[[outputs]]
+id = "f3c9Q5iyExdOqBfvWp3N1"
+uri = "file://generated-artifacts/accessibility/accessibility-report.html"
+type = "html"
+title = "WCAG 2.2 無障礙改善與驗證報告"
+description = "包含 55 項 A／AA 驗收清單、120 組初始檢查、修正後抽查結果與尚待驗證的範圍；不是完整合規證明。"
+logical_id = "c41b9ae5-8d27-4dc0-a264-91df451fc08d"
+content_hash = "sha256:b7db7ed45b9d530cd7a33a5b06a6b840451dd36dcb5010711d6bc9f5740fe416"
+size = 14155
+mtime_ms = 1791705988134
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:9ae51cab-ce5e-493a-9c99-0b37e6dc3948/c41b9ae5-8d27-4dc0-a264-91df451fc08d/97a99658-c5b9-428c-b57e-783f76ca753c"
+storage_version_token = "1791706020067518"
+content_type = "text/html"

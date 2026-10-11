@@ -1,3 +1,4 @@
+import { ModalShell } from "@/lib/a11y";
 import { tx, getLocale, useI18n, txApi } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import {
@@ -908,7 +909,7 @@ export default function OrdersManage() {
             {tx("查詢所有購票訂單、確認銀行匯款、追蹤付款與報到狀態")}
           </p>
         </div>
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto self-start md:self-auto">
           <button
             onClick={() => refetch()}
             disabled={isRefetching}
@@ -939,7 +940,7 @@ export default function OrdersManage() {
           {canConfirm && (
             <button
               onClick={() => setCreateOpen(true)}
-              className="bg-green-600 text-white px-5 py-2.5 rounded-full font-bold flex items-center gap-2 hover:bg-green-700 transition-all shadow-md"
+              className="bg-green-700 text-white px-5 py-2.5 rounded-full font-bold flex items-center gap-2 hover:bg-green-700 transition-all shadow-md"
               data-testid="button-create-order"
             >
               <Package size={18} />
@@ -950,11 +951,11 @@ export default function OrdersManage() {
       </div>
 
       {createOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !isCreating && setCreateOpen(false)}>
+        <ModalShell label={tx("新增訂單（現場售票）")} onClose={() => setCreateOpen(false)} dismissible={!isCreating} className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-bold">{tx("新增訂單（現場售票）")}</h2>
-              <button onClick={() => !isCreating && setCreateOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <button aria-label={tx("關閉")} onClick={() => !isCreating && setCreateOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={22} />
               </button>
             </div>
@@ -963,8 +964,8 @@ export default function OrdersManage() {
             </p>
             <form onSubmit={handleCreateOrder} className="space-y-4">
               <div>
-                <label className="text-sm font-bold block mb-1.5">{tx("姓名")} <span className="text-destructive">*</span></label>
-                <input
+                <label htmlFor="f-ordersmanage-1" className="text-sm font-bold block mb-1.5">{tx("姓名")} <span className="text-destructive">*</span></label>
+                <input id="f-ordersmanage-1"
                   required type="text" value={createForm.parentName}
                   onChange={(e) => setCreateForm({ ...createForm, parentName: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:border-primary"
@@ -972,8 +973,8 @@ export default function OrdersManage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-bold block mb-1.5">{tx("電話")} <span className="text-destructive">*</span></label>
-                <input
+                <label htmlFor="f-ordersmanage-2" className="text-sm font-bold block mb-1.5">{tx("電話")} <span className="text-destructive">*</span></label>
+                <input id="f-ordersmanage-2"
                   required type="tel" value={createForm.phone}
                   onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:border-primary"
@@ -981,8 +982,8 @@ export default function OrdersManage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-bold block mb-1.5">Email <span className="text-xs font-normal text-muted-foreground">{tx("（選填，填寫將寄送 QR Code）")}</span></label>
-                <input
+                <label htmlFor="f-ordersmanage-3" className="text-sm font-bold block mb-1.5">Email <span className="text-xs font-normal text-muted-foreground">{tx("（選填，填寫將寄送 QR Code）")}</span></label>
+                <input id="f-ordersmanage-3"
                   type="email" value={createForm.email}
                   onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:border-primary"
@@ -990,8 +991,8 @@ export default function OrdersManage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-bold block mb-1.5">{tx("入場日期")} <span className="text-destructive">*</span></label>
-                <select
+                <label htmlFor="f-ordersmanage-4" className="text-sm font-bold block mb-1.5">{tx("入場日期")} <span className="text-destructive">*</span></label>
+                <select id="f-ordersmanage-4"
                   value={createForm.eventDate}
                   onChange={(e) => setCreateForm({ ...createForm, eventDate: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:border-primary bg-white"
@@ -1004,8 +1005,8 @@ export default function OrdersManage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-bold block mb-1.5">{tx("張數")} <span className="text-destructive">*</span></label>
-                  <input
+                  <label htmlFor="f-ordersmanage-5" className="text-sm font-bold block mb-1.5">{tx("張數")} <span className="text-destructive">*</span></label>
+                  <input id="f-ordersmanage-5"
                     required type="number" min={1} max={50} value={createForm.ticketCount}
                     onChange={(e) => {
                       const n = Math.max(1, Math.min(50, Number(e.target.value) || 1));
@@ -1016,8 +1017,8 @@ export default function OrdersManage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-bold block mb-1.5">{tx("總金額（NT$）")}<span className="text-destructive">*</span></label>
-                  <input
+                  <label htmlFor="f-ordersmanage-6" className="text-sm font-bold block mb-1.5">{tx("總金額（NT$）")}<span className="text-destructive">*</span></label>
+                  <input id="f-ordersmanage-6"
                     required type="number" min={0} step={1} value={createForm.amount}
                     onChange={(e) => setCreateForm({ ...createForm, amount: Math.max(0, Math.round(Number(e.target.value) || 0)) })}
                     className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:border-primary"
@@ -1029,18 +1030,18 @@ export default function OrdersManage() {
               <button
                 type="submit"
                 disabled={isCreating}
-                className="w-full py-3.5 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-all"
+                className="w-full py-3.5 rounded-xl font-bold text-white bg-green-700 hover:bg-green-700 disabled:opacity-50 transition-all"
                 data-testid="button-create-submit"
               >
                 {isCreating ? tx("建立中...") : tx("建立訂單（已付款）")}
               </button>
             </form>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
           icon={<Package size={22} />}
           tone="blue"
@@ -1088,6 +1089,8 @@ export default function OrdersManage() {
         </div>
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
           <select
+            aria-label={tx("篩選入場日期")}
+            data-testid="select-date-filter"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
             className="w-full sm:w-40 px-3 py-2.5 rounded-full border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -1120,7 +1123,7 @@ export default function OrdersManage() {
           <div className="text-sm font-semibold text-foreground">
             {tx("已選取 {0} 筆訂單", [selected.size])}
             {selectedAwaiting.length > 0 && (
-              <span className="ml-2 text-amber-600 font-normal">
+              <span className="ml-2 text-amber-700 font-normal">
                 {tx("（其中")} {selectedAwaiting.length} {tx("筆待匯款）")}
               </span>
             )}
@@ -1130,7 +1133,7 @@ export default function OrdersManage() {
               <button
                 onClick={handleBulkConfirm}
                 disabled={anyBulkBusy}
-                className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors flex items-center gap-2"
+                className="px-4 py-2 rounded-xl bg-amber-700 text-white text-sm font-semibold hover:bg-amber-700 disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 <Banknote size={16} />
                 {isBulkConfirming
@@ -1142,7 +1145,7 @@ export default function OrdersManage() {
               <button
                 onClick={handleBulkMarkPaid}
                 disabled={anyBulkBusy}
-                className="px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                className="px-4 py-2 rounded-xl bg-green-700 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2"
               >
                 <CheckCircle2 size={16} />
                 {isBulkMarking
@@ -1178,7 +1181,7 @@ export default function OrdersManage() {
             <button
               onClick={handleBulkDelete}
               disabled={anyBulkBusy}
-              className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors flex items-center gap-2"
+              className="px-4 py-2 rounded-xl bg-red-700 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center gap-2"
             >
               <Trash2 size={16} />
               {isBulkDeleting ? tx("刪除中...") : tx("批量刪除（{0}）", [selected.size])}
@@ -1196,7 +1199,7 @@ export default function OrdersManage() {
 
       {/* Orders table */}
       <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/30">
               <tr>
@@ -1297,7 +1300,7 @@ export default function OrdersManage() {
                         {o.eventDates.map((d) => formatDate(d)).join(tx("、"))}
                       </td>
                       <td className="p-4 text-right font-bold">{o.ticketCount}</td>
-                      <td className="p-4 text-right font-bold text-green-600 whitespace-nowrap">
+                      <td className="p-4 text-right font-bold text-green-700 whitespace-nowrap">
                         {formatCurrency(o.amount)}
                       </td>
                       <td className="p-4 whitespace-nowrap">
@@ -1310,7 +1313,7 @@ export default function OrdersManage() {
                       <td className="p-4 whitespace-nowrap text-xs">
                         <div className="flex flex-col items-start gap-1.5">
                           {o.checkedInCount > 0 ? (
-                            <span className="text-green-600 font-medium">
+                            <span className="text-green-700 font-medium">
                               {tx("已報到")} {o.checkedInCount}/{totalSeats}
                             </span>
                           ) : (
@@ -1348,7 +1351,7 @@ export default function OrdersManage() {
                               <button
                                 onClick={() => handleConfirmBank(o.ref)}
                                 disabled={confirmingRef === o.ref}
-                                className="px-3 py-1.5 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                                className="px-3 py-1.5 rounded-xl bg-amber-700 text-white text-xs font-semibold hover:bg-amber-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                               >
                                 {confirmingRef === o.ref ? tx("處理中...") : tx("確認收款")}
                               </button>
@@ -1363,7 +1366,7 @@ export default function OrdersManage() {
                                 onClick={() => handleMarkPaid(o)}
                                 disabled={markingPaidRef === o.ref}
                                 title={tx("現場收款 / 手動匯款：標記後寄送購票確認信（含入場 QR）")}
-                                className="px-3 py-1.5 rounded-xl bg-green-600 text-white text-xs font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                                className="px-3 py-1.5 rounded-xl bg-green-700 text-white text-xs font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                               >
                                 {markingPaidRef === o.ref
                                   ? tx("處理中...")
@@ -1377,7 +1380,7 @@ export default function OrdersManage() {
                                 disabled={refundingRef === o.ref}
                                 title={tx("退票：輸入原因後建立退票申請並寄退款資料表單 Email 給買家（到退票管理核准後才會實際扣票）")}
                                 data-testid={`button-refund-${o.ref}`}
-                                className="px-3 py-1.5 rounded-xl border border-red-400 text-red-600 text-xs font-semibold hover:bg-red-50 disabled:opacity-50 transition-colors whitespace-nowrap inline-flex items-center gap-1"
+                                className="px-3 py-1.5 rounded-xl border border-red-400 text-red-700 text-xs font-semibold hover:bg-red-50 disabled:opacity-50 transition-colors whitespace-nowrap inline-flex items-center gap-1"
                               >
                                 <Undo2 size={12} />
                                 {refundingRef === o.ref ? tx("處理中...") : tx("退票")}
@@ -1388,7 +1391,7 @@ export default function OrdersManage() {
                               <Undo2 size={12} /> {tx("已退款")}
                             </span>
                           ) : o.paymentStatus === "failed" ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-red-500">
+                            <span className="inline-flex items-center gap-1 text-xs text-red-700">
                               <XCircle size={12} /> {tx("失敗")}
                             </span>
                           ) : null}
@@ -1417,7 +1420,7 @@ export default function OrdersManage() {
                               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${
                                 o.email
                                   ? "border hover:bg-muted"
-                                  : "border border-blue-400 text-blue-600 hover:bg-blue-50"
+                                  : "border border-blue-400 text-blue-700 hover:bg-blue-50"
                               }`}
                               title={
                                 o.email
@@ -1455,14 +1458,14 @@ export default function OrdersManage() {
       )}
 
       {refundOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <ModalShell label={tx("退票申請")} onClose={() => setRefundOrder(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-background p-6 shadow-xl" data-testid="refund-dialog">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold flex items-center gap-2">
                 <Undo2 size={18} />
                 {tx("退票申請")}
               </h3>
-              <button
+              <button aria-label={tx("關閉")}
                 onClick={() => setRefundOrder(null)}
                 className="rounded-lg p-1 hover:bg-muted"
                 title={tx("關閉")}
@@ -1528,25 +1531,25 @@ export default function OrdersManage() {
                   onClick={submitRefund}
                   disabled={refundingRef === refundOrder.ref}
                   data-testid="button-admin-refund-submit"
-                  className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-red-700 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
                 >
                   {refundingRef === refundOrder.ref ? tx("送出中...") : tx("建立退票申請")}
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {editEmailOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <ModalShell label={tx("修改 Email")} onClose={() => setEditEmailOrder(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-background p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold flex items-center gap-2">
                 <Mail size={18} />
                 {editEmailOrder.email ? tx("修改 Email") : tx("補上 Email")}
               </h3>
-              <button
+              <button aria-label={tx("關閉")}
                 onClick={() => setEditEmailOrder(null)}
                 className="rounded-lg p-1 hover:bg-muted"
                 title={tx("關閉")}
@@ -1594,7 +1597,7 @@ export default function OrdersManage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );
@@ -1743,14 +1746,8 @@ function OrderDetailModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <ModalShell label={tx("訂單詳情")} onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-4 p-6 border-b sticky top-0 bg-white rounded-t-3xl">
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2">
@@ -1806,7 +1803,7 @@ function OrderDetailModal({
               <DetailRow
                 label={tx("訂單金額")}
                 value={
-                  <span className="text-green-600">
+                  <span className="text-green-700">
                     {formatCurrency(order.amount)}
                   </span>
                 }
@@ -1872,7 +1869,7 @@ function OrderDetailModal({
                     <DetailRow
                       label={tx("失敗原因")}
                       value={
-                        <span className="text-red-600">
+                        <span className="text-red-700">
                           {invoice.errorMessage}
                         </span>
                       }
@@ -1904,7 +1901,7 @@ function OrderDetailModal({
                       <button
                         onClick={handleVoidInvoice}
                         disabled={invoiceBusy}
-                        className="inline-flex items-center gap-1.5 border border-red-400 text-red-600 px-4 py-2 rounded-full text-sm font-semibold hover:bg-red-50 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 border border-red-400 text-red-700 px-4 py-2 rounded-full text-sm font-semibold hover:bg-red-50 disabled:opacity-50"
                       >
                         <XCircle size={15} />
                         {tx("作廢發票")}
@@ -1964,7 +1961,7 @@ function OrderDetailModal({
                         label={tx("報到")}
                         value={
                           checkedIn ? (
-                            <span className="text-green-600">{checkedIn}</span>
+                            <span className="text-green-700">{checkedIn}</span>
                           ) : (
                             <span className="text-muted-foreground">{tx("未報到")}</span>
                           )
@@ -1991,7 +1988,7 @@ function OrderDetailModal({
           </section>
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -2010,9 +2007,9 @@ function SummaryCard({
 }) {
   useI18n();
   const toneClasses: Record<string, string> = {
-    blue: "bg-blue-100 text-blue-600",
-    green: "bg-green-100 text-green-600",
-    amber: "bg-amber-100 text-amber-600",
+    blue: "bg-blue-100 text-blue-700",
+    green: "bg-green-100 text-green-700",
+    amber: "bg-amber-100 text-amber-700",
     slate: "bg-slate-100 text-slate-600",
   };
   return (

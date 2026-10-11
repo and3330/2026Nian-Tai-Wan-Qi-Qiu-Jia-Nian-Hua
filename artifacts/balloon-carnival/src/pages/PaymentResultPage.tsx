@@ -66,7 +66,7 @@ export default function PaymentResultPage() {
   if (!ref) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-        <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
+        <CheckCircle2 className="w-16 h-16 text-green-700 mb-4" />
         <h1 className="text-2xl font-bold mb-2">{tx("付款可能已完成")}</h1>
         <p className="text-muted-foreground mb-2 max-w-md">
           {tx("這個畫面沒有帶到付款編號（在 LINE 等內建瀏覽器付款後常會發生）。")}
@@ -118,7 +118,7 @@ export default function PaymentResultPage() {
           </>
         ) : isPaid ? (
           <>
-            <CheckCircle2 className="w-24 h-24 text-emerald-500 mx-auto mb-4" />
+            <CheckCircle2 className="w-24 h-24 text-emerald-700 mx-auto mb-4" />
             <h1 className="text-3xl font-bold text-emerald-700 mb-2" data-testid="payment-result-paid">{tx("付款成功！")}</h1>
             <p className="text-muted-foreground mb-6">{tx("感謝您購買 2026 臺灣氣球嘉年華門票")}</p>
             <ResultDetails data={data} />
@@ -148,7 +148,7 @@ export default function PaymentResultPage() {
           </>
         ) : isAwaitingTransfer ? (
           <>
-            <Banknote className="w-20 h-20 text-emerald-600 mx-auto mb-4" />
+            <Banknote className="w-20 h-20 text-emerald-700 mx-auto mb-4" />
             <h1 className="text-2xl font-bold mb-2">{tx("等待匯款中")}</h1>
             <p className="text-muted-foreground mb-4">{tx("請於 3 日內依下列資訊完成匯款，主辦單位將會在收到款項後與您聯繫。")}</p>
             <ResultDetails data={data} />
@@ -157,7 +157,7 @@ export default function PaymentResultPage() {
           <>
             {cancelled ? (
               <>
-                <AlertCircle className="w-20 h-20 text-amber-500 mx-auto mb-4" />
+                <AlertCircle className="w-20 h-20 text-amber-700 mx-auto mb-4" />
                 <h1 className="text-2xl font-bold text-amber-700 mb-2">{tx("您已取消付款")}</h1>
                 <p className="text-muted-foreground mb-6">{tx("如要重新付款，請回到報名頁面再試一次。")}</p>
               </>

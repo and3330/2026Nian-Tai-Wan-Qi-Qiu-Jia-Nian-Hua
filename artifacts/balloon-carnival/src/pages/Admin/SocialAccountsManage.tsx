@@ -16,7 +16,7 @@ interface SocialAccount {
 }
 
 const PLATFORM_INFO: Record<string, { label: string; icon: typeof Facebook; color: string; bgColor: string }> = {
-  facebook: { label: "Facebook", icon: Facebook, color: "text-blue-600", bgColor: "bg-blue-50" },
+  facebook: { label: "Facebook", icon: Facebook, color: "text-blue-700", bgColor: "bg-blue-50" },
   instagram: { label: "Instagram", icon: Instagram, color: "text-pink-600", bgColor: "bg-pink-50" },
   threads: { label: "Threads", icon: MessageCircle, color: "text-gray-800", bgColor: "bg-gray-50" },
 };
@@ -76,11 +76,11 @@ export default function SocialAccountsManage() {
   };
 
   const getTokenStatus = (expiresAt?: string) => {
-    if (!expiresAt) return { label: tx("永久"), color: "text-green-600" };
+    if (!expiresAt) return { label: tx("永久"), color: "text-green-700" };
     const diff = new Date(expiresAt).getTime() - Date.now();
-    if (diff < 0) return { label: tx("已過期"), color: "text-red-600" };
-    if (diff < 7 * 86400000) return { label: tx("{0} 天後過期", [Math.ceil(diff / 86400000)]), color: "text-amber-600" };
-    return { label: tx("{0} 天有效", [Math.ceil(diff / 86400000)]), color: "text-green-600" };
+    if (diff < 0) return { label: tx("已過期"), color: "text-red-700" };
+    if (diff < 7 * 86400000) return { label: tx("{0} 天後過期", [Math.ceil(diff / 86400000)]), color: "text-amber-700" };
+    return { label: tx("{0} 天有效", [Math.ceil(diff / 86400000)]), color: "text-green-700" };
   };
 
   if (loading) return <div className="flex items-center justify-center py-20 text-muted-foreground">{tx("載入中...")}</div>;
@@ -92,7 +92,7 @@ export default function SocialAccountsManage() {
           <h1 className="text-3xl font-display">{tx("社群帳號管理")}</h1>
           <p className="text-muted-foreground mt-1">{tx("連結 Facebook、Instagram、Threads 帳號")}</p>
         </div>
-        <button onClick={() => fetchAccounts()} className="p-2 rounded-lg hover:bg-muted transition-colors">
+        <button aria-label={tx("重新整理")} onClick={() => fetchAccounts()} className="p-2 rounded-lg hover:bg-muted transition-colors">
           <RefreshCw size={20} />
         </button>
       </div>
@@ -140,9 +140,9 @@ export default function SocialAccountsManage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <button onClick={() => toggleAccount(account.id)} className="p-1.5 rounded-lg hover:bg-muted transition-colors" title={account.isActive ? tx("停用") : tx("啟用")}>
-                            {account.isActive ? <ToggleRight size={18} className="text-green-600" /> : <ToggleLeft size={18} className="text-muted-foreground" />}
+                            {account.isActive ? <ToggleRight size={18} className="text-green-700" /> : <ToggleLeft size={18} className="text-muted-foreground" />}
                           </button>
-                          <button onClick={() => deleteAccount(account.id)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-red-500" title={tx("刪除")}>
+                          <button aria-label={tx("刪除")} onClick={() => deleteAccount(account.id)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-red-700" title={tx("刪除")}>
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -166,7 +166,7 @@ export default function SocialAccountsManage() {
                     isConnecting && "opacity-50 cursor-wait"
                   )}
                 >
-                  <Facebook size={16} className="text-blue-600" />
+                  <Facebook size={16} className="text-blue-700" />
                   {isConnecting ? tx("連結中...") : linked.length > 0 ? tx("重新授權 Facebook") : tx("透過 Facebook 連結")}
                 </button>
               ) : (
@@ -191,7 +191,7 @@ export default function SocialAccountsManage() {
       {accounts.length > 0 && (
         <div className="rounded-2xl border bg-white p-6">
           <h3 className="font-bold mb-4">{tx("已連結帳號總覽")}</h3>
-          <div className="overflow-x-auto">
+          <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b">
@@ -217,7 +217,7 @@ export default function SocialAccountsManage() {
                       <td className="py-3 font-medium">{account.accountName}</td>
                       <td className="py-3 text-muted-foreground">{account.accountType}</td>
                       <td className="py-3">
-                        <span className={cn("inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full", account.isActive ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500")}>
+                        <span className={cn("inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full", account.isActive ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-600")}>
                           {account.isActive ? tx("啟用") : tx("停用")}
                         </span>
                       </td>

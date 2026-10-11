@@ -29,7 +29,7 @@ function CopyButton({ text }: { text: string }) {
       className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors print:hidden"
       title={tx("複製文案")}
     >
-      {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+      {copied ? <Check size={14} className="text-green-700" /> : <Copy size={14} />}
       {copied ? tx("已複製") : tx("複製")}
     </button>
   );
@@ -275,7 +275,7 @@ export default function AdGuidePage() {
                 <div className="space-y-5">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{tx("主要文字 (Primary Text)")}</label>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{tx("主要文字 (Primary Text)")}</p>
                       <CopyButton text={ad.primaryText} />
                     </div>
                     <div className="bg-white rounded-xl p-4 text-sm leading-relaxed whitespace-pre-line border">{ad.primaryText}</div>
@@ -284,14 +284,14 @@ export default function AdGuidePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{tx("標題 (Headline)")}</label>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{tx("標題 (Headline)")}</p>
                         <CopyButton text={ad.headline} />
                       </div>
                       <div className="bg-white rounded-xl p-4 text-sm font-bold border">{ad.headline}</div>
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{tx("說明 (Description)")}</label>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{tx("說明 (Description)")}</p>
                         <CopyButton text={ad.description} />
                       </div>
                       <div className="bg-white rounded-xl p-4 text-sm border">{ad.description}</div>
@@ -300,11 +300,11 @@ export default function AdGuidePage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">{tx("行動呼籲按鈕 (CTA)")}</label>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">{tx("行動呼籲按鈕 (CTA)")}</p>
                       <div className="bg-white rounded-xl p-4 text-sm font-bold text-primary border">{ad.cta}</div>
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">{tx("建議搭配圖片/影片方向")}</label>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">{tx("建議搭配圖片/影片方向")}</p>
                       <div className="bg-white rounded-xl p-4 text-sm text-muted-foreground border">{ad.imageDirection}</div>
                     </div>
                   </div>
@@ -317,7 +317,7 @@ export default function AdGuidePage() {
         <section id="meta-setup">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-              <Settings size={20} className="text-blue-600" />
+              <Settings size={20} className="text-blue-700" />
             </div>
             <div>
               <h2 className="font-display text-2xl md:text-3xl">{tx("區塊二：Meta 廣告後台設定教學")}</h2>
@@ -411,7 +411,7 @@ export default function AdGuidePage() {
         <section id="user-journey">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-              <Route size={20} className="text-green-600" />
+              <Route size={20} className="text-green-700" />
             </div>
             <div>
               <h2 className="font-display text-2xl md:text-3xl">{tx("區塊三：報名流程引導")}</h2>

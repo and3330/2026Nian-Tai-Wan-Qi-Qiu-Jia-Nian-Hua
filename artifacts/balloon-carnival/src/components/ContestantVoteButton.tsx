@@ -1,3 +1,4 @@
+import { usePollInterval } from "@/lib/a11y";
 import { tx, useI18n, txApi } from "@/lib/i18n";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,6 +15,7 @@ const MINE_KEY = (token: string) => ["contestant-votes", "me", token];
 
 export function useContestantVoteData() {
   const token = getVoterToken();
+  const pollMs = usePollInterval(30000);
   const counts = useQuery<Counts>({
     queryKey: COUNTS_KEY,
     queryFn: async () => {
@@ -21,7 +23,7 @@ export function useContestantVoteData() {
       if (!r.ok) throw new Error("counts");
       return r.json();
     },
-    refetchInterval: 30000,
+    refetchInterval: pollMs,
   });
   const mine = useQuery<Mine>({
     queryKey: MINE_KEY(token),
@@ -71,14 +73,14 @@ export function ContestantVoteButton({ contestantId, count, voted, token }: { co
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-rose-50/60 border border-rose-100">
       <div className="flex items-center gap-2 text-sm">
-        <Heart size={16} className="text-rose-500 fill-rose-500" />
+        <Heart size={16} className="text-rose-700 fill-rose-500" />
         <span className="font-medium text-foreground/80">{tx("觀眾票數")}</span>
-        <span className="font-display text-xl text-rose-600">
+        <span className="font-display text-xl text-rose-700">
           <AnimatedNumber value={count} />
         </span>
       </div>
       {voted ? (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold">
           <Check size={14} /> {tx("已投票")}
         </span>
       ) : (
@@ -90,15 +92,15 @@ export function ContestantVoteButton({ contestantId, count, voted, token }: { co
           className={cn(
             "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all",
             mutation.isPending
-              ? "bg-rose-200 text-rose-700 cursor-wait"
-              : "bg-rose-500 text-white hover:bg-rose-600 hover:shadow",
+              ? "bg-rose-100 text-rose-900 cursor-wait"
+              : "bg-rose-700 text-white hover:bg-rose-800 hover:shadow",
           )}
         >
           <Heart size={14} /> {mutation.isPending ? tx("投票中…") : tx("投他一票")}
         </button>
       )}
       {errMsg && (
-        <span className="text-xs text-rose-600 ml-2" role="alert">{errMsg}</span>
+        <span className="text-xs text-rose-700 ml-2" role="alert">{errMsg}</span>
       )}
     </div>
   );

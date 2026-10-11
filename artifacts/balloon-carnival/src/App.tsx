@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@workspace/replit-auth-web";
 import { LanguageProvider, useI18n } from "@/lib/i18n";
 import { DocumentMeta } from "@/components/DocumentMeta";
+import { RouteA11y } from "@/components/RouteA11y";
+import { MotionConfig } from "framer-motion";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/Layout";
 
@@ -22,6 +24,7 @@ import AdGuidePage from "@/pages/AdGuidePage";
 import PaymentResultPage from "@/pages/PaymentResultPage";
 import OrderLookupPage from "@/pages/OrderLookupPage";
 import RefundInfoPage from "@/pages/RefundInfoPage";
+import AccessibilityPage from "@/pages/AccessibilityPage";
 
 // Admin Pages
 import AdminLayout from "@/pages/AdminLayout";
@@ -71,6 +74,10 @@ function PixelPageViewTracker() {
 function Router() {
   useI18n();
   return (
+    <>
+    {/* Must live OUTSIDE <Layout>: Layout wraps children in a motion.div keyed
+        by location, which would remount this on every navigation. */}
+    <RouteA11y />
     <Layout>
       <PixelPageViewTracker />
       <Switch>
@@ -87,6 +94,7 @@ function Router() {
         <Route path="/payment/result" component={PaymentResultPage} />
         <Route path="/lookup" component={OrderLookupPage} />
         <Route path="/refund-info/:token" component={RefundInfoPage} />
+        <Route path="/accessibility" component={AccessibilityPage} />
 
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route path="/admin">
@@ -144,6 +152,7 @@ function Router() {
         <Route component={NotFound} />
       </Switch>
     </Layout>
+    </>
   );
 }
 
@@ -155,6 +164,7 @@ function App() {
             so in-progress form input, carts and selections are preserved. */}
         <LanguageProvider>
           {() => (
+            <MotionConfig reducedMotion="user">
             <TooltipProvider>
               <DocumentMeta />
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
@@ -162,6 +172,7 @@ function App() {
               </WouterRouter>
               <Toaster />
             </TooltipProvider>
+            </MotionConfig>
           )}
         </LanguageProvider>
       </AuthProvider>

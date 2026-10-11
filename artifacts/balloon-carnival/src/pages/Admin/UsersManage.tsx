@@ -189,7 +189,7 @@ export default function AdminUsersManage() {
           <label className="text-sm">
             <span className="block mb-1 font-medium">{tx("密碼 *（至少 6 字元）")}</span>
             <input
-              data-testid="input-new-password" type="password"
+              data-testid="input-new-password" type="password" autoComplete="new-password"
               required minLength={6}
               value={password} onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary"
@@ -252,7 +252,7 @@ export default function AdminUsersManage() {
         ) : users.length === 0 ? (
           <p className="text-muted-foreground text-sm">{tx("尚未建立任何子帳號。")}</p>
         ) : (
-          <div className="overflow-x-auto -mx-2">
+          <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="overflow-x-auto -mx-2">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-muted-foreground border-b">
                 <tr>
@@ -271,6 +271,7 @@ export default function AdminUsersManage() {
                     <td className="px-3 py-3">
                       <select
                         data-testid={`select-role-${u.username}`}
+                        aria-label={tx("{0} 的角色", [u.username])}
                         value={u.role}
                         onChange={(e) => onChangeRole(u.id, e.target.value as AdminRole)}
                         className="px-2 py-1 rounded border bg-white text-sm"
@@ -288,7 +289,7 @@ export default function AdminUsersManage() {
                     <td className="px-3 py-3 text-muted-foreground text-xs">{u.createdBy || "—"}</td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2">
-                        <button
+                        <button aria-label={tx("重設密碼")}
                           type="button"
                           onClick={() => onResetPwd(u.id, u.username)}
                           data-testid={`button-reset-${u.username}`}
@@ -297,7 +298,7 @@ export default function AdminUsersManage() {
                         >
                           <KeyRound size={16} />
                         </button>
-                        <button
+                        <button aria-label={tx("刪除")}
                           type="button"
                           onClick={() => onDelete(u.id, u.username)}
                           data-testid={`button-delete-${u.username}`}

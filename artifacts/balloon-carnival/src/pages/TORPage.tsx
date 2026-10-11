@@ -1,3 +1,5 @@
+import { BannerTranscript } from "@/components/BannerTranscript";
+import { ModalShell, useAutoUpdatesPaused } from "@/lib/a11y";
 import { tx, useI18n, txApi } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import {
@@ -124,11 +126,14 @@ export default function TORPage() {
     }
   };
 
+  const autoPaused = useAutoUpdatesPaused();
   useEffect(() => {
     loadAvailability();
+    if (autoPaused) return;
     const t = setInterval(loadAvailability, 30000);
     return () => clearInterval(t);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPaused]);
 
   useEffect(() => {
     fetch("/api/registrations/tournament/roster")
@@ -224,7 +229,7 @@ export default function TORPage() {
     testId: string;
   }) => (
     <div className="flex items-center gap-3">
-      <button
+      <button aria-label={tx("減少")}
         type="button"
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={value <= min}
@@ -236,7 +241,7 @@ export default function TORPage() {
       <span className="w-12 text-center text-2xl font-display font-bold" data-testid={`${testId}-value`}>
         {value}
       </span>
-      <button
+      <button aria-label={tx("增加")}
         type="button"
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
@@ -301,19 +306,13 @@ export default function TORPage() {
               loading="lazy"
             />
           </button>
+          <BannerTranscript which="tor" className="mt-4" showPriceNote={false} />
         </div>
       </section>
 
       {/* 主視覺圖放大 */}
       {imageZoomed && (
-        <div
-          className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out"
-          onClick={() => setImageZoomed(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-label={tx("主視覺圖放大檢視")}
-          data-testid="image-lightbox"
-        >
+        <ModalShell label={tx("主視覺圖放大檢視")} onClose={() => setImageZoomed(false)} className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out" data-testid="image-lightbox">
           <button
             type="button"
             onClick={() => setImageZoomed(false)}
@@ -328,7 +327,7 @@ export default function TORPage() {
             className="max-w-full max-h-full object-contain rounded-xl"
             onClick={(e) => e.stopPropagation()}
           />
-        </div>
+        </ModalShell>
       )}
 
       {/* 賽事資訊 */}
@@ -380,14 +379,14 @@ export default function TORPage() {
           <div className="rounded-3xl border bg-white p-6 md:p-7 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
-                <Medal className="text-amber-600 w-5 h-5" />
+                <Medal className="text-amber-700 w-5 h-5" />
               </div>
               <h3 className="font-bold text-lg">{tx("獎項")}</h3>
             </div>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
               {prizeItems().map((p) => (
                 <li key={p} className="flex gap-2">
-                  <span className="text-amber-500 mt-0.5">•</span>
+                  <span className="text-amber-700 mt-0.5">•</span>
                   <span>{p}</span>
                 </li>
               ))}
@@ -398,7 +397,7 @@ export default function TORPage() {
           <div className="rounded-3xl border bg-white p-6 md:p-7 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center">
-                <Clock className="text-sky-600 w-5 h-5" />
+                <Clock className="text-sky-700 w-5 h-5" />
               </div>
               <h3 className="font-bold text-lg">{tx("活動時程")}</h3>
             </div>
@@ -429,21 +428,21 @@ export default function TORPage() {
         <div className="mt-8 rounded-3xl border bg-white p-6 md:p-7 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center">
-              <AlertCircle className="text-rose-600 w-5 h-5" />
+              <AlertCircle className="text-rose-700 w-5 h-5" />
             </div>
             <h3 className="font-bold text-lg">{tx("報名方式與注意事項")}</h3>
           </div>
           <ul className="space-y-2.5 text-sm text-muted-foreground">
             <li className="flex gap-2">
-              <span className="text-rose-500 mt-0.5">•</span>
+              <span className="text-rose-700 mt-0.5">•</span>
               <span>{tx("報名流程：請於本頁填寫報名表並完成報名費繳納，即確認參賽名額。")}</span>
             </li>
             <li className="flex gap-2">
-              <span className="text-rose-500 mt-0.5">•</span>
+              <span className="text-rose-700 mt-0.5">•</span>
               <span>{tx("名單公告：正選名單將於 7 月 20 日（一）正式公告。")}</span>
             </li>
             <li className="flex gap-2">
-              <span className="text-rose-500 mt-0.5">•</span>
+              <span className="text-rose-700 mt-0.5">•</span>
               <span>{tx("賽事相關規定若有未盡事宜，主辦單位保留最終決策與解釋之權利。")}</span>
             </li>
           </ul>
@@ -454,7 +453,7 @@ export default function TORPage() {
       <section id="tor-register" className="scroll-mt-24 pb-16 md:pb-20 px-4 max-w-3xl mx-auto w-full">
         {success ? (
           <div className="bg-green-50 border-2 border-green-200 rounded-3xl p-10 md:p-12 text-center shadow-lg">
-            <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-6" />
+            <CheckCircle2 className="w-20 h-20 text-green-700 mx-auto mb-6" />
             <h2 className="text-3xl font-bold text-green-800 mb-3">{tx("報名成功！")}</h2>
             <p className="text-green-700 text-lg mb-8">
               {successInfo?.mode === "participant"
@@ -504,13 +503,13 @@ export default function TORPage() {
               </div>
             )}
 
-            <button onClick={resetForm} className="mt-10 text-green-600 font-bold hover:underline">
+            <button onClick={resetForm} className="mt-10 text-green-700 font-bold hover:underline">
               {tx("繼續報名")}
             </button>
           </div>
         ) : closed ? (
           <div className="bg-white border-2 border-border rounded-3xl p-10 md:p-12 text-center shadow-lg">
-            <AlertCircle className="w-16 h-16 text-rose-400 mx-auto mb-6" />
+            <AlertCircle className="w-16 h-16 text-rose-700 mx-auto mb-6" />
             <h2 className="font-display text-3xl md:text-4xl mb-3">{tx("線上報名已截止")}</h2>
             <p className="text-muted-foreground text-lg">
               {tx("戰鬥陀螺賽的線上報名與購票已截止，感謝大家的熱情參與。")}
@@ -540,7 +539,7 @@ export default function TORPage() {
                   ) : availability ? (
                     <div className="font-bold">
                       {soldOut ? (
-                        <span className="text-rose-600">{tx("線上報名已額滿")}</span>
+                        <span className="text-rose-700">{tx("線上報名已額滿")}</span>
                       ) : (
                         <span>
                           {tx("剩餘")} <span className="text-indigo-700">{availability.remaining}</span> / {availability.capacity} {tx("位")}
@@ -597,11 +596,11 @@ export default function TORPage() {
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="grid gap-5">
                 <div>
-                  <label className="block text-sm font-bold mb-2 flex items-center gap-1.5">
-                    <User size={15} /> {mode === "participant" ? tx("選手姓名") : tx("購票人姓名")} <span className="text-rose-500">*</span>
+                  <label htmlFor="f-torpage-1" className="block text-sm font-bold mb-2 flex items-center gap-1.5">
+                    <User size={15} /> {mode === "participant" ? tx("選手姓名") : tx("購票人姓名")} <span className="text-rose-700">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <input id="f-torpage-1"
+                    type="text" autoComplete="name"
                     value={form.parentName}
                     onChange={(e) => setForm({ ...form, parentName: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border-2 border-border focus:border-primary outline-none"
@@ -611,11 +610,12 @@ export default function TORPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold mb-2 flex items-center gap-1.5">
-                    <Phone size={15} /> {tx("聯絡電話")} <span className="text-rose-500">*</span>
+                  <label htmlFor="f-torpage-2" className="block text-sm font-bold mb-2 flex items-center gap-1.5">
+                    <Phone size={15} /> {tx("聯絡電話")} <span className="text-rose-700">*</span>
                   </label>
-                  <input
+                  <input id="f-torpage-2"
                     type="tel"
+                    autoComplete="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border-2 border-border focus:border-primary outline-none"
@@ -625,11 +625,12 @@ export default function TORPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold mb-2 flex items-center gap-1.5">
-                    <Mail size={15} /> {tx("Email（接收 QR Code 與確認信）")} <span className="text-rose-500">*</span>
+                  <label htmlFor="f-torpage-3" className="block text-sm font-bold mb-2 flex items-center gap-1.5">
+                    <Mail size={15} /> {tx("Email（接收 QR Code 與確認信）")} <span className="text-rose-700">*</span>
                   </label>
-                  <input
+                  <input id="f-torpage-3"
                     type="email"
+                    autoComplete="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border-2 border-border focus:border-primary outline-none"

@@ -888,8 +888,9 @@ export default function POSPage() {
       {!isVendor && vendors.length > 0 && (
         <div className="bg-white rounded-3xl border shadow-sm p-4 flex items-center gap-3 flex-wrap" data-testid="pos-vendor-select">
           <Store size={18} className="text-primary shrink-0" />
-          <span className="text-sm font-bold">{tx("結帳攤位：")}</span>
+          <span id="pos-vendor-label" className="text-sm font-bold">{tx("結帳攤位：")}</span>
           <select
+            aria-labelledby="pos-vendor-label"
             value={selectedVendorId}
             onChange={(e) => setSelectedVendorId(Number(e.target.value))}
             className="px-3 py-2 border-2 rounded-xl text-sm focus:outline-none focus:border-primary"
@@ -920,7 +921,7 @@ export default function POSPage() {
               : tx("我的收款統計")}
           </h2>
           {mySalesError ? (
-            <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {mySalesError}</p>
+            <p className="text-sm text-red-700 flex items-center gap-2"><AlertTriangle size={16} /> {mySalesError}</p>
           ) : !mySales ? (
             <p className="text-sm text-muted-foreground">{tx("載入中…")}</p>
           ) : (
@@ -946,7 +947,7 @@ export default function POSPage() {
                         <span className="text-muted-foreground whitespace-nowrap">{new Date(r.createdAt).toLocaleString(getLocale(), { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                         <span className="font-mono text-xs self-center">{r.invoiceNumber || "—"}</span>
                         <span className="font-bold">NT${r.amount.toLocaleString()}</span>
-                        <span className={cn("text-xs self-center", r.status === "issued" ? "text-green-600" : r.status === "failed" ? "text-red-500" : "text-muted-foreground")}>
+                        <span className={cn("text-xs self-center", r.status === "issued" ? "text-green-700" : r.status === "failed" ? "text-red-700" : "text-muted-foreground")}>
                           {r.status === "issued" ? tx("已開立") : r.status === "failed" ? tx("失敗") : r.status === "voided" ? tx("已作廢") : r.status}
                         </span>
                       </li>
@@ -978,7 +979,7 @@ export default function POSPage() {
               }}
               className={cn(
                 "px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
-                scanning ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-primary text-white hover:bg-primary/90",
+                scanning ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-primary text-white hover:bg-primary/90",
               )}
               data-testid="button-pos-toggle-scanner"
             >
@@ -999,7 +1000,7 @@ export default function POSPage() {
               </div>
             )}
             {cameraError && (
-              <div className="min-h-[160px] flex flex-col items-center justify-center text-red-500 text-sm p-4 text-center">
+              <div className="min-h-[160px] flex flex-col items-center justify-center text-red-700 text-sm p-4 text-center">
                 <AlertTriangle className="mx-auto mb-2" /> {tx("相機錯誤：")}{cameraError}
               </div>
             )}
@@ -1082,7 +1083,7 @@ export default function POSPage() {
             </button>
           </form>
           {phoneError && (
-            <div className="mt-3 text-sm text-red-600 flex items-center gap-2">
+            <div className="mt-3 text-sm text-red-700 flex items-center gap-2">
               <XCircle size={16} /> {phoneError}
             </div>
           )}
@@ -1148,7 +1149,7 @@ export default function POSPage() {
             <>
               <div className="flex items-start gap-4 mb-4">
                 {checkout.kind === "created" ? (
-                  <CheckCircle2 size={40} className="text-green-600 shrink-0" />
+                  <CheckCircle2 size={40} className="text-green-700 shrink-0" />
                 ) : (
                   <ShoppingCart size={40} className="text-primary shrink-0" />
                 )}
@@ -1202,9 +1203,9 @@ export default function POSPage() {
                 <div className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
                   {/* 左：商品格點 */}
                   <div className="lg:col-span-3">
-                    <label className="block font-bold text-sm mb-2">{tx("選擇商品")}</label>
+                    <h3 className="block font-bold text-sm mb-2">{tx("選擇商品")}</h3>
                     {productsError ? (
-                      <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {productsError}</p>
+                      <p className="text-sm text-red-700 flex items-center gap-2"><AlertTriangle size={16} /> {productsError}</p>
                     ) : products.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
                         {tx("目前沒有商品。")}{canManageProducts ? tx("請先在下方「商品管理」新增商品。") : tx("請聯絡主辦方建立商品清單。")}
@@ -1318,11 +1319,11 @@ export default function POSPage() {
                               <div className="font-medium truncate">{p.name}</div>
                               <div className="text-xs text-muted-foreground">NT${p.price.toLocaleString()}</div>
                             </div>
-                            <button type="button" onClick={() => addToCart(p.id, -1)} className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted shrink-0" data-testid={`cart-minus-${p.id}`}>
+                            <button aria-label={tx("減少 {0} 數量", [p.name])} type="button" onClick={() => addToCart(p.id, -1)} className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted shrink-0" data-testid={`cart-minus-${p.id}`}>
                               <Minus size={14} />
                             </button>
                             <span className="w-6 text-center font-bold shrink-0">{qty}</span>
-                            <button type="button" onClick={() => addToCart(p.id, 1)} className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted shrink-0" data-testid={`cart-plus-${p.id}`}>
+                            <button aria-label={tx("增加 {0} 數量", [p.name])} type="button" onClick={() => addToCart(p.id, 1)} className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted shrink-0" data-testid={`cart-plus-${p.id}`}>
                               <Plus size={14} />
                             </button>
                             <span className="w-16 text-right font-bold shrink-0">NT${(p.price * qty).toLocaleString()}</span>
@@ -1345,8 +1346,8 @@ export default function POSPage() {
                                 className={cn(
                                   "px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-all disabled:opacity-40",
                                   discountAmount === amt
-                                    ? "border-red-400 bg-red-50 text-red-600"
-                                    : "border-muted text-muted-foreground hover:border-red-300 hover:text-red-500",
+                                    ? "border-red-400 bg-red-50 text-red-700"
+                                    : "border-muted text-muted-foreground hover:border-red-300 hover:text-red-700",
                                 )}
                                 data-testid={`button-discount-${amt}`}
                               >
@@ -1354,7 +1355,7 @@ export default function POSPage() {
                               </button>
                             ))}
                           </div>
-                          {discountAmount > 0 && <span className="font-bold text-red-600">−NT${discountAmount}</span>}
+                          {discountAmount > 0 && <span className="font-bold text-red-700">−NT${discountAmount}</span>}
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="font-bold">{tx("合計")}</span>
@@ -1363,13 +1364,14 @@ export default function POSPage() {
                       </div>
 
                       <div className="pt-1">
-                        <label className="block font-bold text-xs text-muted-foreground mb-1.5">{tx("付款方式（僅記錄，實際收款在系統外完成）")}</label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <p id="pos-paymethod-label" className="block font-bold text-xs text-muted-foreground mb-1.5">{tx("付款方式（僅記錄，實際收款在系統外完成）")}</p>
+                        <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="pos-paymethod-label">
                           {PAYMENT_METHODS().map((m) => (
                             <button
                               key={m.value}
                               type="button"
                               onClick={() => setPaymentMethod(m.value)}
+                              aria-pressed={paymentMethod === m.value}
                               className={cn(
                                 "px-2 py-2.5 rounded-xl border-2 font-bold text-sm flex items-center justify-center gap-1.5 transition-all",
                                 paymentMethod === m.value
@@ -1385,14 +1387,14 @@ export default function POSPage() {
                       </div>
 
                       {checkout.kind === "failed" && (
-                        <p className="text-sm text-red-600 flex items-center gap-2">
+                        <p className="text-sm text-red-700 flex items-center gap-2">
                           <XCircle size={16} /> {txApi(checkout.message)}
                         </p>
                       )}
                       <button
                         onClick={handleCheckout}
                         disabled={checkout.kind === "submitting" || cartItems.length === 0}
-                        className="w-full py-4 rounded-xl bg-green-600 text-white font-bold text-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full py-4 rounded-xl bg-green-700 text-white font-bold text-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                         data-testid="button-pos-checkout"
                       >
                         <CheckCircle2 size={20} />
@@ -1425,7 +1427,7 @@ export default function POSPage() {
                         </div>
                       ))}
                       {order.discount > 0 && (
-                        <div className="flex justify-between text-red-600">
+                        <div className="flex justify-between text-red-700">
                           <span>{tx("折價")}</span>
                           <span className="font-bold">−NT${order.discount.toLocaleString()}</span>
                         </div>
@@ -1452,10 +1454,11 @@ export default function POSPage() {
                     </div>
                   ) : (
                     <>
-                      <label className="block font-bold text-sm">{tx("開立電子發票（可跳過，之後也能從訂單補開）")}</label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <p id="pos-carrier-label" className="block font-bold text-sm">{tx("開立電子發票（可跳過，之後也能從訂單補開）")}</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" role="group" aria-labelledby="pos-carrier-label">
                         <button
                           type="button"
+                          aria-pressed={carrierChoice === "ecpay_carrier"}
                           onClick={async () => {
                             await stopCarrierScanner();
                             setCarrierChoice("ecpay_carrier");
@@ -1475,6 +1478,7 @@ export default function POSPage() {
                         </button>
                         <button
                           type="button"
+                          aria-pressed={carrierChoice === "phone_barcode"}
                           onClick={() => setCarrierChoice("phone_barcode")}
                           className={cn(
                             "px-4 py-3 rounded-xl border-2 text-sm font-bold text-left transition-all",
@@ -1513,7 +1517,7 @@ export default function POSPage() {
                               className={cn(
                                 "px-4 py-3 rounded-xl border-2 font-bold text-sm transition-all flex items-center gap-2",
                                 carrierScanning
-                                  ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                                  ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
                                   : "border-primary/30 text-primary hover:bg-primary/5",
                               )}
                               data-testid="button-scan-barcode"
@@ -1537,7 +1541,7 @@ export default function POSPage() {
                             </p>
                           )}
                           {carrierCameraError && (
-                            <p className="text-xs text-red-600 text-center flex items-center justify-center gap-1">
+                            <p className="text-xs text-red-700 text-center flex items-center justify-center gap-1">
                               <AlertTriangle size={14} /> {carrierCameraError}
                             </p>
                           )}
@@ -1545,14 +1549,14 @@ export default function POSPage() {
                       )}
 
                       {issueState.kind === "failed" && (
-                        <p className="text-sm text-red-600 flex items-center gap-2">
+                        <p className="text-sm text-red-700 flex items-center gap-2">
                           <XCircle size={16} /> {txApi(issueState.message)}
                         </p>
                       )}
                       <button
                         onClick={handleIssueForOrder}
                         disabled={issueState.kind === "submitting"}
-                        className="w-full py-4 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full py-4 rounded-xl bg-green-700 text-white font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                         data-testid="button-pos-issue"
                       >
                         <ReceiptText size={20} />
@@ -1636,7 +1640,7 @@ export default function POSPage() {
                     <li key={p.id} className="py-2.5 flex items-center gap-3 text-sm" data-testid={`manage-product-${p.id}`}>
                       <span className={cn("flex-1 font-medium", !p.active && "line-through text-muted-foreground")}>{p.name}</span>
                       <span className="font-bold">NT${p.price.toLocaleString()}</span>
-                      <button
+                      <button aria-label={tx("編輯")}
                         type="button"
                         onClick={() => {
                           const name = window.prompt(tx("商品名稱："), p.name);
@@ -1662,10 +1666,10 @@ export default function POSPage() {
                       >
                         {p.active ? tx("下架") : tx("上架")}
                       </button>
-                      <button
+                      <button aria-label={tx("刪除")}
                         type="button"
                         onClick={() => deleteProduct(p)}
-                        className="p-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50"
+                        className="p-2 rounded-lg border border-red-200 text-red-700 hover:bg-red-50"
                         title={tx("刪除")}
                         data-testid={`button-delete-product-${p.id}`}
                       >
@@ -1696,7 +1700,7 @@ export default function POSPage() {
         {statsOpen && (
           <div className="mt-4 space-y-5">
             {statsError ? (
-              <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {statsError}</p>
+              <p className="text-sm text-red-700 flex items-center gap-2"><AlertTriangle size={16} /> {statsError}</p>
             ) : !stats ? (
               <p className="text-sm text-muted-foreground">{tx("載入中...")}</p>
             ) : stats.orderCount === 0 ? (
@@ -1722,7 +1726,7 @@ export default function POSPage() {
                   </div>
                   <div className="bg-muted/40 rounded-2xl p-4">
                     <div className="text-xs text-muted-foreground">{tx("累計折價")}</div>
-                    <div className="text-xl font-bold text-red-600">−NT${stats.totalDiscount.toLocaleString()}</div>
+                    <div className="text-xl font-bold text-red-700">−NT${stats.totalDiscount.toLocaleString()}</div>
                   </div>
                 </div>
 
@@ -1786,7 +1790,7 @@ export default function POSPage() {
         {ordersOpen && (
           <div className="mt-4">
             {ordersError ? (
-              <p className="text-sm text-red-600 flex items-center gap-2"><AlertTriangle size={16} /> {ordersError}</p>
+              <p className="text-sm text-red-700 flex items-center gap-2"><AlertTriangle size={16} /> {ordersError}</p>
             ) : orders.length === 0 ? (
               <p className="text-sm text-muted-foreground">{tx("尚無訂單。")}</p>
             ) : (
@@ -1818,7 +1822,7 @@ export default function POSPage() {
                       type="button"
                       onClick={batchVoidInvoices}
                       disabled={batchBusy || selectedOrderIds.size === 0}
-                      className="px-3 py-1.5 rounded-lg border-2 border-red-300 text-red-600 text-xs font-bold hover:bg-red-50 disabled:opacity-40"
+                      className="px-3 py-1.5 rounded-lg border-2 border-red-300 text-red-700 text-xs font-bold hover:bg-red-50 disabled:opacity-40"
                       data-testid="button-batch-void"
                     >
                       {batchBusy ? tx("處理中...") : tx("批量作廢發票")}
@@ -1845,14 +1849,14 @@ export default function POSPage() {
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <span>
                           {o.buyerName || "—"}・{o.items.map((it) => `${it.name}×${it.qty}`).join(tx("、"))}
-                          {o.discount > 0 && <span className="text-red-600">{tx("・折價−$")}{o.discount}</span>}
+                          {o.discount > 0 && <span className="text-red-700">{tx("・折價−$")}{o.discount}</span>}
                         </span>
                         <span className="flex items-center gap-2">
                           <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{PAYMENT_LABEL()[o.paymentMethod] ?? o.paymentMethod}</span>
                           <span className="font-bold">NT${o.totalAmount.toLocaleString()}</span>
                           <span className={cn(
                             "text-xs",
-                            o.invoice?.status === "issued" ? "text-green-600" : o.invoice?.status === "failed" ? "text-red-500" : "text-muted-foreground",
+                            o.invoice?.status === "issued" ? "text-green-700" : o.invoice?.status === "failed" ? "text-red-700" : "text-muted-foreground",
                           )}>
                             {o.invoice?.status === "issued"
                               ? tx("發票 {0}", [o.invoice.invoiceNumber ?? tx("已開立")])
@@ -1863,14 +1867,14 @@ export default function POSPage() {
                                   : tx("未開發票")}
                           </span>
                           {o.refundedAt && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-bold">{tx("已退款")}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">{tx("已退款")}</span>
                           )}
                           {o.invoice?.status === "issued" && (
                             <button
                               type="button"
                               onClick={() => voidOrderInvoice(o)}
                               disabled={voidBusyId === o.id || batchBusy}
-                              className="text-xs px-2 py-1 rounded-lg border border-red-300 text-red-600 font-bold hover:bg-red-50 disabled:opacity-40"
+                              className="text-xs px-2 py-1 rounded-lg border border-red-300 text-red-700 font-bold hover:bg-red-50 disabled:opacity-40"
                               data-testid={`button-void-${o.id}`}
                             >
                               {voidBusyId === o.id ? tx("作廢中...") : tx("作廢發票")}
@@ -1881,7 +1885,7 @@ export default function POSPage() {
                               type="button"
                               onClick={() => refundOrder(o)}
                               disabled={refundBusyId === o.id || batchBusy}
-                              className="text-xs px-2 py-1 rounded-lg border border-orange-300 text-orange-600 font-bold hover:bg-orange-50 disabled:opacity-40"
+                              className="text-xs px-2 py-1 rounded-lg border border-orange-300 text-orange-700 font-bold hover:bg-orange-50 disabled:opacity-40"
                               data-testid={`button-refund-${o.id}`}
                             >
                               {refundBusyId === o.id ? tx("退款中...") : tx("退款")}
@@ -1892,7 +1896,7 @@ export default function POSPage() {
                               type="button"
                               onClick={() => deleteOrder(o)}
                               disabled={deleteBusyId === o.id || batchBusy}
-                              className="text-xs px-2 py-1 rounded-lg border border-red-300 text-red-600 font-bold hover:bg-red-50 disabled:opacity-40"
+                              className="text-xs px-2 py-1 rounded-lg border border-red-300 text-red-700 font-bold hover:bg-red-50 disabled:opacity-40"
                               data-testid={`button-delete-${o.id}`}
                             >
                               {deleteBusyId === o.id ? tx("刪除中...") : tx("刪除")}

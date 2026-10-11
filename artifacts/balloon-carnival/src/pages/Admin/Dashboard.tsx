@@ -360,7 +360,7 @@ export default function AdminDashboard() {
             })}
             <div className="pt-3 mt-2 border-t flex items-center justify-between text-sm font-bold">
               <span>{tx("合計")}</span>
-              <span className="text-green-600">
+              <span className="text-green-700">
                 {formatCurrency(paymentMethods.totalRevenue)}
               </span>
             </div>
@@ -407,7 +407,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-4 rounded-2xl bg-red-50 border border-red-100">
                     <p className="text-sm text-muted-foreground">{tx("已退款金額")}</p>
-                    <p className="text-2xl font-bold text-red-600">
+                    <p className="text-2xl font-bold text-red-700">
                       {formatCurrency(approved.amount)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -416,7 +416,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100">
                     <p className="text-sm text-muted-foreground">{tx("待處理申請")}</p>
-                    <p className="text-2xl font-bold text-amber-600">
+                    <p className="text-2xl font-bold text-amber-700">
                       {formatNumber(pending.count)} {tx("筆")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -753,7 +753,7 @@ export default function AdminDashboard() {
               {tx("銀行轉帳訂單，收到款項後請按「確認收款」，系統會開立發票、寄送確認信並通知 Slack。")}
             </p>
           </div>
-          <div className="overflow-x-auto">
+          <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-muted/30">
                 <tr>
@@ -774,14 +774,14 @@ export default function AdminDashboard() {
                     <td className="p-4 text-primary font-medium">
                       {formatDate(reg.eventDate)}
                     </td>
-                    <td className="p-4 text-right font-bold text-green-600">
+                    <td className="p-4 text-right font-bold text-green-700">
                       {reg.amount != null ? formatCurrency(reg.amount) : "—"}
                     </td>
                     <td className="p-4 text-right">
                       <button
                         onClick={() => handleConfirmBank(reg.paymentRef!)}
                         disabled={confirmingRef === reg.paymentRef}
-                        className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 transition-colors"
+                        className="px-4 py-2 rounded-xl bg-amber-700 text-white text-sm font-semibold hover:bg-amber-700 disabled:opacity-50 transition-colors"
                       >
                         {confirmingRef === reg.paymentRef ? tx("處理中...") : tx("確認收款")}
                       </button>
@@ -803,7 +803,7 @@ export default function AdminDashboard() {
             </p>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-muted/30">
               <tr>
@@ -837,7 +837,7 @@ export default function AdminDashboard() {
                       {formatDate(reg.eventDate)}
                     </td>
                     <td className="p-4 text-right font-bold">{reg.ticketCount}</td>
-                    <td className="p-4 text-right font-bold text-green-600">
+                    <td className="p-4 text-right font-bold text-green-700">
                       {reg.amount != null ? formatCurrency(reg.amount) : "—"}
                     </td>
                     <td className="p-4">{paymentStatusBadge(reg.paymentStatus)}</td>
@@ -876,10 +876,10 @@ function KpiCard({
 }) {
   useI18n();
   const toneClasses: Record<string, string> = {
-    blue: "bg-blue-100 text-blue-600",
-    green: "bg-green-100 text-green-600",
-    orange: "bg-orange-100 text-orange-600",
-    purple: "bg-purple-100 text-purple-600",
+    blue: "bg-blue-100 text-blue-700",
+    green: "bg-green-100 text-green-700",
+    orange: "bg-orange-100 text-orange-700",
+    purple: "bg-purple-100 text-purple-700",
   };
   return (
     <div className="bg-white p-6 rounded-3xl border shadow-sm">
@@ -926,8 +926,8 @@ function CategorySalesCard({
 }) {
   useI18n();
   const toneClasses: Record<string, string> = {
-    orange: "bg-orange-100 text-orange-600",
-    purple: "bg-purple-100 text-purple-600",
+    orange: "bg-orange-100 text-orange-700",
+    purple: "bg-purple-100 text-purple-700",
   };
   return (
     <div className="bg-white p-6 rounded-3xl border shadow-sm">

@@ -1,3 +1,4 @@
+import { ModalShell } from "@/lib/a11y";
 import { tx, getLocale, useI18n, getLang, txApi } from "@/lib/i18n";
 import { useState, useEffect, useCallback } from "react";
 import { Redirect } from "wouter";
@@ -477,7 +478,7 @@ export default function AdminRefundRequestsManage() {
             onClick={() => runBulk("approve")}
             disabled={busy}
             data-testid="button-bulk-approve"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
           >
             <CheckCircle2 size={14} /> {tx("批量退票成功")}
           </button>
@@ -529,7 +530,7 @@ export default function AdminRefundRequestsManage() {
         ) : rows.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">{tx("目前沒有{0}的退票申請。", [STATUS_LABEL()[statusFilter] ?? ""])}</div>
         ) : (
-          <table className="w-full text-sm">
+          <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="overflow-x-auto"><table className="w-full text-sm">
             <thead className="text-left text-xs uppercase text-muted-foreground border-b bg-muted/30">
               <tr>
                 {canAct && (
@@ -593,12 +594,12 @@ export default function AdminRefundRequestsManage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
 
       {openId !== null && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !busy && setOpenId(null)}>
+        <ModalShell label={tx("退票申請詳情")} onClose={() => setOpenId(null)} dismissible={!busy} className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {!detail ? (
               <div className="p-12 text-center"><Loader2 className="w-6 h-6 animate-spin inline" /></div>
@@ -725,8 +726,8 @@ export default function AdminRefundRequestsManage() {
                             <div className="font-medium">{reg.parentName} · {reg.ticketType ?? "—"} × {reg.ticketCount}</div>
                             <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                               <Calendar size={12} /> {reg.eventDate}
-                              {reg.checkedInAt && <span className="ml-2 text-emerald-600">{tx("已入場")}</span>}
-                              {reg.paymentStatus === "refunded" && <span className="ml-2 text-gray-500">{tx("已退款")}</span>}
+                              {reg.checkedInAt && <span className="ml-2 text-emerald-700">{tx("已入場")}</span>}
+                              {reg.paymentStatus === "refunded" && <span className="ml-2 text-gray-600">{tx("已退款")}</span>}
                             </div>
                           </div>
                           {canAct && detail.request.status === "pending" && !reg.checkedInAt && reg.paymentStatus !== "refunded" && (
@@ -767,7 +768,7 @@ export default function AdminRefundRequestsManage() {
                         onClick={approve}
                         disabled={busy}
                         data-testid="button-approve-refund"
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 disabled:opacity-50"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-700 text-white font-medium hover:bg-emerald-700 disabled:opacity-50"
                       >
                         <CheckCircle2 size={16} /> {tx("核准退票")}
                       </button>
@@ -797,7 +798,7 @@ export default function AdminRefundRequestsManage() {
               </div>
             )}
           </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

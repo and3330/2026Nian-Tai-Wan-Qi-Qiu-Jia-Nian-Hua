@@ -1,3 +1,4 @@
+import { ModalShell } from "@/lib/a11y";
 import { tx, useI18n, txApi } from "@/lib/i18n";
 import { useState } from "react";
 import { CreditCard, Building2, X, Loader2, FileText, User, Heart, Smartphone } from "lucide-react";
@@ -156,7 +157,7 @@ export function PaymentMethodModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto" data-testid="payment-modal">
+    <ModalShell label={tx("付款方式")} onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto" data-testid="payment-modal">
       <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full my-8 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div>
@@ -227,9 +228,10 @@ export function PaymentMethodModal({
               </div>
 
               <div className="mb-4">
-                <label className="text-xs font-bold text-muted-foreground mb-1 block">{tx("電子郵件（用於付款收據與發票寄送）")}</label>
-                <input
+                <label htmlFor="f-paymentmethodmodal-1" className="text-xs font-bold text-muted-foreground mb-1 block">{tx("電子郵件（用於付款收據與發票寄送）")}</label>
+                <input id="f-paymentmethodmodal-1"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="example@mail.com"
@@ -358,6 +360,6 @@ export function PaymentMethodModal({
               </button>
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }

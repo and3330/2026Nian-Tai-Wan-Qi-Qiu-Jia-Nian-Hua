@@ -19,3 +19,4 @@
 - [Vendor role isolation](vendor-role-isolation.md) — vendor role is session-bound to one vendor; "any authenticated admin" endpoints are no longer safe, list explicit roles.
 - [Stale chunk after redeploy](stale-chunk-reload.md) — deploys break lazy import() on stale pages; keep the vite:preloadError one-shot reload listener in the web entry.
 - [Bilingual scope](bilingual-scope.md) — Chinese/English across public, admin and buyer notifications; preserve banner images and user-entered data.
+- [Accessibility target](accessibility-target.md) — site-wide WCAG 2.2 A+AA goal; accessible libraries and automated checks do not establish full conformance.

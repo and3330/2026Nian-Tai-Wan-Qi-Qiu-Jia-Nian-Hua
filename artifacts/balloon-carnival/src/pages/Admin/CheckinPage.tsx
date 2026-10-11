@@ -1,3 +1,4 @@
+import { useAutoUpdatesPaused } from "@/lib/a11y";
 import { tx, getLocale, useI18n, getLang, txApi } from "@/lib/i18n";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ScanLine, Search, CheckCircle2, AlertTriangle, XCircle, Camera, CameraOff, Crown, Phone } from "lucide-react";
@@ -90,11 +91,13 @@ export default function CheckinPage() {
     } catch { /* stats are non-critical; keep last known values */ }
   }, []);
 
+  const autoPaused = useAutoUpdatesPaused();
   useEffect(() => {
     refreshStats();
+    if (autoPaused) return;
     const t = setInterval(refreshStats, 30000);
     return () => clearInterval(t);
-  }, [refreshStats]);
+  }, [refreshStats, autoPaused]);
   const [result, setResult] = useState<LookupResult>({ kind: "idle" });
   const [scanning, setScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -360,7 +363,7 @@ export default function CheckinPage() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-emerald-600">
+                <div className="text-2xl font-bold text-emerald-700">
                   {d.total > 0 ? Math.round((d.checkedIn / d.total) * 100) : 0}%
                 </div>
                 <div className="text-xs text-muted-foreground">{tx("報到率")}</div>
@@ -381,7 +384,7 @@ export default function CheckinPage() {
               onClick={() => (scanning ? stopScanner() : startScanner())}
               className={cn(
                 "px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 transition-all",
-                scanning ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-primary text-white hover:bg-primary/90",
+                scanning ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-primary text-white hover:bg-primary/90",
               )}
               data-testid="button-toggle-scanner"
             >
@@ -406,7 +409,7 @@ export default function CheckinPage() {
               </div>
             )}
             {cameraError && (
-              <div className="min-h-[160px] flex flex-col items-center justify-center text-red-500 text-sm p-4 text-center">
+              <div className="min-h-[160px] flex flex-col items-center justify-center text-red-700 text-sm p-4 text-center">
                 <AlertTriangle className="mx-auto mb-2" /> {tx("相機錯誤：")}{cameraError}
               </div>
             )}
@@ -518,19 +521,19 @@ export default function CheckinPage() {
                   <div className="text-sm">
                     <div className="font-bold text-base flex items-center gap-2">
                       {r.parentName}
-                      {r.isVip && <Crown size={16} className="text-amber-500" />}
+                      {r.isVip && <Crown size={16} className="text-amber-700" />}
                       <span className="text-primary font-bold">{r.eventDate}</span>
                     </div>
                     <div className="text-muted-foreground mt-0.5">
                       {tx("共")} {r.ticketCount} {tx("位・已報到")} {r.checkedInCount ?? 0} {tx("位")}
-                      {!en.admissible && <span className="text-red-600 font-bold">{tx("・未付款，不可入場")}</span>}
+                      {!en.admissible && <span className="text-red-700 font-bold">{tx("・未付款，不可入場")}</span>}
                     </div>
                   </div>
                   {en.admissible && !en.alreadyCheckedIn ? (
                     <button
                       onClick={() => phoneCheckin(r.id)}
                       disabled={phoneCheckingId === r.id}
-                      className="px-5 py-2.5 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                      className="px-5 py-2.5 rounded-xl bg-green-700 text-white font-bold hover:bg-green-700 transition-all disabled:opacity-50 flex items-center gap-2"
                       data-testid={`button-phone-checkin-${r.id}`}
                     >
                       <CheckCircle2 size={18} />
@@ -588,11 +591,11 @@ export default function CheckinPage() {
             <>
               <div className="flex items-start gap-4 mb-4">
                 {result.kind === "found" && !result.admissible ? (
-                  <XCircle size={40} className="text-red-600 shrink-0" />
+                  <XCircle size={40} className="text-red-700 shrink-0" />
                 ) : result.kind === "checked" && !result.alreadyCheckedIn ? (
-                  <CheckCircle2 size={40} className="text-green-600 shrink-0" />
+                  <CheckCircle2 size={40} className="text-green-700 shrink-0" />
                 ) : result.alreadyCheckedIn ? (
-                  <AlertTriangle size={40} className="text-amber-600 shrink-0" />
+                  <AlertTriangle size={40} className="text-amber-700 shrink-0" />
                 ) : (
                   <ScanLine size={40} className="text-primary shrink-0" />
                 )}
@@ -679,7 +682,7 @@ export default function CheckinPage() {
                             className={cn(
                               "w-12 h-12 rounded-xl border-2 font-bold transition-all",
                               checkinCount === n
-                                ? "bg-green-600 border-green-600 text-white"
+                                ? "bg-green-700 border-green-600 text-white"
                                 : "bg-white border-border hover:border-green-400",
                             )}
                             data-testid={`button-count-${n}`}
@@ -694,7 +697,7 @@ export default function CheckinPage() {
                     onClick={() =>
                       performCheckin(result.reg.qrToken!, Math.min(checkinCount, remainingOf(result.reg)))
                     }
-                    className="w-full py-4 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-4 rounded-xl bg-green-700 text-white font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-2"
                     data-testid="button-confirm-checkin"
                   >
                     <CheckCircle2 size={20} />

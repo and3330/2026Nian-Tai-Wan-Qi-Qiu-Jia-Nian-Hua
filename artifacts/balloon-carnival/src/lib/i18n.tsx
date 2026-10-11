@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { EN } from "@/lib/i18n-en";
+import { EN_A11Y } from "@/lib/i18n-en-a11y";
 import { EN_CONTENT } from "@/lib/i18n-content";
 import { translateApiMessage } from "@/lib/i18n-api";
 
@@ -25,7 +26,7 @@ const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
 let normalizedContent: Map<string, string> | null = null;
 
 function lookup(zh: string): string | undefined {
-  const hit = EN[zh] ?? EN_CONTENT[zh];
+  const hit = EN[zh] ?? EN_A11Y[zh] ?? EN_CONTENT[zh];
   if (hit !== undefined) return hit;
   return undefined;
 }

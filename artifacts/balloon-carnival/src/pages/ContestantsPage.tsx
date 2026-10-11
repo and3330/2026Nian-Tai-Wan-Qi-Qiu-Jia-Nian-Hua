@@ -48,15 +48,15 @@ export default function ContestantsPage() {
                       <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
-                        <Users size={28} className="text-muted-foreground/40" />
+                        <Users size={28} className="text-muted-foreground" />
                       </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0 pt-1">
                     <h3 className="font-bold text-xl truncate group-hover:text-primary transition-colors">{member.name}</h3>
                     <div className="flex items-center gap-1.5 mt-1">
-                      <BookOpen size={14} className="text-rose-500 shrink-0" />
-                      <span className="text-sm text-rose-600 font-medium">{tx("參展藝術家")}</span>
+                      <BookOpen size={14} className="text-rose-700 shrink-0" />
+                      <span className="text-sm text-rose-700 font-medium">{tx("參展藝術家")}</span>
                     </div>
                   </div>
                 </div>
@@ -78,7 +78,7 @@ export default function ContestantsPage() {
           </div>
         ) : (
           <div className="text-center py-16 max-w-md mx-auto">
-            <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground/20" />
+            <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <p className="text-xl text-muted-foreground mb-2">{tx("選手名單即將公布")}</p>
             <p className="text-muted-foreground text-sm">{tx("敬請期待本屆參展藝術家名單與作品介紹")}</p>
           </div>

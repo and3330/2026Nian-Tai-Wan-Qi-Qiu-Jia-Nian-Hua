@@ -134,7 +134,7 @@ export default function RefundInfoPage() {
               <div className="space-y-4">
                 {FIELDS().map((f) => (
                   <label key={f.key} className="block text-sm">
-                    <span className="block mb-1 font-medium">{f.label} <span className="text-red-500">*</span></span>
+                    <span className="block mb-1 font-medium">{f.label} <span className="text-red-700">*</span></span>
                     <input
                       type="text"
                       value={values[f.key]}
@@ -149,7 +149,7 @@ export default function RefundInfoPage() {
                 ))}
 
                 {submitError && (
-                  <p className="text-sm text-red-600 flex items-center gap-2">
+                  <p className="text-sm text-red-700 flex items-center gap-2">
                     <XCircle size={16} /> {submitError}
                   </p>
                 )}

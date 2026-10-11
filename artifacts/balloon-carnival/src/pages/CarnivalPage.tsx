@@ -1,3 +1,5 @@
+import { BannerTranscript } from "@/components/BannerTranscript";
+import { ModalShell, usePollInterval } from "@/lib/a11y";
 import { tx, useI18n, txApi } from "@/lib/i18n";
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
@@ -22,14 +24,14 @@ const carnivalActivities = () => ([
     icon: Cpu,
     title: tx("AI 教育科技"),
     desc: tx("結合人工智慧與氣球藝術的創新體驗，探索科技如何為傳統技藝注入新生命。互動裝置讓大小朋友都能感受 AI 的魅力。"),
-    color: "text-blue-600",
+    color: "text-blue-700",
     bg: "bg-blue-50",
   },
   {
     icon: Baby,
     title: tx("親子手作坊"),
     desc: tx("由專業氣球老師帶領，親子一同動手做氣球造型！適合所有年齡層，每組 150 元（依小朋友人數計算）。"),
-    color: "text-green-600",
+    color: "text-green-700",
     bg: "bg-green-50",
     price: tx("150 元/組"),
   },
@@ -37,14 +39,14 @@ const carnivalActivities = () => ([
     icon: Sparkles,
     title: tx("氣球表演"),
     desc: tx("精彩的舞臺氣球秀！專業表演者帶來令人驚嘆的氣球藝術表演，展現氣球造型的無限可能，適合全家觀賞。"),
-    color: "text-purple-600",
+    color: "text-purple-700",
     bg: "bg-purple-50",
   },
   {
     icon: Eye,
     title: tx("比賽展件參觀"),
     desc: tx("氣球藝術家現場創作的精美作品 — 中型氣球雕塑、氣球人偶、花束造型等，全部公開展覽，供遊客近距離欣賞與拍照。"),
-    color: "text-amber-600",
+    color: "text-amber-700",
     bg: "bg-amber-50",
   },
 ]);
@@ -87,10 +89,11 @@ export default function CarnivalPage() {
     [],
   );
   const salesOpen = TICKET_SALES_OPEN || salesPass.length > 0;
+  const pollMs = usePollInterval(30000);
   const { data: availability, isLoading: isAvailabilityLoading } = useGetRegistrationAvailability({
     query: {
       queryKey: ["getRegistrationAvailability"],
-      refetchInterval: 30000,
+      refetchInterval: pollMs,
       refetchOnWindowFocus: true,
     },
   });
@@ -307,6 +310,7 @@ export default function CarnivalPage() {
         />
       )}
       {/* HERO — 活動主視覺 */}
+      <h1 className="sr-only">{tx("嘉年華購票入場")}</h1>
       <section className="relative w-full bg-gradient-to-b from-sky-50 via-rose-50/40 to-background overflow-hidden">
         <div className="max-w-6xl mx-auto px-0 md:px-4 pt-0 md:pt-12 pb-6 md:pb-12">
           <button
@@ -324,6 +328,7 @@ export default function CarnivalPage() {
               <ZoomIn size={14} /> {tx("點擊放大")}
             </span>
           </button>
+          <BannerTranscript which="carnival" className="mt-4 mx-4 md:mx-0" />
         </div>
       </section>
 
@@ -359,7 +364,7 @@ export default function CarnivalPage() {
           </div>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
-              <Users className="text-rose-500 w-5 h-5" />
+              <Users className="text-rose-700 w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="text-[11px] text-muted-foreground font-bold uppercase tracking-wide">{tx("每日名額")}</div>
@@ -371,7 +376,7 @@ export default function CarnivalPage() {
 
       <section id="register" className="py-16 md:py-20 px-4 max-w-4xl mx-auto w-full scroll-mt-24 border-t">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-50 text-green-600 font-bold text-sm mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-50 text-green-700 font-bold text-sm mb-4">
             <Ticket size={16} /> {tx("立即購票")}
           </div>
           <h2 className="font-display text-4xl mb-4">{tx("一般觀眾購票")}</h2>
@@ -382,7 +387,7 @@ export default function CarnivalPage() {
 
         {!salesOpen && (
           <div className="max-w-2xl mx-auto bg-amber-50 border-2 border-amber-200 rounded-3xl p-10 text-center shadow-sm" data-testid="sales-paused-notice">
-            <AlertCircle className="w-14 h-14 text-amber-500 mx-auto mb-4" />
+            <AlertCircle className="w-14 h-14 text-amber-700 mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-amber-800 mb-3">{tx("售票暫停中")}</h3>
             <p className="text-amber-700 text-lg">
               {tx("線上售票目前暫停，請關注官方公告獲得最新開賣資訊。已完成購票者不受影響，入場 QR Code 依然有效。")}
@@ -398,9 +403,10 @@ export default function CarnivalPage() {
 
         {salesOpen && (
         <>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-10 max-w-2xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-10 max-w-2xl mx-auto" role="group" aria-label={tx("選擇票種")}>
           <button
             type="button"
+            aria-pressed={visitorTicketType === "single"}
             onClick={() => { setVisitorTicketType("single"); setFormData({...formData, eventDate: ""}); clearPromo(); }}
             className={cn(
               "group relative rounded-3xl p-7 md:p-8 text-center transition-all border-[3px] overflow-hidden",
@@ -420,13 +426,14 @@ export default function CarnivalPage() {
             </div>
             <div className="mb-2 flex items-baseline justify-center gap-1">
               <span className="text-2xl font-bold text-muted-foreground">NT$</span>
-              <span className="text-5xl md:text-6xl font-display font-bold text-green-600">300</span>
+              <span className="text-5xl md:text-6xl font-display font-bold text-green-700">300</span>
             </div>
-            <p className="text-sm text-foreground/70 font-medium">{tx("7/25 或 7/26 擇一日")}</p>
+            <p className="text-sm text-foreground/80 font-medium">{tx("7/25 或 7/26 擇一日")}</p>
           </button>
 
           <button
             type="button"
+            aria-pressed={visitorTicketType === "combo"}
             onClick={() => { setVisitorTicketType("combo"); setFormData({...formData, eventDate: ""}); clearPromo(); }}
             className={cn(
               "group relative rounded-3xl p-7 md:p-8 text-center transition-all border-[3px] overflow-hidden",
@@ -449,16 +456,16 @@ export default function CarnivalPage() {
             </div>
             <div className="mb-2 flex items-baseline justify-center gap-1">
               <span className="text-2xl font-bold text-muted-foreground">NT$</span>
-              <span className="text-5xl md:text-6xl font-display font-bold text-green-600">500</span>
+              <span className="text-5xl md:text-6xl font-display font-bold text-green-700">500</span>
               <span className="text-sm font-bold text-muted-foreground line-through ml-1">600</span>
             </div>
-            <p className="text-sm text-foreground/70 font-medium">{tx("7/25 + 7/26 兩日皆可入場")}</p>
+            <p className="text-sm text-foreground/80 font-medium">{tx("7/25 + 7/26 兩日皆可入場")}</p>
           </button>
         </div>
 
         {success ? (
-          <div className="max-w-2xl mx-auto bg-green-50 border-2 border-green-200 rounded-3xl p-12 text-center shadow-lg">
-            <CheckCircle2 className="w-24 h-24 text-green-500 mx-auto mb-6" />
+          <div role="status" className="max-w-2xl mx-auto bg-green-50 border-2 border-green-200 rounded-3xl p-6 sm:p-12 text-center shadow-lg">
+            <CheckCircle2 className="w-24 h-24 text-green-700 mx-auto mb-6" />
             <h2 className="text-3xl font-bold text-green-800 mb-4">{tx("購票成功！")}</h2>
             <p className="text-green-700 text-lg mb-8">
               {tx("感謝您購票 2026 臺灣氣球嘉年華。")}
@@ -518,7 +525,7 @@ export default function CarnivalPage() {
 
             <button
               onClick={() => { setSuccess(false); setVisitorTicketType(""); setConfirmedTokens([]); setFormData({ parentName: "", phone: "", email: "", adultCount: 1, childCount: 0, infantCount: 0, eventDate: "" }); }}
-              className="mt-10 text-green-600 font-bold hover:underline"
+              className="mt-10 text-green-700 font-bold hover:underline"
             >
               {tx("繼續購票")}
             </button>
@@ -531,15 +538,15 @@ export default function CarnivalPage() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 max-w-5xl mx-auto">
             {visitorTicketType === "single" && (
             <div className="lg:col-span-2 space-y-6">
-              <h3 className="font-bold text-xl flex items-center gap-2">
-                <Calendar className="text-primary" /> {tx("選擇入場日期")}
+              <h3 id="carnival-date-heading" className="font-bold text-xl flex items-center gap-2">
+                <Calendar className="text-primary" aria-hidden="true" /> {tx("選擇入場日期")}
               </h3>
               {isAvailabilityLoading ? (
                 <div className="space-y-4">
                   {[1, 2].map(i => <div key={i} className="h-24 bg-card border rounded-2xl animate-pulse" />)}
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4" role="group" aria-labelledby="carnival-date-heading">
                   {publicDates?.map((day) => {
                     // Capacity is soft — a listed-full date still accepts
                     // purchases, so cards are never disabled. When at/over the
@@ -551,6 +558,7 @@ export default function CarnivalPage() {
                       <button
                         key={day.date}
                         type="button"
+                        aria-pressed={isSelected}
                         onClick={() => setFormData({...formData, eventDate: day.date})}
                         className={cn(
                           "w-full text-left p-5 rounded-2xl border-2 transition-all flex flex-col gap-2 relative overflow-hidden",
@@ -601,34 +609,34 @@ export default function CarnivalPage() {
                 </h2>
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Users size={16} className="text-primary" /> {tx("姓名")} <span className="text-destructive">*</span>
+                    <label htmlFor="f-carnivalpage-1" className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Users size={16} className="text-primary" /> {tx("姓名")} <span className="text-destructive" aria-hidden="true">*</span>
                     </label>
-                    <input
-                      required type="text" value={formData.parentName}
+                    <input id="f-carnivalpage-1"
+                      required type="text" name="name" autoComplete="name" aria-required="true" value={formData.parentName}
                       onChange={e => setFormData({...formData, parentName: e.target.value})}
                       placeholder={tx("例如：王小明")}
                       className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Phone size={16} className="text-primary" /> {tx("聯絡電話")} <span className="text-destructive">*</span>
+                    <label htmlFor="f-carnivalpage-2" className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Phone size={16} className="text-primary" /> {tx("聯絡電話")} <span className="text-destructive" aria-hidden="true">*</span>
                     </label>
-                    <input
-                      required type="tel" value={formData.phone}
+                    <input id="f-carnivalpage-2"
+                      required type="tel" name="tel" autoComplete="tel" inputMode="tel" aria-required="true" value={formData.phone}
                       onChange={e => setFormData({...formData, phone: e.target.value})}
                       placeholder={tx("例如：0912345678")}
                       className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Mail size={16} className="text-primary" /> Email <span className="text-destructive">*</span>
-                      <span className="text-xs text-muted-foreground font-normal">{tx("(將寄送購票確認信與 QR Code)")}</span>
+                    <label htmlFor="f-carnivalpage-3" className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Mail size={16} className="text-primary" /> Email <span className="text-destructive" aria-hidden="true">*</span>
+                      <span id="carnival-email-hint" className="text-xs text-muted-foreground font-normal">{tx("(將寄送購票確認信與 QR Code)")}</span>
                     </label>
-                    <input
-                      required type="email" value={formData.email}
+                    <input id="f-carnivalpage-3"
+                      required type="email" name="email" autoComplete="email" aria-required="true" aria-describedby="carnival-email-hint" value={formData.email}
                       onChange={e => setFormData({...formData, email: e.target.value})}
                       placeholder={tx("例如：name@example.com")}
                       className="w-full px-5 py-4 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-lg"
@@ -637,10 +645,10 @@ export default function CarnivalPage() {
                   <div className="space-y-2">
                     <div className="grid grid-cols-3 gap-3">
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-foreground flex items-center gap-2">
-                          <Ticket size={16} className="text-primary" /> {tx("大人票數")} <span className="text-destructive">*</span>
+                        <label htmlFor="f-carnivalpage-4" className="text-sm font-bold text-foreground flex items-center gap-2">
+                          <Ticket size={16} className="text-primary" /> {tx("大人票數")} <span className="text-destructive" aria-hidden="true">*</span>
                         </label>
-                        <select
+                        <select id="f-carnivalpage-4"
                           value={formData.adultCount}
                           onChange={e => {
                             const adultCount = parseInt(e.target.value);
@@ -660,10 +668,10 @@ export default function CarnivalPage() {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <label htmlFor="f-carnivalpage-5" className="text-sm font-bold text-foreground flex items-center gap-2">
                           <Ticket size={16} className="text-primary" /> {tx("兒童票數")}
                         </label>
-                        <select
+                        <select id="f-carnivalpage-5"
                           value={formData.childCount}
                           onChange={e => {
                             const childCount = parseInt(e.target.value);
@@ -679,10 +687,10 @@ export default function CarnivalPage() {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <label htmlFor="f-carnivalpage-6" className="text-sm font-bold text-foreground flex items-center gap-2">
                           <Ticket size={16} className="text-primary" /> {tx("1 歲以下")}
                         </label>
-                        <select
+                        <select id="f-carnivalpage-6"
                           value={formData.infantCount}
                           onChange={e => { setFormData(f => ({ ...f, infantCount: parseInt(e.target.value) })); clearPromo(); }}
                           data-testid="select-infant-count"
@@ -699,7 +707,7 @@ export default function CarnivalPage() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <label htmlFor="input-promo-code" className="text-sm font-bold text-foreground flex items-center gap-2">
                       <Tag size={16} className="text-primary" /> {tx("優惠碼（選填）")}
                     </label>
                     {appliedPromo ? (
@@ -724,11 +732,15 @@ export default function CarnivalPage() {
                     ) : (
                       <div className="flex gap-2">
                         <input
+                          id="input-promo-code"
                           type="text"
                           value={promoInput}
                           onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(null); }}
                           placeholder={tx("例如：EARLYBIRD")}
                           maxLength={32}
+                          autoComplete="off"
+                          aria-invalid={promoError ? true : undefined}
+                          aria-describedby={promoError ? "promo-error" : undefined}
                           data-testid="input-promo-code"
                           className="flex-1 px-4 py-3 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all uppercase"
                         />
@@ -744,14 +756,14 @@ export default function CarnivalPage() {
                       </div>
                     )}
                     {promoError && (
-                      <p data-testid="promo-error" className="text-sm text-destructive flex items-center gap-1">
-                        <AlertCircle size={14} /> {promoError}
+                      <p id="promo-error" role="alert" data-testid="promo-error" className="text-sm text-destructive flex items-center gap-1">
+                        <AlertCircle size={14} aria-hidden="true" /> {promoError}
                       </p>
                     )}
                   </div>
 
                   {visitorTicketType && (
-                    <div className="rounded-xl bg-primary/5 border-2 border-primary/20 p-4 space-y-1 text-sm" data-testid="price-summary">
+                    <div className="rounded-xl bg-primary/5 border-2 border-primary/20 p-4 space-y-1 text-sm" data-testid="price-summary" aria-live="polite" aria-atomic="true">
                       <div className="flex justify-between text-muted-foreground">
                         <span>{tx("原價小計")}</span>
                         <span>NT$ {baseTotal.toLocaleString()}</span>
@@ -799,7 +811,7 @@ export default function CarnivalPage() {
       <section className="py-14 md:py-20 px-4 bg-muted/30 border-t">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10 md:mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 font-bold text-sm mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-700 font-bold text-sm mb-4">
               <AlertCircle size={16} /> {tx("重要資訊")}
             </div>
             <h2 className="font-display text-3xl md:text-5xl mb-3">{tx("入場須知")}</h2>
@@ -836,7 +848,7 @@ export default function CarnivalPage() {
               {
                 icon: Clock,
                 title: tx("開放時間"),
-                color: "text-amber-600",
+                color: "text-amber-700",
                 bg: "bg-amber-50",
                 items: [
                   tx("7/25（六）10:00 – 19:00"),
@@ -848,7 +860,7 @@ export default function CarnivalPage() {
               {
                 icon: CheckCircle2,
                 title: tx("現場注意事項"),
-                color: "text-green-600",
+                color: "text-green-700",
                 bg: "bg-green-50",
                 items: [
                   tx("親子手作坊依照現場活動報名"),
@@ -868,7 +880,7 @@ export default function CarnivalPage() {
                 <ul className="space-y-2.5 text-sm md:text-base text-muted-foreground">
                   {g.items.map((it, i) => (
                     <li key={i} className="flex gap-2 leading-relaxed">
-                      <span className={cn("shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full", g.bg.replace("/10", "/40").replace("bg-amber-50", "bg-amber-400").replace("bg-green-50", "bg-green-500"))} />
+                      <span className={cn("shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full", g.bg.replace("/10", "/40").replace("bg-amber-50", "bg-amber-400").replace("bg-green-50", "bg-green-700"))} />
                       <span>{it}</span>
                     </li>
                   ))}
@@ -882,13 +894,7 @@ export default function CarnivalPage() {
 
       {/* 圖片放大檢視 Lightbox */}
       {zoomedImage && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 cursor-zoom-out animate-in fade-in duration-200"
-          onClick={() => setZoomedImage(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label={tx("放大檢視圖片")}
-        >
+        <ModalShell label={tx("放大檢視圖片")} onClose={() => setZoomedImage(null)} className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 cursor-zoom-out animate-in fade-in duration-200">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }}
@@ -903,7 +909,7 @@ export default function CarnivalPage() {
             className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
-        </div>
+        </ModalShell>
       )}
     </div>
   );

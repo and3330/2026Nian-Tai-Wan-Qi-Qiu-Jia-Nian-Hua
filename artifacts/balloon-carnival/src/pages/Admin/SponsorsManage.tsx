@@ -1,3 +1,4 @@
+import { ModalShell } from "@/lib/a11y";
 import { tx, useI18n } from "@/lib/i18n";
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2, Trash2, X, ExternalLink } from "lucide-react";
@@ -189,17 +190,17 @@ export default function AdminSponsorsManage() {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-lg truncate">{s.name}</h3>
                         {s.websiteUrl && (
-                          <a href={s.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline flex items-center gap-1 truncate">
+                          <a href={s.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-700 hover:underline flex items-center gap-1 truncate">
                             <ExternalLink size={12} /> {s.websiteUrl}
                           </a>
                         )}
                       </div>
                     </div>
                     <div className="flex gap-2 border-t pt-3 mt-auto">
-                      <button onClick={() => openEdit(s)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
+                      <button onClick={() => openEdit(s)} className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-xl font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
                         <Edit2 size={16} /> {tx("編輯")}
                       </button>
-                      <button onClick={() => handleDelete(s.id)} className="px-4 py-2 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors flex items-center justify-center">
+                      <button aria-label={tx("刪除")} onClick={() => handleDelete(s.id)} className="px-4 py-2 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors flex items-center justify-center">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -212,9 +213,9 @@ export default function AdminSponsorsManage() {
       )}
 
       {isDialogOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <ModalShell label={tx("贊助廠商資料")} onClose={() => setIsDialogOpen(false)} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl relative">
-            <button
+            <button aria-label={tx("關閉")}
               onClick={() => setIsDialogOpen(false)}
               className="absolute top-6 right-6 p-2 bg-muted hover:bg-black/10 rounded-full transition-colors"
             >
@@ -226,8 +227,8 @@ export default function AdminSponsorsManage() {
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-bold mb-2">{tx("廠商名稱")}</label>
-                  <input
+                  <label htmlFor="f-sponsorsmanage-1" className="block text-sm font-bold mb-2">{tx("廠商名稱")}</label>
+                  <input id="f-sponsorsmanage-1"
                     required
                     type="text"
                     value={formData.name}
@@ -238,8 +239,8 @@ export default function AdminSponsorsManage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-2">{tx("贊助等級")}</label>
-                  <select
+                  <label htmlFor="f-sponsorsmanage-2" className="block text-sm font-bold mb-2">{tx("贊助等級")}</label>
+                  <select id="f-sponsorsmanage-2"
                     value={formData.tier}
                     onChange={e => setFormData({ ...formData, tier: e.target.value })}
                     className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary/20 outline-none bg-white"
@@ -251,8 +252,8 @@ export default function AdminSponsorsManage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-2">{tx("Logo 圖片 URL")}</label>
-                  <input
+                  <label htmlFor="f-sponsorsmanage-3" className="block text-sm font-bold mb-2">{tx("Logo 圖片 URL")}</label>
+                  <input id="f-sponsorsmanage-3"
                     required
                     type="url"
                     value={formData.logoUrl}
@@ -263,8 +264,8 @@ export default function AdminSponsorsManage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-2">{tx("官方網站 URL")}</label>
-                  <input
+                  <label htmlFor="f-sponsorsmanage-4" className="block text-sm font-bold mb-2">{tx("官方網站 URL")}</label>
+                  <input id="f-sponsorsmanage-4"
                     required
                     type="url"
                     value={formData.websiteUrl}
@@ -283,7 +284,7 @@ export default function AdminSponsorsManage() {
               </form>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

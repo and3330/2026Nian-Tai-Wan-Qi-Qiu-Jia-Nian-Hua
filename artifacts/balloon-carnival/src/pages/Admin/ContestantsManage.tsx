@@ -1,3 +1,4 @@
+import { ModalShell } from "@/lib/a11y";
 import { tx, useI18n } from "@/lib/i18n";
 import { useState } from "react";
 import { useListContestants, useAdminCreateContestant, useAdminUpdateContestant, useAdminDeleteContestant } from "@workspace/api-client-react";
@@ -95,10 +96,10 @@ export default function AdminContestantsManage() {
               <h3 className="font-bold text-xl mb-2">{c.name}</h3>
               <p className="text-muted-foreground text-sm line-clamp-3 mb-4 flex-1">{c.description}</p>
               <div className="flex gap-2 border-t pt-4 mt-auto">
-                <button onClick={() => openEdit(c)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
+                <button onClick={() => openEdit(c)} className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-xl font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-1">
                   <Edit2 size={16} /> {tx("編輯")}
                 </button>
-                <button onClick={() => handleDelete(c.id)} className="px-4 py-2 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors flex items-center justify-center">
+                <button aria-label={tx("刪除")} onClick={() => handleDelete(c.id)} className="px-4 py-2 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors flex items-center justify-center">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -108,9 +109,9 @@ export default function AdminContestantsManage() {
       </div>
 
       {isDialogOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <ModalShell label={editingId ? tx("編輯選手") : tx("新增選手")} onClose={() => setIsDialogOpen(false)} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl relative">
-            <button 
+            <button aria-label={tx("關閉")}
               onClick={() => setIsDialogOpen(false)}
               className="absolute top-6 right-6 p-2 bg-muted hover:bg-black/10 rounded-full transition-colors"
             >
@@ -122,8 +123,8 @@ export default function AdminContestantsManage() {
               
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-bold mb-2">{tx("姓名 / 暱稱")}</label>
-                  <input
+                  <label htmlFor="f-contestantsmanage-1" className="block text-sm font-bold mb-2">{tx("姓名 / 暱稱")}</label>
+                  <input id="f-contestantsmanage-1"
                     required
                     type="text"
                     value={formData.name}
@@ -134,8 +135,8 @@ export default function AdminContestantsManage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold mb-2">{tx("個人照片 URL")}</label>
-                  <input
+                  <label htmlFor="f-contestantsmanage-2" className="block text-sm font-bold mb-2">{tx("個人照片 URL")}</label>
+                  <input id="f-contestantsmanage-2"
                     type="url"
                     value={formData.imageUrl}
                     onChange={e => setFormData({...formData, imageUrl: e.target.value})}
@@ -145,8 +146,8 @@ export default function AdminContestantsManage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold mb-2">{tx("自我介紹 / 經歷")}</label>
-                  <textarea
+                  <label htmlFor="f-contestantsmanage-3" className="block text-sm font-bold mb-2">{tx("自我介紹 / 經歷")}</label>
+                  <textarea id="f-contestantsmanage-3"
                     required
                     value={formData.description}
                     onChange={e => setFormData({...formData, description: e.target.value})}
@@ -164,7 +165,7 @@ export default function AdminContestantsManage() {
               </form>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

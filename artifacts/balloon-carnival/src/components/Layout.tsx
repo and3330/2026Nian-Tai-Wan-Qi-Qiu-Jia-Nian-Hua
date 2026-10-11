@@ -4,7 +4,8 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { motion, AnimatePresence } from "framer-motion";
 import { Ticket, Tent, MapPin, Info, Crown, LogOut, LayoutDashboard, Menu, X, Shield, Calendar, ArrowRight } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { AutoUpdateToggle, LiveAnnouncer } from "@/lib/a11y";
 import { cn } from "@/lib/utils";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { useI18n } from "@/lib/i18n";
@@ -21,9 +22,25 @@ export function Layout({ children }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   useI18n();
 
+  const menuBtnRef = useRef<HTMLButtonElement | null>(null);
+  const mobileNavRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location]);
+
+  // Disclosure-style mobile menu: Esc closes and returns focus to the toggle.
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMobileMenuOpen(false);
+        menuBtnRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isMobileMenuOpen]);
 
   const navItems = [
     { href: "/", label: tx("首頁"), icon: Tent },
@@ -33,29 +50,31 @@ export function Layout({ children }: LayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden">
-      <div className="h-2 w-full carnival-gradient absolute top-0 left-0 z-50"></div>
-      <header className="sticky top-0 z-40 w-full glass-card border-b border-white/50 px-4 sm:px-6 lg:px-8 mt-2">
-        <div className="max-w-7xl mx-auto h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-11 h-11 rounded-xl overflow-hidden bg-white shadow-md group-hover:scale-110 transition-transform">
+    <div className="min-h-[100dvh] flex flex-col relative overflow-x-clip">
+      <a href="#main-content" className="skip-link" data-testid="link-skip">{tx("跳到主要內容")}</a>
+      <LiveAnnouncer />
+      <div className="h-2 w-full carnival-gradient absolute top-0 left-0 z-50" aria-hidden="true"></div>
+      <header className="sticky top-0 z-40 w-full glass-card border-b border-white/50 px-3 sm:px-6 lg:px-8 mt-2">
+        <div className="max-w-7xl mx-auto min-h-20 py-2 flex items-center justify-between gap-2">
+          <Link href="/" className="flex items-center gap-3 group min-w-0" aria-label={tx("2026 臺灣氣球嘉年華：回到首頁")}>
+            <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-xl overflow-hidden bg-white shadow-md group-hover:scale-110 transition-transform">
               <img
                 src={`${import.meta.env.BASE_URL}images/logo.png`}
-                alt={tx("2026 臺灣氣球嘉年華 Logo")}
+                alt=""
                 className="w-full h-full object-cover"
               />
             </div>
-            <div>
-              <h1 className="font-display text-xl sm:text-2xl text-foreground group-hover:text-primary transition-colors">
+            <div className="min-w-0">
+              <span className="block font-display font-black tracking-tight leading-tight text-base sm:text-2xl break-words text-foreground group-hover:text-primary transition-colors">
                 {tx("2026 臺灣氣球嘉年華")}
-              </h1>
+              </span>
               <p className="text-xs text-muted-foreground font-medium tracking-wider uppercase hidden sm:block">
                 Taiwan Balloon Carnival
               </p>
             </div>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1" aria-label={tx("主選單")}>
             {navItems.map((item) => {
               const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
               const isPrimary = item.href === "/carnival";
@@ -63,6 +82,7 @@ export function Layout({ children }: LayoutProps) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "px-4 py-2.5 rounded-full font-medium text-sm flex items-center gap-2 transition-all",
                     isPrimary
@@ -75,7 +95,7 @@ export function Layout({ children }: LayoutProps) {
                       : "text-muted-foreground hover:bg-black/5 hover:text-foreground"
                   )}
                 >
-                  <item.icon size={16} className={cn(isActive && !isPrimary && "fill-primary/20")} />
+                  <item.icon size={16} aria-hidden="true" className={cn(isActive && !isPrimary && "fill-primary/20")} />
                   {item.label}
                 </Link>
               );
@@ -83,9 +103,10 @@ export function Layout({ children }: LayoutProps) {
 
             {isAuthenticated && (
               <>
-                <div className="w-px h-8 bg-border mx-2"></div>
+                <div className="w-px h-8 bg-border mx-2" aria-hidden="true"></div>
                 <Link
                   href="/admin"
+                  aria-current={location.startsWith("/admin") ? "page" : undefined}
                   className={cn(
                     "px-4 py-2.5 rounded-full font-medium text-sm flex items-center gap-2 transition-all",
                     location.startsWith("/admin")
@@ -96,7 +117,7 @@ export function Layout({ children }: LayoutProps) {
                   <LayoutDashboard size={16} />
                   {tx("管理後臺")}
                 </Link>
-                <button
+                <button aria-label={tx("登出")}
                   onClick={() => logout()}
                   className="p-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors ml-1"
                   title={tx("登出")}
@@ -109,7 +130,7 @@ export function Layout({ children }: LayoutProps) {
             {!isLoading && !isAuthenticated && (
               <Link
                 href="/admin/login"
-                className="ml-1 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-black/5 rounded-full transition-all flex items-center gap-1.5 font-medium"
+                className="ml-1 px-3 py-2 min-h-6 text-xs text-muted-foreground hover:text-foreground hover:bg-black/5 rounded-full transition-all flex items-center gap-1.5 font-medium"
               >
                 <Shield size={14} />
                 {tx("管理員")}
@@ -118,10 +139,13 @@ export function Layout({ children }: LayoutProps) {
             <LanguageSwitch className="ml-2" testId="switch-language-desktop" />
           </nav>
 
-          <div className="lg:hidden flex items-center gap-2">
+          <div className="lg:hidden flex items-center gap-1 sm:gap-2 shrink-0">
           <LanguageSwitch compact testId="switch-language-mobile" />
           <button
-            className="p-2 text-foreground"
+            ref={menuBtnRef}
+            type="button"
+            className="p-2 text-foreground rounded-lg min-w-11 min-h-11 flex items-center justify-center"
+            aria-controls="mobile-nav"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label={isMobileMenuOpen ? tx("關閉選單") : tx("開啟選單")}
             aria-expanded={isMobileMenuOpen}
@@ -140,7 +164,7 @@ export function Layout({ children }: LayoutProps) {
             exit={{ opacity: 0, height: 0 }}
             className="lg:hidden glass-card border-b z-30"
           >
-            <div className="px-4 py-6 flex flex-col gap-2">
+            <nav id="mobile-nav" ref={mobileNavRef} aria-label={tx("主選單")} className="px-4 py-6 flex flex-col gap-2">
               {navItems.map((item) => {
                 const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
                 const isPrimary = item.href === "/carnival";
@@ -148,6 +172,7 @@ export function Layout({ children }: LayoutProps) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "p-4 rounded-xl font-medium flex items-center gap-3 text-lg",
                       isPrimary
@@ -197,11 +222,11 @@ export function Layout({ children }: LayoutProps) {
                   </Link>
                 )
               )}
-            </div>
+            </nav>
           </motion.div>
         )}
       </AnimatePresence>
-      <main className={cn("flex-1", !location.startsWith("/admin") && !location.startsWith("/carnival") && "pb-20 lg:pb-0")}>
+      <main id="main-content" tabIndex={-1} className={cn("flex-1 focus:outline-none", !location.startsWith("/admin") && !location.startsWith("/carnival") && "pb-20 lg:pb-0")}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location}
@@ -217,14 +242,14 @@ export function Layout({ children }: LayoutProps) {
       </main>
       {/* 手機版底部固定導航列 — 購票頁與後臺自動隱藏 */}
       {!location.startsWith("/admin") && !location.startsWith("/carnival") && (
-        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-border shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]">
+        <div role="complementary" aria-label={tx("快速購票")} className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-border shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]">
           <div className="flex items-center justify-between gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Calendar size={20} className="text-primary" />
+                <Calendar size={20} className="text-primary" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide leading-tight">
+                <div className="text-xs text-muted-foreground font-bold uppercase tracking-wide leading-tight">
                   {isTor ? tx("戰鬥陀螺賽") : tx("公開場次")}
                 </div>
                 <div className="font-bold text-foreground text-sm leading-tight">
@@ -253,34 +278,37 @@ export function Layout({ children }: LayoutProps) {
         </div>
       )}
 
-      <footer className="bg-foreground text-white/70 py-12 mt-20 relative overflow-hidden">
+      <footer className="bg-foreground text-white/85 py-12 mt-20 relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-5 pointer-events-none"
           style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/carnival-pattern.png)`, backgroundSize: '200px' }}
+          aria-hidden="true"
         />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
           <div>
             <h2 className="font-display text-2xl text-white mb-4">{tx("2026 臺灣氣球嘉年華")}</h2>
-            <p className="mb-2 flex items-center gap-2"><Calendar size={16} className="text-primary" /> {tx("2026 年 7 月 25 日 - 7 月 26 日")}</p>
-            <p className="flex items-center gap-2"><MapPin size={16} className="text-secondary" /> {tx("臺北瓶蓋工廠 (台北市南港區)")}</p>
+            <p className="mb-2 flex items-center gap-2"><Calendar size={16} className="text-white" aria-hidden="true" /> {tx("2026 年 7 月 25 日 - 7 月 26 日")}</p>
+            <p className="flex items-center gap-2"><MapPin size={16} className="text-white" aria-hidden="true" /> {tx("臺北瓶蓋工廠 (台北市南港區)")}</p>
           </div>
           <div>
-            <h3 className="font-bold text-white mb-4">{tx("活動連結")}</h3>
+            <h2 className="font-bold text-lg text-white mb-4">{tx("活動連結")}</h2>
             <ul className="space-y-2">
-              <li><Link href="/carnival" className="hover:text-primary transition-colors">{tx("嘉年華購票")}</Link></li>
-              <li><Link href="/news" className="hover:text-primary transition-colors">{tx("大會公告")}</Link></li>
-              <li><Link href="/sponsors" className="hover:text-primary transition-colors">{tx("贊助夥伴")}</Link></li>
-              <li><Link href="/lookup" className="hover:text-primary transition-colors">{tx("查詢我的訂單")}</Link></li>
+              <li><Link href="/carnival" className="hover:text-white underline-offset-4 hover:underline">{tx("嘉年華購票")}</Link></li>
+              <li><Link href="/news" className="hover:text-white underline-offset-4 hover:underline">{tx("大會公告")}</Link></li>
+              <li><Link href="/sponsors" className="hover:text-white underline-offset-4 hover:underline">{tx("贊助夥伴")}</Link></li>
+              <li><Link href="/lookup" className="hover:text-white underline-offset-4 hover:underline">{tx("查詢我的訂單")}</Link></li>
+              <li><Link href="/accessibility" className="hover:text-white underline-offset-4 hover:underline" data-testid="link-accessibility">{tx("無障礙說明")}</Link></li>
             </ul>
           </div>
           <div>
-            <h3 className="font-bold text-white mb-4">{tx("聯絡我們")}</h3>
+            <h2 className="font-bold text-lg text-white mb-4">{tx("聯絡我們")}</h2>
             <p className="mb-2">{tx("服務專線：02-23680623 分機4")}</p>
             <p>{tx("Email：service@cms-edu.com")}</p>
+            <AutoUpdateToggle className="mt-4 text-white" />
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-white/10 relative z-10">
-          <h3 className="font-bold text-white mb-4">{tx("公司資料")}</h3>
+          <h2 className="font-bold text-lg text-white mb-4">{tx("公司資料")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
             <p>{tx("公司名稱：摸氣球企業有限公司")}</p>
             <p>{tx("統一編號：53451453")}</p>

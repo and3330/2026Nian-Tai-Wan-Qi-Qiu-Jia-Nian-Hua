@@ -26,8 +26,7 @@ export function LineChatBubble() {
 
   return (
     <div
-      className="fixed left-4 z-40 flex flex-col items-start gap-2"
-      style={{ bottom: "max(1rem, calc(env(safe-area-inset-bottom) + 5.5rem))" }}
+      className="relative mx-4 my-4 self-start flex flex-col items-start gap-2"
       data-testid="line-chat-bubble"
     >
       {expanded && (
@@ -57,7 +56,7 @@ export function LineChatBubble() {
         data-testid="line-bubble-link"
       >
         <MessageCircle className="w-7 h-7 text-white" fill="white" stroke="#06C755" strokeWidth={2.2} />
-        <span className="absolute -top-1 -right-1 bg-white text-[#06C755] text-[10px] font-extrabold px-1.5 py-0.5 rounded-full shadow border border-[#06C755]/20">
+        <span className="absolute -top-1 -right-1 bg-white text-[#047A35] text-[11px] font-extrabold px-1.5 py-0.5 rounded-full shadow border border-[#06C755]/20">
           LINE
         </span>
       </a>

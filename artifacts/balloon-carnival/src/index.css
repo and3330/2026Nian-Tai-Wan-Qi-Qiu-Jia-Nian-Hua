@@ -37,24 +37,27 @@
   --background: 45 30% 98%;      /* Soft warm white */
   --foreground: 220 40% 15%;     /* Deep navy for text */
   
-  --primary: 10 85% 58%;         /* Vibrant Coral Red */
+  /* Coral / sky tuned for >=4.5:1 against white text and the warm
+     background (WCAG 1.4.3) while keeping the carnival hues. */
+  --primary: 8 78% 45%;          /* Coral Red (AA text) */
   --primary-foreground: 0 0% 100%;
   
-  --secondary: 195 85% 48%;      /* Sky Blue */
+  --secondary: 198 90% 31%;      /* Sky Blue (AA text) */
   --secondary-foreground: 0 0% 100%;
   
   --muted: 45 20% 90%;
-  --muted-foreground: 220 20% 40%;
+  --muted-foreground: 220 22% 34%;
   
   --accent: 42 100% 52%;         /* Sunny Yellow */
   --accent-foreground: 220 40% 15%;
   
-  --destructive: 0 84% 60%;
+  --destructive: 0 74% 42%;
   --destructive-foreground: 0 0% 100%;
   
   --border: 45 20% 85%;
-  --input: 45 20% 85%;
-  --ring: 10 85% 58%;
+  /* Form-control borders need 3:1 non-text contrast (WCAG 1.4.11). */
+  --input: 220 12% 52%;
+  --ring: 220 70% 30%;
   
   --card: 0 0% 100%;
   --card-foreground: 220 40% 15%;
@@ -95,6 +98,66 @@
   .hover-lift {
     @apply transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lg;
   }
+}
+
+/* ---------- Accessibility foundations ---------- */
+@layer base {
+  /* Always-visible focus indicator; two-tone so it shows on light, dark and
+     gradient surfaces. Not obscured: scroll-margin keeps focused elements
+     clear of the sticky header and mobile bottom bar (WCAG 2.4.11). */
+  :focus-visible {
+    outline: 3px solid hsl(var(--ring));
+    outline-offset: 2px;
+    box-shadow: 0 0 0 5px hsl(0 0% 100% / 0.9);
+  }
+  html {
+    scroll-padding-top: 6.5rem;
+    scroll-padding-bottom: 6rem;
+  }
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    border-color: hsl(var(--input));
+  }
+  [aria-invalid="true"] {
+    border-color: hsl(var(--destructive)) !important;
+  }
+  /* Allow user text-spacing overrides without clipping (WCAG 1.4.12). */
+  p, li, dd, td, th, label, summary {
+    overflow-wrap: anywhere;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -100px;
+  z-index: 100;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  font-weight: 700;
+}
+.skip-link:focus {
+  top: 0.75rem;
+}
+
+/* Keyboard-scrollable data tables: the wrapper scrolls, not the page. */
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.table-scroll:focus-visible {
+  outline-offset: -3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .hover-lift:hover { transform: none !important; }
 }
 
 @keyframes countdown-pop {

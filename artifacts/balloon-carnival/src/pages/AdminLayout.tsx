@@ -1,6 +1,7 @@
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { tx, useI18n } from "@/lib/i18n";
 import { ReactNode, useState, useEffect, useRef } from "react";
+import { AutoUpdateToggle } from "@/lib/a11y";
 import { Link, useLocation, Redirect } from "wouter";
 import { useAuth, type AdminRole } from "@workspace/replit-auth-web";
 import { LayoutDashboard, Newspaper, Users, Handshake, ArrowLeft, Share2, FileText, Settings, ScanLine, Mail, ShieldCheck, LogOut, Tag, Undo2, Menu, X, ShoppingCart, Trophy, ReceiptText, Store } from "lucide-react";
@@ -63,7 +64,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     const prevFocus = document.activeElement as HTMLElement | null;
     drawerCloseBtnRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDrawerOpen(false);
+      if (e.key === "Escape") { setDrawerOpen(false); return; }
+      // Keep Tab focus inside the open drawer (modal).
+      if (e.key === "Tab") {
+        const root = document.getElementById("admin-mobile-drawer");
+        if (!root) return;
+        const items = Array.from(root.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])'));
+        if (items.length === 0) return;
+        const first = items[0], last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => {
@@ -73,7 +84,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     };
   }, [drawerOpen]);
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center">{tx("載入中...")}</div>;
+  if (isLoading) return <div className="min-h-[60vh] flex items-center justify-center" role="status">{tx("載入中...")}</div>;
   if (!isAuthenticated) return <Redirect to="/admin/login" />;
   // Vendor accounts have no dashboard access — send them straight to POS.
   if (role === "vendor" && location === "/admin") return <Redirect to="/admin/pos" />;
@@ -83,7 +94,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const navs = ALL_NAVS().filter((n) => hasRole(...n.roles));
   const currentNav = ALL_NAVS().find(n => n.exact ? location === n.href : location.startsWith(n.href));
 
-  const sidebarContent = (
+  const sidebarContent = (idPrefix: string) => (
     <>
       <div className="mb-6">
         <h2 className="font-display text-xl">{tx("管理後臺")}</h2>
@@ -99,7 +110,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <nav className="space-y-1.5">
+      <nav className="space-y-1.5" aria-label={tx("管理後臺選單")} id={`${idPrefix}-nav`}>
         {navs.map(nav => {
           const isActive = nav.exact ? location === nav.href : location.startsWith(nav.href);
           return (
@@ -107,12 +118,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               key={nav.href}
               href={nav.href}
               data-testid={`nav-${nav.href.replace(/\//g, "-")}`}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all",
-                isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <nav.icon size={20} />
+              <nav.icon size={20} aria-hidden="true" />
               {nav.label}
             </Link>
           )
@@ -121,15 +133,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       <div className="mt-8 pt-6 border-t space-y-2">
         <LanguageSwitch className="mb-2" testId="switch-language-admin" />
+        <AutoUpdateToggle className="mb-2 text-muted-foreground" />
         <button
           type="button"
           onClick={() => logout()}
           data-testid="button-logout"
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-medium px-2"
+          className="flex items-center gap-2 min-h-8 text-sm text-muted-foreground hover:text-foreground font-medium px-2"
         >
           <LogOut size={16} /> {tx("登出")}
         </button>
-        <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-medium px-2">
+        <Link href="/" className="flex items-center gap-2 min-h-8 text-sm text-muted-foreground hover:text-foreground font-medium px-2">
           <ArrowLeft size={16} /> {tx("返回前台網站")}
         </Link>
       </div>
@@ -139,7 +152,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col md:flex-row min-h-[calc(100vh-80px)] bg-muted/20">
       {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-30 flex items-center justify-between gap-3 bg-white border-b px-4 py-3">
+      <div className="md:hidden sticky top-0 z-30 flex items-center justify-between gap-3 bg-white border-b px-4 py-3">
         <button
           ref={menuBtnRef}
           type="button"
@@ -150,11 +163,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           data-testid="button-mobile-menu"
           className="p-2 -ml-2 rounded-lg hover:bg-muted active:bg-muted/70"
         >
-          <Menu size={22} />
+          <Menu size={22} aria-hidden="true" />
         </button>
         <div className="flex-1 min-w-0 text-center">
           <div className="font-bold text-sm truncate">{currentNav?.label ?? tx("管理後臺")}</div>
-          {role && <div className="text-[10px] text-muted-foreground">{ROLE_LABELS()[role]} ・ {user?.displayName || user?.username}</div>}
+          {role && <div className="text-xs text-muted-foreground truncate">{ROLE_LABELS()[role]} ・ {user?.displayName || user?.username}</div>}
         </div>
         <button
           type="button"
@@ -163,9 +176,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           data-testid="button-mobile-logout"
           className="p-2 -mr-2 rounded-lg hover:bg-muted active:bg-muted/70 text-muted-foreground"
         >
-          <LogOut size={20} />
+          <LogOut size={20} aria-hidden="true" />
         </button>
-      </header>
+      </div>
 
       {/* Mobile drawer + backdrop */}
       {drawerOpen && (
@@ -177,11 +190,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       )}
       <aside
         id="admin-mobile-drawer"
-        role="dialog"
-        aria-modal="true"
+        role={drawerOpen ? "dialog" : undefined}
+        aria-modal={drawerOpen ? true : undefined}
         aria-label={tx("管理後臺選單")}
-        aria-hidden={!drawerOpen}
-        inert={!drawerOpen}
+        hidden={!drawerOpen}
         className={cn(
           "md:hidden fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-white p-5 overflow-y-auto shadow-2xl transition-transform duration-200",
           drawerOpen ? "translate-x-0" : "-translate-x-full",
@@ -194,19 +206,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           aria-label={tx("關閉選單")}
           className="absolute top-3 right-3 p-2 rounded-lg hover:bg-muted"
         >
-          <X size={20} />
+          <X size={20} aria-hidden="true" />
         </button>
-        {sidebarContent}
+        {sidebarContent("admin-drawer")}
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:block w-64 border-r bg-white p-6 shrink-0">
-        {sidebarContent}
+      <aside className="hidden md:block w-64 border-r bg-white p-6 shrink-0" aria-label={tx("管理後臺選單")}>
+        {sidebarContent("admin-sidebar")}
       </aside>
 
-      <main className="flex-1 p-4 md:p-10 max-w-5xl mx-auto w-full">
+      {/* Page content; the surrounding <main id="main-content"> comes from Layout. */}
+      <div className="flex-1 min-w-0 p-4 md:p-10 max-w-5xl mx-auto w-full">
         {children}
-      </main>
+      </div>
     </div>
   );
 }

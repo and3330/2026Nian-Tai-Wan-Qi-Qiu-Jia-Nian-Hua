@@ -510,7 +510,7 @@ export default function InvoicesManage() {
           {tx("目前沒有符合條件的發票紀錄。")}
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border shadow-sm overflow-x-auto">
+        <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="bg-white rounded-3xl border shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-muted-foreground">
@@ -596,7 +596,7 @@ export default function InvoicesManage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-green-600 whitespace-nowrap">
+                    <td className="px-4 py-3 text-right font-medium text-green-700 whitespace-nowrap">
                       {formatCurrency(inv.amount)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -605,7 +605,7 @@ export default function InvoicesManage() {
                     <td className="px-4 py-3 whitespace-nowrap">
                       {statusBadge(inv.status)}
                       {inv.status === "failed" && inv.errorMessage && (
-                        <div className="text-[11px] text-red-500 mt-1 max-w-[180px]">
+                        <div className="text-[11px] text-red-700 mt-1 max-w-[180px]">
                           {inv.errorMessage}
                         </div>
                       )}
@@ -642,7 +642,7 @@ export default function InvoicesManage() {
                               <button
                                 onClick={() => handleVoid(inv)}
                                 disabled={busy || batchBusy}
-                                className="inline-flex items-center gap-1 border border-red-400 text-red-600 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
+                                className="inline-flex items-center gap-1 border border-red-400 text-red-700 px-3 py-1.5 rounded-full text-xs font-semibold hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
                               >
                                 <XCircle size={13} />
                                 {tx("作廢")}
@@ -688,9 +688,9 @@ function SummaryCard({
 }) {
   useI18n();
   const toneClasses: Record<string, string> = {
-    green: "bg-green-100 text-green-600",
-    amber: "bg-amber-100 text-amber-600",
-    red: "bg-red-100 text-red-600",
+    green: "bg-green-100 text-green-700",
+    amber: "bg-amber-100 text-amber-700",
+    red: "bg-red-100 text-red-700",
     slate: "bg-slate-100 text-slate-600",
   };
   return (

@@ -1,3 +1,4 @@
+import { ModalShell } from "@/lib/a11y";
 import { tx, getLocale, useI18n, txApi } from "@/lib/i18n";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Facebook, Instagram, MessageCircle, Send, Clock, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, CalendarDays, List, Eye, Upload, X, Link, Image } from "lucide-react";
@@ -19,16 +20,16 @@ interface SocialPost {
 }
 
 const PLATFORM_ICONS: Record<string, { icon: typeof Facebook; color: string; label: string }> = {
-  facebook: { icon: Facebook, color: "text-blue-600", label: "Facebook" },
+  facebook: { icon: Facebook, color: "text-blue-700", label: "Facebook" },
   instagram: { icon: Instagram, color: "text-pink-600", label: "Instagram" },
   threads: { icon: MessageCircle, color: "text-gray-800", label: "Threads" },
 };
 
 const STATUS_LABELS = (): Record<string, { label: string; color: string; bg: string }> => ({
   draft: { label: tx("草稿"), color: "text-gray-600", bg: "bg-gray-100" },
-  scheduled: { label: tx("已排程"), color: "text-blue-600", bg: "bg-blue-50" },
-  published: { label: tx("已發布"), color: "text-green-600", bg: "bg-green-50" },
-  failed: { label: tx("發布失敗"), color: "text-red-600", bg: "bg-red-50" },
+  scheduled: { label: tx("已排程"), color: "text-blue-700", bg: "bg-blue-50" },
+  published: { label: tx("已發布"), color: "text-green-700", bg: "bg-green-50" },
+  failed: { label: tx("發布失敗"), color: "text-red-700", bg: "bg-red-50" },
 });
 
 export default function SocialPostsManage() {
@@ -222,13 +223,13 @@ export default function SocialPostsManage() {
       {view === "calendar" && (
         <div className="bg-white rounded-2xl border p-6">
           <div className="flex items-center justify-between mb-6">
-            <button onClick={() => setCalMonth(new Date(calInfo.year, calInfo.month - 1))} className="p-2 hover:bg-muted rounded-lg">
+            <button aria-label={tx("上個月")} onClick={() => setCalMonth(new Date(calInfo.year, calInfo.month - 1))} className="p-2 hover:bg-muted rounded-lg">
               <ChevronLeft size={20} />
             </button>
             <h3 className="text-lg font-bold">
               {calMonth.toLocaleDateString(getLocale(), { year: "numeric", month: "long" })}
             </h3>
-            <button onClick={() => setCalMonth(new Date(calInfo.year, calInfo.month + 1))} className="p-2 hover:bg-muted rounded-lg">
+            <button aria-label={tx("下個月")} onClick={() => setCalMonth(new Date(calInfo.year, calInfo.month + 1))} className="p-2 hover:bg-muted rounded-lg">
               <ChevronRight size={20} />
             </button>
           </div>
@@ -267,7 +268,7 @@ export default function SocialPostsManage() {
         <div className="space-y-3">
           {posts.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border">
-              <CalendarDays size={48} className="mx-auto text-muted-foreground/30 mb-4" />
+              <CalendarDays size={48} className="mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">{tx("尚無貼文，點擊「新增貼文」開始建立")}</p>
             </div>
           ) : posts.map(post => {
@@ -291,20 +292,20 @@ export default function SocialPostsManage() {
                     </div>
                     <p className="text-sm whitespace-pre-wrap line-clamp-3">{post.content}</p>
                     {post.hashtags && <p className="text-xs text-primary mt-1">{post.hashtags}</p>}
-                    {post.errorMessage && <p className="text-xs text-red-500 mt-2">{post.errorMessage}</p>}
+                    {post.errorMessage && <p className="text-xs text-red-700 mt-2">{post.errorMessage}</p>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {(post.status === "draft" || post.status === "scheduled") && (
-                      <button onClick={() => handlePublish(post.id)} className="p-2 rounded-lg hover:bg-green-50 text-green-600 transition-colors" title={tx("立即發布")}>
+                      <button aria-label={tx("立即發布")} onClick={() => handlePublish(post.id)} className="p-2 rounded-lg hover:bg-green-50 text-green-700 transition-colors" title={tx("立即發布")}>
                         <Send size={16} />
                       </button>
                     )}
                     {post.status !== "published" && (
-                      <button onClick={() => openEdit(post)} className="p-2 rounded-lg hover:bg-muted transition-colors" title={tx("編輯")}>
+                      <button aria-label={tx("編輯")} onClick={() => openEdit(post)} className="p-2 rounded-lg hover:bg-muted transition-colors" title={tx("編輯")}>
                         <Edit2 size={16} />
                       </button>
                     )}
-                    <button onClick={() => handleDelete(post.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title={tx("刪除")}>
+                    <button aria-label={tx("刪除")} onClick={() => handleDelete(post.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-700 transition-colors" title={tx("刪除")}>
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -316,7 +317,7 @@ export default function SocialPostsManage() {
       )}
 
       {showEditor && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setShowEditor(false); resetForm(); }}>
+        <ModalShell label={editingPost ? tx("編輯貼文") : tx("新增貼文")} onClose={() => { setShowEditor(false); resetForm(); }} className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b">
               <h2 className="text-xl font-bold">{editingPost ? tx("編輯貼文") : tx("新增貼文")}</h2>
@@ -324,10 +325,10 @@ export default function SocialPostsManage() {
 
             <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-medium mb-2">{tx("發布平台")}</label>
-                <div className="flex gap-2">
+                <p id="sp-platform-label" className="block text-sm font-medium mb-2">{tx("發布平台")}</p>
+                <div className="flex flex-wrap gap-2" role="group" aria-labelledby="sp-platform-label">
                   {Object.entries(PLATFORM_ICONS).map(([key, info]) => (
-                    <button key={key} onClick={() => togglePlatform(key)} className={cn(
+                    <button key={key} type="button" aria-pressed={platforms.includes(key)} onClick={() => togglePlatform(key)} className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all",
                       platforms.includes(key) ? "border-primary bg-primary/5 text-primary" : "border-muted text-muted-foreground hover:border-foreground/20"
                     )}>
@@ -338,8 +339,8 @@ export default function SocialPostsManage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">{tx("貼文內容")}</label>
-                <textarea
+                <label htmlFor="f-socialpostsmanage-1" className="block text-sm font-medium mb-2">{tx("貼文內容")}</label>
+                <textarea id="f-socialpostsmanage-1"
                   value={content}
                   onChange={e => setContent(e.target.value)}
                   rows={6}
@@ -350,8 +351,8 @@ export default function SocialPostsManage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">{tx("Hashtags（逗號分隔）")}</label>
-                <input
+                <label htmlFor="f-socialpostsmanage-2" className="block text-sm font-medium mb-2">{tx("Hashtags（逗號分隔）")}</label>
+                <input id="f-socialpostsmanage-2"
                   value={hashtags}
                   onChange={e => setHashtags(e.target.value)}
                   className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
@@ -361,10 +362,10 @@ export default function SocialPostsManage() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium">
+                  <p className="block text-sm font-medium">
                     {tx("圖片")}
-                    {platforms.includes("instagram") && <span className="text-red-500 ml-1">{tx("（Instagram 必填）")}</span>}
-                  </label>
+                    {platforms.includes("instagram") && <span className="text-red-700 ml-1">{tx("（Instagram 必填）")}</span>}
+                  </p>
                   <div className="flex bg-muted rounded-lg p-0.5">
                     <button type="button" onClick={() => setImageMode("upload")} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1", imageMode === "upload" ? "bg-white shadow-sm" : "text-muted-foreground")}>
                       <Upload size={12} /> {tx("上傳")}
@@ -378,7 +379,7 @@ export default function SocialPostsManage() {
                 {imageUrl ? (
                   <div className="relative inline-block">
                     <img src={imageUrl} alt="preview" className="w-40 h-40 object-cover rounded-xl border" onError={e => (e.currentTarget.style.display = "none")} />
-                    <button type="button" onClick={() => setImageUrl("")} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md">
+                    <button aria-label={tx("移除圖片")} type="button" onClick={() => setImageUrl("")} className="absolute -top-2 -right-2 bg-red-700 text-white rounded-full p-1 hover:bg-red-700 transition-colors shadow-md">
                       <X size={14} />
                     </button>
                   </div>
@@ -388,6 +389,10 @@ export default function SocialPostsManage() {
                     onDragLeave={() => setDragOver(false)}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={tx("上傳圖片")}
+                      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
                     className={cn(
                       "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all",
                       dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/50",
@@ -405,12 +410,12 @@ export default function SocialPostsManage() {
                       </div>
                     ) : (
                       <>
-                        <Image size={32} className="mx-auto text-muted-foreground/40 mb-2" />
+                        <Image size={32} className="mx-auto text-muted-foreground mb-2" />
                         <p className="text-sm text-muted-foreground">{tx("拖放圖片或點擊選擇")}</p>
-                        <p className="text-xs text-muted-foreground/60 mt-1">{tx("支援 JPG、PNG、WebP，最大 10MB")}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{tx("支援 JPG、PNG、WebP，最大 10MB")}</p>
                       </>
                     )}
-                    {uploadError && <p className="text-xs text-red-500 mt-2">{txApi(uploadError.message)}</p>}
+                    {uploadError && <p className="text-xs text-red-700 mt-2">{txApi(uploadError.message)}</p>}
                   </div>
                 ) : (
                   <input
@@ -423,8 +428,8 @@ export default function SocialPostsManage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">{tx("排程時間（留空為草稿）")}</label>
-                <input
+                <label htmlFor="f-socialpostsmanage-3" className="block text-sm font-medium mb-2">{tx("排程時間（留空為草稿）")}</label>
+                <input id="f-socialpostsmanage-3"
                   type="datetime-local"
                   value={scheduledAt}
                   onChange={e => setScheduledAt(e.target.value)}
@@ -466,7 +471,7 @@ export default function SocialPostsManage() {
               </div>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
     </div>
   );

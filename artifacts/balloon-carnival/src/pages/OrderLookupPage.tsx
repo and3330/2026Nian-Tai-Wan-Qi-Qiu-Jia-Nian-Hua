@@ -1,3 +1,4 @@
+import { ModalShell } from "@/lib/a11y";
 import { tx, getLocale, useI18n, txApi } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
@@ -45,13 +46,47 @@ export default function OrderLookupPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const lookup = useLookupOrder();
+  type FieldKey = "name" | "phone" | "email";
+  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
+  const validateField = (k: FieldKey, v: string): string | undefined => {
+    const t = v.trim();
+    if (!t) return k === "name" ? tx("請輸入姓名") : k === "phone" ? tx("請輸入手機號碼") : tx("請輸入 Email");
+    if (k === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return tx("Email 格式不正確，例如：name@example.com");
+    return undefined;
+  };
+  const revalidate = (k: FieldKey, v: string) => {
+    // Only update a field that already shows an error, so typing never nags early.
+    setErrors((prev) => (prev[k] ? { ...prev, [k]: validateField(k, v) } : prev));
+  };
+  const fieldA11y = (k: FieldKey) => ({
+    "aria-invalid": errors[k] ? true : undefined,
+    "aria-describedby": errors[k] ? `lookup-${k}-error` : undefined,
+  } as const);
+  const fieldClass = (k: FieldKey) =>
+    errors[k] ? "border-destructive focus:border-destructive" : "focus:border-primary";
+  const ErrorText = ({ k }: { k: FieldKey }) =>
+    errors[k] ? (
+      <p id={`lookup-${k}-error`} className="mt-1 text-sm font-medium text-destructive flex items-center gap-1" data-testid={`error-lookup-${k}`}>
+        <AlertCircle size={14} aria-hidden="true" /> {errors[k]}
+      </p>
+    ) : null;
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const next = {
+      name: validateField("name", name),
+      phone: validateField("phone", phone),
+      email: validateField("email", email),
+    };
+    setErrors(next);
+    const firstBad = (["name", "phone", "email"] as FieldKey[]).find((k) => next[k]);
+    if (firstBad) {
+      document.getElementById(`lookup-${firstBad}`)?.focus();
+      return;
+    }
     const n = name.trim();
     const p = phone.trim();
     const em = email.trim();
-    if (!n || !p || !em) return;
     setSubmitted(true);
     lookup.mutate({ data: { name: n, phone: p, email: em } });
   };
@@ -77,6 +112,7 @@ export default function OrderLookupPage() {
 
         <form
           onSubmit={onSubmit}
+          noValidate
           className="bg-white border-2 rounded-3xl shadow-lg p-6 md:p-8 mb-6"
           data-testid="order-lookup-form"
         >
@@ -87,14 +123,17 @@ export default function OrderLookupPage() {
               </label>
               <input
                 id="lookup-name"
-                type="text"
+                aria-required="true"
+                type="text" autoComplete="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); revalidate("name", e.target.value); }}
+                {...fieldA11y("name")}
                 placeholder={tx("購票時填寫的姓名")}
-                className="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none"
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none ${fieldClass("name")}`}
                 required
                 data-testid="input-lookup-name"
               />
+              <ErrorText k="name" />
             </div>
 
             <div>
@@ -103,14 +142,18 @@ export default function OrderLookupPage() {
               </label>
               <input
                 id="lookup-phone"
+                aria-required="true"
                 type="tel"
+                autoComplete="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => { setPhone(e.target.value); revalidate("phone", e.target.value); }}
+                {...fieldA11y("phone")}
                 placeholder={tx("例如：0912345678")}
-                className="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none"
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none ${fieldClass("phone")}`}
                 required
                 data-testid="input-lookup-phone"
               />
+              <ErrorText k="phone" />
             </div>
 
             <div>
@@ -119,14 +162,18 @@ export default function OrderLookupPage() {
               </label>
               <input
                 id="lookup-email"
+                aria-required="true"
                 type="email"
+                autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); revalidate("email", e.target.value); }}
+                {...fieldA11y("email")}
                 placeholder={tx("購票時填寫的 Email")}
-                className="w-full px-4 py-3 border-2 rounded-xl focus:border-primary focus:outline-none"
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none ${fieldClass("email")}`}
                 required
                 data-testid="input-lookup-email"
               />
+              <ErrorText k="email" />
               <p className="text-xs text-muted-foreground mt-1">
                 {tx("為保護您的個資，需要同時提供姓名、手機號碼與 Email 才能查詢。")}
               </p>
@@ -134,7 +181,7 @@ export default function OrderLookupPage() {
 
             <button
               type="submit"
-              disabled={lookup.isPending || !name.trim() || !phone.trim() || !email.trim()}
+              disabled={lookup.isPending}
               className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:opacity-90 transition-opacity disabled:opacity-50 inline-flex items-center justify-center gap-2"
               data-testid="button-lookup-submit"
             >
@@ -228,9 +275,9 @@ function OrderResultCard({
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             {isPaid ? (
-              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+              <CheckCircle2 className="w-8 h-8 text-emerald-700" />
             ) : isAwaitingTransfer ? (
-              <Banknote className="w-8 h-8 text-amber-600" />
+              <Banknote className="w-8 h-8 text-amber-700" />
             ) : (
               <Loader2 className="w-8 h-8 text-slate-500 animate-spin" />
             )}
@@ -312,9 +359,9 @@ function OrderResultCard({
                     <div className="font-bold">
                       {tx("申請 #")}{r.id} ·{" "}
                       <span className={
-                        r.status === "approved" ? "text-emerald-600" :
-                        r.status === "rejected" ? "text-gray-500" :
-                        r.status === "rescheduled" ? "text-sky-600" : "text-amber-600"
+                        r.status === "approved" ? "text-emerald-700" :
+                        r.status === "rejected" ? "text-gray-600" :
+                        r.status === "rescheduled" ? "text-sky-700" : "text-amber-700"
                       }>
                         {REFUND_STATUS_LABEL()[r.status]}
                       </span>
@@ -410,7 +457,7 @@ function RefundModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !busy && onClose()}>
+    <ModalShell label={tx("申請退票")} onClose={onClose} dismissible={!busy} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <form
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
@@ -422,7 +469,7 @@ function RefundModal({
             <h3 className="font-display text-xl">{tx("申請退票")}</h3>
             <p className="text-xs text-muted-foreground mt-1 font-mono">{paymentRef}</p>
           </div>
-          <button type="button" onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground"><X size={18} /></button>
+          <button aria-label={tx("關閉")} type="button" onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground"><X size={18} /></button>
         </div>
         <div className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-900 leading-relaxed">
           {tx("送出申請後將由客服人員審核，預計 3 個工作天內回覆。已退款的票券無法再申請退票。")}
@@ -481,7 +528,7 @@ function RefundModal({
           </button>
         </div>
       </form>
-    </div>
+    </ModalShell>
   );
 }
 

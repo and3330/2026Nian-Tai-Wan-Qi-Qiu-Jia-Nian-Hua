@@ -127,6 +127,11 @@ export default function AutomationSettingsPage() {
                   </div>
                 </div>
                 <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!!value.enabled}
+                  aria-label={tx("啟用：{0}", [def.label])}
+                  data-testid={`switch-enabled-${def.key}`}
                   onClick={() => updateLocal(def.key, "enabled", !value.enabled)}
                   className={cn(
                     "relative w-12 h-6 rounded-full transition-colors",
@@ -147,8 +152,12 @@ export default function AutomationSettingsPage() {
                     if (field.type === "toggle") {
                       return (
                         <div key={field.key} className="flex items-center justify-between">
-                          <label className="text-sm">{field.label}</label>
+                          <span className="text-sm" id={`auto-${def.key}-${field.key}`}>{field.label}</span>
                           <button
+                            type="button"
+                            role="switch"
+                            aria-checked={!!fieldValue}
+                            aria-labelledby={`auto-${def.key}-${field.key}`}
                             onClick={() => updateLocal(def.key, field.key, !fieldValue)}
                             className={cn("relative w-10 h-5 rounded-full transition-colors", fieldValue ? "bg-primary" : "bg-muted")}
                           >
@@ -159,8 +168,8 @@ export default function AutomationSettingsPage() {
                     }
                     return (
                       <div key={field.key}>
-                        <label className="block text-sm mb-1">{field.label}</label>
-                        <input
+                        <label htmlFor={`auto-${def.key}-${field.key}`} className="block text-sm mb-1">{field.label}</label>
+                        <input id={`auto-${def.key}-${field.key}`}
                           type={field.type}
                           value={fieldValue}
                           onChange={e => updateLocal(def.key, field.key, field.type === "number" ? Number(e.target.value) : e.target.value)}

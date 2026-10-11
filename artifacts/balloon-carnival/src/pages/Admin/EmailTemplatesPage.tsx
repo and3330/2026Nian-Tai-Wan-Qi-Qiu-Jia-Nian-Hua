@@ -155,10 +155,10 @@ export default function EmailTemplatesPage() {
       </div>
 
       <div className="bg-white rounded-2xl border p-5 flex items-center gap-3 flex-wrap">
-        <label className="text-sm font-bold flex items-center gap-2 shrink-0">
+        <label htmlFor="f-emailtemplatespage-1" className="text-sm font-bold flex items-center gap-2 shrink-0">
           <Send size={16} /> {tx("測試收件人 Email：")}
         </label>
-        <input
+        <input id="f-emailtemplatespage-1"
           type="email"
           value={testEmail}
           onChange={(e) => setTestEmail(e.target.value)}
@@ -183,8 +183,8 @@ export default function EmailTemplatesPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold mb-1">{tx("主旨")}</label>
-                  <input
+                  <label htmlFor="f-emailtemplatespage-2" className="block text-sm font-bold mb-1">{tx("主旨")}</label>
+                  <input id="f-emailtemplatespage-2"
                     type="text"
                     value={draft.subject}
                     onChange={(e) => updateDraft(tpl.key, "subject", e.target.value, tpl)}
@@ -193,8 +193,8 @@ export default function EmailTemplatesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold mb-1">{tx("內文")}</label>
-                  <textarea
+                  <label htmlFor="f-emailtemplatespage-3" className="block text-sm font-bold mb-1">{tx("內文")}</label>
+                  <textarea id="f-emailtemplatespage-3"
                     value={draft.body}
                     onChange={(e) => updateDraft(tpl.key, "body", e.target.value, tpl)}
                     rows={14}

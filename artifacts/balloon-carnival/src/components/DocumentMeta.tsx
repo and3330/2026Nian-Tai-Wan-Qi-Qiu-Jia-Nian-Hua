@@ -33,7 +33,7 @@ export function DocumentMeta() {
       const el = document.querySelector(selectors[k]);
       if (el && v) el.setAttribute("content", v);
     };
-    document.title = en ? EN_META.title : originals.title;
+    // document.title is owned per-route by RouteA11y.
     set("description", en ? EN_META.description : originals.description);
     set("og", en ? EN_META.og : originals.og);
     set("twitter", en ? EN_META.og : originals.twitter);

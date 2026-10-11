@@ -300,7 +300,7 @@ export default function AdminPromoCodesManage() {
         ) : rows.length === 0 ? (
           <p className="text-muted-foreground text-sm">{tx("尚未建立任何優惠碼。")}</p>
         ) : (
-          <div className="overflow-x-auto -mx-2">
+          <div tabIndex={0} role="region" aria-label={tx("資料表（可水平捲動）")} className="overflow-x-auto -mx-2">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-muted-foreground border-b">
                 <tr>
@@ -333,7 +333,7 @@ export default function AdminPromoCodesManage() {
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2">
-                        <button
+                        <button aria-label={tx("編輯")}
                           type="button" onClick={() => startEdit(r)}
                           data-testid={`button-edit-${r.code}`}
                           className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
@@ -341,7 +341,7 @@ export default function AdminPromoCodesManage() {
                         >
                           <Pencil size={16} />
                         </button>
-                        <button
+                        <button aria-label={tx("刪除")}
                           type="button" onClick={() => onDelete(r)}
                           data-testid={`button-delete-${r.code}`}
                           className="p-2 rounded hover:bg-destructive/10 text-destructive"
