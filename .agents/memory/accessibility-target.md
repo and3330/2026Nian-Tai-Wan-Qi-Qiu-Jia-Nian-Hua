@@ -8,3 +8,9 @@ The user asked to modify the entire website to WCAG 2.2 and explicitly said 「�
 **Why:** Installing an accessible CAPTCHA or following a checklist does not establish whole-site conformance. This is a complete-flow requirement, including admin and third-party transaction steps, not just an axe score.
 
 **How to apply:** Use W3C as authoritative when reference checklists simplify criteria. Never claim full conformance without all applicable criteria and complete flows verified. Record pending assistive-technology checks and third-party limitations explicitly. Banner preservation remains in scope; do not presume alt text alone resolves images-of-text requirements.
+
+The user explicitly chose 「保留原圖，先記錄這項無障礙限制」 on 2026-10-11 after being offered accessible HTML banner text.
+
+**Why:** Original banner preservation takes precedence over replacing their embedded text in this work. This is an acknowledged unresolved limitation, not a WCAG exception or acceptance of a conformance claim.
+
+**How to apply:** Do not rebuild or replace banners without new authorization. Keep their text equivalents and record the unresolved images-of-text assessment in accessibility reporting.
